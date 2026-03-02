@@ -91,5 +91,93 @@
     ],
     "startingWeapons": ["burst_laser_1"],
     "startingCrew": []
+  },
+  {
+    "id": "engi_cruiser_a",
+    "name": "The Torus",
+    "layout": "A",
+    "startingHull": 30,
+    "reactorPower": 10,
+    "startingResources": { "scrap": 0, "fuel": 16, "missiles": 0, "droneParts": 15 },
+    "startingCrew": [
+      { "race": "ENGI", "count": 2 },
+      { "race": "HUMAN", "count": 1 }
+    ],
+    "weapons": ["ion_blast_2"],
+    "systems": [
+      { "id": "sys_shields", "type": "SHIELDS", "level": 2, "maxLevel": 8, "x": 2, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_engines", "type": "ENGINES", "level": 2, "maxLevel": 8, "x": 0, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_oxygen", "type": "OXYGEN", "level": 1, "maxLevel": 3, "x": 2, "y": 0, "width": 1, "height": 2 },
+      { "id": "sys_weapons", "type": "WEAPONS", "level": 3, "maxLevel": 8, "x": 4, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_drone_control", "type": "DRONE_CONTROL", "level": 3, "maxLevel": 8, "x": 4, "y": 0, "width": 2, "height": 2 },
+      { "id": "sys_medbay", "type": "MEDBAY", "level": 1, "maxLevel": 3, "x": 6, "y": 2, "width": 2, "height": 1 },
+      { "id": "sys_piloting", "type": "PILOTING", "level": 1, "maxLevel": 3, "x": 8, "y": 2, "width": 1, "height": 2 },
+      { "id": "sys_doors", "type": "DOORS", "level": 1, "maxLevel": 3, "x": 6, "y": 3, "width": 1, "height": 1 },
+      { "id": "sys_sensors", "type": "SENSORS", "level": 1, "maxLevel": 3, "x": 7, "y": 3, "width": 1, "height": 1 }
+    ],
+    "doors": [] 
+  },
+  {
+    "id": "mantis_cruiser_a",
+    "name": "The Gila Monster",
+    "layout": "A",
+    "startingHull": 30,
+    "reactorPower": 9,
+    "startingResources": { "scrap": 0, "fuel": 16, "missiles": 0, "droneParts": 0 },
+    "startingCrew": [
+      { "race": "MANTIS", "count": 3 },
+      { "race": "ENGI", "count": 1 }
+    ],
+    "weapons": ["mini_beam", "leto_missile"],
+    "systems": [
+      { "id": "sys_shields", "type": "SHIELDS", "level": 2, "maxLevel": 8, "x": 3, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_engines", "type": "ENGINES", "level": 2, "maxLevel": 8, "x": 1, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_oxygen", "type": "OXYGEN", "level": 1, "maxLevel": 3, "x": 3, "y": 4, "width": 2, "height": 1 },
+      { "id": "sys_weapons", "type": "WEAPONS", "level": 2, "maxLevel": 8, "x": 5, "y": 1, "width": 2, "height": 2 },
+      { "id": "sys_teleporter", "type": "TELEPORTER", "level": 1, "maxLevel": 3, "x": 5, "y": 3, "width": 2, "height": 1 },
+      { "id": "sys_medbay", "type": "MEDBAY", "level": 1, "maxLevel": 3, "x": 7, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_piloting", "type": "PILOTING", "level": 1, "maxLevel": 3, "x": 9, "y": 2, "width": 1, "height": 2 }
+    ],
+    "doors": []
+  },
+  {
+    "id": "auto_scout",
+    "name": "Auto-Scout",
+    "layout": "Enemy",
+    "startingHull": 10,
+    "reactorPower": 5,
+    "startingResources": { "scrap": 0, "fuel": 0, "missiles": 5, "droneParts": 0 },
+    "startingCrew": [],
+    "weapons": ["burst_laser_1", "leto_missile"],
+    "systems": [
+      { "id": "sys_shields", "type": "SHIELDS", "level": 2, "maxLevel": 8, "x": 1, "y": 1, "width": 2, "height": 1 },
+      { "id": "sys_engines", "type": "ENGINES", "level": 2, "maxLevel": 8, "x": 1, "y": 2, "width": 2, "height": 1 },
+      { "id": "sys_weapons", "type": "WEAPONS", "level": 3, "maxLevel": 8, "x": 3, "y": 1, "width": 2, "height": 2 },
+      { "id": "sys_piloting", "type": "PILOTING", "level": 1, "maxLevel": 3, "x": 5, "y": 1, "width": 1, "height": 2 }
+    ],
+    "doors": []
+  },
+  {
+    "id": "rebel_flagship_phase_1",
+    "name": "The Rebel Flagship",
+    "layout": "Boss",
+    "startingHull": 20,
+    "reactorPower": 20,
+    "startingResources": { "scrap": 0, "fuel": 0, "missiles": 10, "droneParts": 10 },
+    "startingCrew": [
+      { "race": "HUMAN", "count": 10 }
+    ],
+    "weapons": ["burst_laser_3", "pegasus_missile", "ion_blast_2", "halberd_beam"],
+    "systems": [
+      { "id": "sys_shields", "type": "SHIELDS", "level": 8, "maxLevel": 8, "x": 4, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_engines", "type": "ENGINES", "level": 4, "maxLevel": 8, "x": 2, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_oxygen", "type": "OXYGEN", "level": 3, "maxLevel": 3, "x": 4, "y": 4, "width": 2, "height": 1 },
+      { "id": "sys_cloaking", "type": "CLOAKING", "level": 3, "maxLevel": 3, "x": 6, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_piloting", "type": "PILOTING", "level": 3, "maxLevel": 3, "x": 8, "y": 2, "width": 2, "height": 2 },
+      { "id": "sys_medbay", "type": "MEDBAY", "level": 3, "maxLevel": 3, "x": 6, "y": 4, "width": 2, "height": 1 },
+      { "id": "sys_hacking", "type": "HACKING", "level": 3, "maxLevel": 3, "x": 4, "y": 1, "width": 2, "height": 1 },
+      { "id": "sys_doors", "type": "DOORS", "level": 3, "maxLevel": 3, "x": 6, "y": 1, "width": 2, "height": 1 }
+    ],
+    "doors": []
   }
 ]

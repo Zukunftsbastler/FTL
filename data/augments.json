@@ -1,0 +1,61 @@
+[
+  {
+    "id": "weapon_pre_igniter",
+    "name": "Weapon Pre-Igniter",
+    "description": "Weapons are fully charged when jumping into a new beacon.",
+    "cost": 120,
+    "effectType": "COMBAT_START_MODIFIER",
+    "stackable": false
+  },
+  {
+    "id": "automated_reloader",
+    "name": "Automated Re-loader",
+    "description": "Weapon cooldown is reduced by 10%.",
+    "cost": 40,
+    "effectType": "COOLDOWN_MODIFIER",
+    "value": 0.1,
+    "stackable": true
+  },
+  {
+    "id": "scrap_recovery_arm",
+    "name": "Scrap Recovery Arm",
+    "description": "Increases scrap collected by 10%.",
+    "cost": 50,
+    "effectType": "REWARD_MODIFIER",
+    "value": 0.1,
+    "stackable": true
+  },
+  {
+    "id": "long_ranged_scanners",
+    "name": "Long-Ranged Scanners",
+    "description": "Reveals adjacent beacon hazards and ship presence on the sector map.",
+    "cost": 30,
+    "effectType": "MAP_VISIBILITY_MODIFIER",
+    "stackable": false
+  },
+  {
+    "id": "zoltan_shield",
+    "name": "Zoltan Shield",
+    "description": "Provides a 5-HP super shield that blocks all weapons and boarders until depleted.",
+    "cost": 0, 
+    "effectType": "SUPER_SHIELD",
+    "value": 5,
+    "stackable": false
+  },
+  {
+    "id": "engi_medbot_dispersal",
+    "name": "Engi Med-bot Dispersal",
+    "description": "Crew slowly heal anywhere on the ship, as long as the Medbay is powered.",
+    "cost": 60,
+    "effectType": "GLOBAL_HEALING",
+    "stackable": false
+  },
+  {
+    "id": "stealth_weapons",
+    "name": "Stealth Weapons",
+    "description": "Firing weapons does not reduce your cloaking duration.",
+    "cost": 50,
+    "effectType": "CLOAKING_MODIFIER",
+    "stackable": false
+  }
+]

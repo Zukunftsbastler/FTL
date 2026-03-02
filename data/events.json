@@ -1,41 +1,382 @@
 [
   {
     "id": "safe_passage",
-    "text": "You arrive at a quiet sector. Friendly traders acknowledge you with a wave over the comms. The star system is peaceful and uneventful — a rare luxury in these dangerous times.",
+    "text": "You arrive in a remarkably quiet sector. The sensors pick up nothing but distant starlight. It's a rare moment of peace.",
     "choices": [
-      { "text": "Continue on course." }
+      { "text": "Take a breath and continue." }
     ]
   },
   {
-    "id": "distress_beacon",
-    "text": "Your sensors pick up a distress beacon from a drifting ship. Scans show no life signs — the crew is long gone. The hull is still largely intact and holds salvageable materials.",
+    "id": "deep_space",
+    "text": "This node is completely empty. No planets, no asteroids, no ships. Just the vast emptiness of deep space.",
     "choices": [
-      { "text": "Scavenge the wreck.", "reward": { "scrap": 18, "fuel": 1 } },
-      { "text": "Leave it — could be a trap." }
+      { "text": "Power up the FTL drive." }
     ]
   },
   {
     "id": "rebel_patrol",
-    "text": "An armed Rebel patrol vessel drops out of FTL directly ahead. Your hails go unanswered. Warning klaxons blare as they lock weapons onto your ship. There is nowhere to hide.",
+    "text": "As soon as you exit the jump, alarms blare. A Rebel fighter was waiting in ambush!",
     "choices": [
-      { "text": "Prepare to fight!", "triggerCombatWithShipId": "rebel_a" },
-      { "text": "Attempt to escape at full burn." }
+      { "text": "Battle stations!", "triggerCombatWithShipId": "rebel_a" }
     ]
   },
   {
-    "id": "abandoned_cache",
-    "text": "A Federation emergency supply cache drifts at the edge of the system. The access codes are standard issue — clearly meant to be used by vessels in need. Your crew looks to you for the call.",
+    "id": "pirate_ambush",
+    "text": "A ship with pirate markings suddenly decloaks off your port bow. They are charging weapons!",
     "choices": [
-      { "text": "Open the cache.", "reward": { "missiles": 4, "scrap": 8 } },
-      { "text": "Leave it for someone who needs it more." }
+      { "text": "Show them no mercy.", "triggerCombatWithShipId": "rebel_a" }
     ]
   },
   {
-    "id": "anomalous_signal",
-    "text": "Your sensors detect an anomalous signal emanating from a nearby gas giant. The signature matches a Federation automated beacon. It could be nothing — or it could be exactly what you need.",
+    "id": "floating_cargo",
+    "text": "You spot a cluster of cargo pods floating in an asteroid field. It looks like they were jettisoned in a hurry.",
     "choices": [
-      { "text": "Investigate the signal.", "nextEventId": "abandoned_cache" },
-      { "text": "No time — press on." }
+      { "text": "Bring them aboard.", "reward": { "scrap": 22, "fuel": 2 } }
+    ]
+  },
+  {
+    "id": "abandoned_station",
+    "text": "You find a heavily damaged, abandoned mining station. A quick scan reveals some usable military supplies left behind.",
+    "choices": [
+      { "text": "Loot the station.", "reward": { "scrap": 15, "missiles": 4, "droneParts": 2 } }
+    ]
+  },
+  {
+    "id": "merchant_fuel",
+    "text": "A friendly civilian trader hails you: 'You look like you're going a long way. Trade you 4 Fuel for 15 Scrap?'",
+    "choices": [
+      { "text": "Accept the trade.", "reward": { "scrap": -15, "fuel": 4 } },
+      { "text": "Decline and move on." }
+    ]
+  },
+  {
+    "id": "merchant_weapon",
+    "text": "A black-market arms dealer offers you a pristine Burst Laser II, but the price is a steep 45 Scrap.",
+    "choices": [
+      { "text": "Buy the weapon.", "requirementId": "scrap:45", "reward": { "scrap": -45, "weaponId": "burst_laser_2" } },
+      { "text": "Too expensive. Leave." }
+    ]
+  },
+  {
+    "id": "distress_start",
+    "text": "You arrive at a distress beacon to find a civilian ship under attack by a pirate interceptor!",
+    "choices": [
+      { "text": "Move in to attack!", "triggerCombatWithShipId": "rebel_a" },
+      { "text": "Stay out of it." }
+    ]
+  },
+  {
+    "id": "derelict_start",
+    "text": "You find an intact derelict ship drifting silently. There are no life signs, but the cargo bays might still be full.",
+    "choices": [
+      { "text": "Dock and search the ship (Risky).", "randomOutcomes": [
+          { "chance": 0.6, "nextEventId": "derelict_loot" },
+          { "chance": 0.4, "nextEventId": "derelict_damage" }
+        ]
+      },
+      { "text": "Leave it alone." }
+    ]
+  },
+  {
+    "id": "derelict_loot",
+    "text": "Your crew finds a hidden stash of supplies in the captain's quarters!",
+    "choices": [
+      { "text": "Excellent.", "reward": { "scrap": 25, "weaponId": "artemis_missile" } }
+    ]
+  },
+  {
+    "id": "derelict_damage",
+    "text": "It was a trap! A localized booby trap explodes, damaging your hull as your crew frantically retreats.",
+    "choices": [
+      { "text": "Patch the holes.", "reward": { "hullRepair": -4 } }
+    ]
+  },
+  {
+    "id": "fire_station",
+    "text": "A research station is engulfed in flames. A frantic transmission begs for someone to repair their fire suppression system.",
+    "choices": [
+      { "text": "Send a rescue team (Risky).", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "fire_station_success" },
+          { "chance": 0.5, "nextEventId": "fire_station_fail" }
+        ]
+      },
+      { "text": "[Engi Crew] Send your Engi to remotely slice the system.", "requirementId": "crew:ENGI", "nextEventId": "fire_station_engi" },
+      { "text": "Ignore the plea." }
+    ]
+  },
+  {
+    "id": "fire_station_success",
+    "text": "Your crew braves the flames and manages to save the scientists! They reward you with their research funds.",
+    "choices": [
+      { "text": "Collect the reward.", "reward": { "scrap": 30, "missiles": 2 } }
+    ]
+  },
+  {
+    "id": "fire_station_fail",
+    "text": "The fire spreads too fast! Your crew barely makes it back to the airlock, taking minor structural damage in the escape.",
+    "choices": [
+      { "text": "Ouch.", "reward": { "hullRepair": -2 } }
+    ]
+  },
+  {
+    "id": "fire_station_engi",
+    "text": "Your Engi effortlessly bypasses the station's damaged relays and activates the foam suppressors. The grateful scientists reward you.",
+    "choices": [
+      { "text": "A job well done.", "reward": { "scrap": 40, "droneParts": 3 } }
+    ]
+  },
+  {
+    "id": "slaver_start",
+    "text": "A heavily armed slaver ship hails you: 'We have prime workers for sale! Give us 25 scrap, or we'll take your crew by force!'",
+    "choices": [
+      { "text": "Pay their ransom.", "requirementId": "scrap:25", "reward": { "scrap": -25, "crewMember": true } },
+      { "text": "We don't negotiate with slavers. Open fire!", "triggerCombatWithShipId": "rebel_a" }
+    ]
+  },
+  {
+    "id": "asteroid_miner",
+    "text": "A pirate ship is hiding inside an asteroid field, waiting for unsuspecting travelers. They attack!",
+    "hazard": "ASTEROIDS",
+    "choices": [
+      { "text": "Evasive maneuvers!", "triggerCombatWithShipId": "rebel_a" }
+    ]
+  },
+  {
+    "id": "artifact_start",
+    "text": "You find a strange, glowing alien monolith orbiting a gas giant. It emits a low, pulsating frequency.",
+    "choices": [
+      { "text": "Bring it aboard and study it.", "randomOutcomes": [
+          { "chance": 0.33, "nextEventId": "artifact_heal" },
+          { "chance": 0.33, "nextEventId": "artifact_damage" },
+          { "chance": 0.34, "nextEventId": "artifact_nothing" }
+        ]
+      },
+      { "text": "Leave it in peace." }
+    ]
+  },
+  {
+    "id": "artifact_heal",
+    "text": "The monolith releases a burst of nanites that rapidly repair your ship's hull plating before crumbling to dust.",
+    "choices": [
+      { "text": "Amazing!", "reward": { "hullRepair": 8 } }
+    ]
+  },
+  {
+    "id": "artifact_damage",
+    "text": "The monolith is highly unstable! It explodes in the cargo bay, severely damaging the hull.",
+    "choices": [
+      { "text": "Damage control!", "reward": { "hullRepair": -6 } }
+    ]
+  },
+  {
+    "id": "artifact_nothing",
+    "text": "You study it for hours, but it's completely inert. It's just a glowing rock.",
+    "choices": [
+      { "text": "What a waste of time." }
+    ]
+  },
+  {
+    "id": "solar_flare_combat",
+    "text": "You jump too close to a highly volatile star! To make matters worse, an enemy scout is moving to intercept.",
+    "hazard": "SOLAR_FLARE",
+    "choices": [
+      { "text": "Prepare for a heated battle!", "triggerCombatWithShipId": "rebel_a" }
+    ]
+  },
+  {
+    "id": "disease_ship",
+    "text": "You find a ship drifting. They hail you, coughing heavily. 'A plague has hit our crew. Please, help us!'",
+    "choices": [
+      { "text": "[Medbay Lvl 2] Bring them aboard and cure them.", "requirementId": "system:MEDBAY:2", "nextEventId": "disease_ship_cured" },
+      { "text": "Keep your distance. We can't risk infection." }
+    ]
+  },
+  {
+    "id": "disease_ship_cured",
+    "text": "Your advanced Medbay makes quick work of the pathogen. Grateful, one of their specialists offers to join your crew.",
+    "choices": [
+      { "text": "Welcome aboard.", "reward": { "crewMember": true, "scrap": 15 } }
+    ]
+  },
+  {
+    "id": "nebula_ambush",
+    "text": "You arrive in an ion storm. Your reactor power is severely limited. Suddenly, a ship decloaks!",
+    "hazard": "ION_STORM",
+    "choices": [
+      { "text": "Fight blind!", "triggerCombatWithShipId": "rebel_a" }
+    ]
+  },
+  {
+    "id": "stranded_mantis",
+    "text": "You find an escape pod. Inside is a Mantis warrior, heavily armed but unconscious.",
+    "choices": [
+      { "text": "Open the pod.", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "mantis_joins" },
+          { "chance": 0.5, "nextEventId": "mantis_attacks" }
+        ]
+      },
+      { "text": "Jettison the pod." }
+    ]
+  },
+  {
+    "id": "mantis_joins",
+    "text": "The Mantis wakes up and, recognizing you saved its life, pledges its blades to your cause.",
+    "choices": [
+      { "text": "A powerful ally.", "reward": { "crewMember": true } }
+    ]
+  },
+  {
+    "id": "mantis_attacks",
+    "text": "The Mantis wakes up in a frenzy and thrashes the cargo bay, causing hull damage before venting itself into space.",
+    "choices": [
+      { "text": "Well, that backfired.", "reward": { "hullRepair": -3 } }
+    ]
+  },
+  {
+    "id": "weapons_cache",
+    "text": "Sensors detect a buried weapons cache on a nearby moon. You'll need high-powered lasers to cut through the crust.",
+    "choices": [
+      { "text": "[Weapons Lvl 3] Blast the crust away.", "requirementId": "system:WEAPONS:3", "reward": { "weaponId": "burst_laser_1", "scrap": 20 } },
+      { "text": "We don't have the firepower. Leave it." }
+    ]
+  },
+  {
+    "id": "giant_alien_spiders",
+    "text": "You are hailed by a space station. 'Help! We're being overrun by giant alien spiders!'",
+    "choices": [
+      { "text": "Send the crew in to help (Risky).", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "spiders_success" },
+          { "chance": 0.5, "nextEventId": "spiders_fail" }
+        ]
+      },
+      { "text": "[Boarding Drone] Send in an automated drone.", "requirementId": "drone:boarding_drone", "nextEventId": "spiders_drone" },
+      { "text": "Leave them to their fate." }
+    ]
+  },
+  {
+    "id": "spiders_success",
+    "text": "Your crew fights bravely and exterminates the arachnid threat. The station rewards you handsomely.",
+    "choices": [
+      { "text": "Take the reward.", "reward": { "scrap": 40, "droneParts": 2 } }
+    ]
+  },
+  {
+    "id": "spiders_fail",
+    "text": "The spiders are too much! Your crew flees back to the ship, but one of them was left behind in the chaos...",
+    "choices": [
+      { "text": "A tragic loss.", "reward": { "loseCrewMember": true } } 
+    ]
+  },
+  {
+    "id": "spiders_drone",
+    "text": "The boarding drone mercilessly clears the station without risking your crew. The survivors hand over their remaining supplies.",
+    "choices": [
+      { "text": "Efficient.", "reward": { "scrap": 45, "missiles": 3 } }
+    ]
+  },
+  {
+    "id": "mercenary_encounter",
+    "text": "A well-armed mercenary ship hails you. 'We can scout the sector for you or hold off the Rebels... for a price.'",
+    "choices": [
+      { "text": "Pay them to scout the sector.", "requirementId": "scrap:20", "reward": { "scrap": -20, "revealMap": true } },
+      { "text": "Pay them to delay the Rebels.", "requirementId": "scrap:30", "reward": { "scrap": -30, "delayRebels": 2 } },
+      { "text": "We don't need your help. (Attack)", "triggerCombatWithShipId": "rebel_fighter" },
+      { "text": "Decline and move on." }
+    ]
+  },
+  {
+    "id": "slug_surrender_trick",
+    "text": "A Slug light cruiser attacks you unprovoked! As you charge weapons, they hail you: 'Wait! We surrender! Take these supplies and spare us.'",
+    "choices": [
+      { "text": "Accept their surrender.", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "slug_trick_supplies" },
+          { "chance": 0.5, "nextEventId": "slug_trick_ambush" }
+        ]
+      },
+      { "text": "Never trust a Slug. Open fire!", "triggerCombatWithShipId": "slug_cruiser" }
+    ]
+  },
+  {
+    "id": "slug_trick_supplies",
+    "text": "Surprisingly, they keep their word and transfer some scrap and fuel before jumping away.",
+    "choices": [
+      { "text": "We got lucky.", "reward": { "scrap": 20, "fuel": 3 } }
+    ]
+  },
+  {
+    "id": "slug_trick_ambush",
+    "text": "It was a ruse! As you lower your shields to receive the transfer, they power up their weapons and target your engines!",
+    "choices": [
+      { "text": "Shields up! Return fire!", "triggerCombatWithShipId": "slug_cruiser", "reward": { "systemDamage": { "ENGINES": 1 } } }
+    ]
+  },
+  {
+    "id": "store_encounter",
+    "text": "You find a heavily shielded trading post broadcasting its inventory across all frequencies.",
+    "choices": [
+      { "text": "Browse the store.", "openStore": true },
+      { "text": "Ignore it." }
+    ]
+  },
+  {
+    "id": "madman_moon",
+    "text": "Sensors pick up a lone life sign on a barren moon. It appears to be a stranded pilot who has gone completely mad from isolation.",
+    "choices": [
+      { "text": "Bring him aboard.", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "madman_joins" },
+          { "chance": 0.5, "nextEventId": "madman_sabotage" }
+        ]
+      },
+      { "text": "[Level 2 Medbay] Bring him straight to the Medbay.", "requirementId": "system:MEDBAY:2", "nextEventId": "madman_healed" },
+      { "text": "Leave him there." }
+    ]
+  },
+  {
+    "id": "madman_joins",
+    "text": "After some food and rest, his sanity returns. He offers to join your crew out of gratitude.",
+    "choices": [
+      { "text": "Welcome aboard.", "reward": { "crewMember": true } }
+    ]
+  },
+  {
+    "id": "madman_sabotage",
+    "text": "He seems calm at first, but suddenly snaps! He attacks a crew member and steals some scrap before escaping in an escape pod.",
+    "choices": [
+      { "text": "We should have known.", "reward": { "scrap": -15, "crewDamage": 25 } }
+    ]
+  },
+  {
+    "id": "madman_healed",
+    "text": "Your advanced medical facilities sedate and cure his psychological trauma. He eagerly joins your crew as a skilled engineer.",
+    "choices": [
+      { "text": "Glad we could help.", "reward": { "crewMember": true } }
+    ]
+  },
+  {
+    "id": "automated_rebel_scout",
+    "text": "An unmanned Rebel scout drone is patrolling this beacon. It hasn't spotted you yet, but it's positioned close to the jump point.",
+    "choices": [
+      { "text": "Attempt to sneak past.", "randomOutcomes": [
+          { "chance": 0.5, "nextEventId": "scout_sneak_success" },
+          { "chance": 0.5, "nextEventId": "scout_sneak_fail" }
+        ]
+      },
+      { "text": "[Cloaking] Cloak and bypass the scout.", "requirementId": "system:CLOAKING:1", "nextEventId": "scout_sneak_success" },
+      { "text": "Attack the drone!", "triggerCombatWithShipId": "auto_scout" }
+    ]
+  },
+  {
+    "id": "scout_sneak_success",
+    "text": "You manage to slip past the drone's sensor range undetected. You are clear to jump.",
+    "choices": [
+      { "text": "Phew." }
+    ]
+  },
+  {
+    "id": "scout_sneak_fail",
+    "text": "The drone's sensors pick up your engine emissions! It powers up its weapons and sends out a distress signal to the Rebel fleet.",
+    "choices": [
+      { "text": "Prepare for combat!", "triggerCombatWithShipId": "auto_scout", "reward": { "fleetAdvancement": 1 } }
     ]
   }
 ]

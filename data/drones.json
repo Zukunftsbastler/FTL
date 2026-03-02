@@ -1,0 +1,72 @@
+[
+  {
+    "id": "combat_drone_1",
+    "name": "Combat Drone Mark I",
+    "type": "EXTERNAL_COMBAT",
+    "powerCost": 2,
+    "speed": 1.0,
+    "weaponId": "mini_beam",
+    "health": 0,
+    "description": "Orbits the enemy ship and repeatedly fires a small laser."
+  },
+  {
+    "id": "combat_drone_2",
+    "name": "Combat Drone Mark II",
+    "type": "EXTERNAL_COMBAT",
+    "powerCost": 4,
+    "speed": 1.5,
+    "weaponId": "burst_laser_1",
+    "health": 0,
+    "description": "Orbits the enemy ship and rapidly fires blasts of lasers."
+  },
+  {
+    "id": "defense_drone_1",
+    "name": "Defense Drone Mark I",
+    "type": "EXTERNAL_DEFENSE",
+    "powerCost": 2,
+    "speed": 1.0,
+    "weaponId": "drone_defense_laser",
+    "health": 0,
+    "description": "Orbits your ship and shoots down incoming missiles and asteroids."
+  },
+  {
+    "id": "defense_drone_2",
+    "name": "Defense Drone Mark II",
+    "type": "EXTERNAL_DEFENSE",
+    "powerCost": 3,
+    "speed": 1.5,
+    "weaponId": "drone_defense_laser",
+    "health": 0,
+    "description": "Orbits your ship and shoots down incoming missiles, lasers, and asteroids."
+  },
+  {
+    "id": "sys_repair_drone",
+    "name": "System Repair Drone",
+    "type": "INTERNAL_SUPPORT",
+    "powerCost": 1,
+    "speed": 1.0,
+    "weaponId": null,
+    "health": 50,
+    "description": "Moves around your ship automatically repairing damaged systems."
+  },
+  {
+    "id": "anti_personnel_drone",
+    "name": "Anti-Personnel Drone",
+    "type": "INTERNAL_COMBAT",
+    "powerCost": 2,
+    "speed": 0.8,
+    "weaponId": null,
+    "health": 150,
+    "description": "Slowly moves around your ship engaging enemy boarders. Has high health."
+  },
+  {
+    "id": "boarding_drone",
+    "name": "Boarding Drone",
+    "type": "BOARDING",
+    "powerCost": 3,
+    "speed": 0.8,
+    "weaponId": null,
+    "health": 150,
+    "description": "Launches across to the enemy ship, breaching the hull and attacking crew."
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "civilian_sector",
+    "name": "Civilian Sector",
+    "type": "CIVILIAN",
+    "description": "A relatively safe sector controlled by the Federation or local militias. Expect more stores and friendly encounters.",
+    "hazardChance": 0.1,
+    "storeCount": { "min": 2, "max": 3 },
+    "hostileChance": 0.4,
+    "nebulaChance": 0.1,
+    "eventPool": ["event_trader_meet", "event_distress_civilian", "event_rebel_scout", "event_pirate_toll"]
+  },
+  {
+    "id": "rebel_controlled",
+    "name": "Rebel Controlled Sector",
+    "type": "HOSTILE",
+    "description": "The Rebels have a strong foothold here. Expect heavy resistance and frequent automated scouts.",
+    "hazardChance": 0.2,
+    "storeCount": { "min": 1, "max": 2 },
+    "hostileChance": 0.7,
+    "nebulaChance": 0.1,
+    "eventPool": ["event_rebel_fighter", "event_auto_scout", "event_rebel_fleet_warning"]
+  },
+  {
+    "id": "mantis_homeworlds",
+    "name": "Mantis Homeworlds",
+    "type": "HOSTILE",
+    "description": "The territory of the Mantis. Boarding parties are highly likely.",
+    "hazardChance": 0.25,
+    "storeCount": { "min": 1, "max": 2 },
+    "hostileChance": 0.8,
+    "nebulaChance": 0.15,
+    "eventPool": ["event_mantis_attack", "event_mantis_ship_fleeing", "event_pirate_slaver"]
+  },
+  {
+    "id": "uncharted_nebula",
+    "name": "Uncharted Nebula",
+    "type": "NEBULA",
+    "description": "Sensors are useless here, and the Rebel fleet will have trouble tracking you.",
+    "hazardChance": 0.4,
+    "storeCount": { "min": 0, "max": 2 },
+    "hostileChance": 0.5,
+    "nebulaChance": 1.0,
+    "eventPool": ["event_slug_trickery", "event_plasma_storm", "event_abandoned_station"]
+  },
+  {
+    "id": "the_last_stand",
+    "name": "The Last Stand",
+    "type": "BOSS",
+    "description": "The Federation base is under attack by the Rebel Flagship. This is it.",
+    "hazardChance": 0.0,
+    "storeCount": { "min": 1, "max": 1 },
+    "hostileChance": 1.0,
+    "nebulaChance": 0.0,
+    "eventPool": ["event_boss_phase_1", "event_federation_help"]
+  }
+]

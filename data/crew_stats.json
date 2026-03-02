@@ -1,0 +1,98 @@
+[
+  {
+    "race": "HUMAN",
+    "name": "Human",
+    "description": "Common and uninteresting. They learn skills slightly faster.",
+    "maxHealth": 100,
+    "movementSpeed": 1.0,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": []
+  },
+  {
+    "race": "ENGI",
+    "name": "Engi",
+    "description": "Part machine. They repair systems twice as fast but are poor fighters.",
+    "maxHealth": 100,
+    "movementSpeed": 1.0,
+    "repairSpeed": 2.0,
+    "combatDamage": 0.5,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": []
+  },
+  {
+    "race": "MANTIS",
+    "name": "Mantis",
+    "description": "Vicious insectoid warriors. They move fast and deal high damage, but are terrible at repairing.",
+    "maxHealth": 100,
+    "movementSpeed": 1.2,
+    "repairSpeed": 0.5,
+    "combatDamage": 1.5,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": []
+  },
+  {
+    "race": "ROCKMAN",
+    "name": "Rockman",
+    "description": "Large, slow, and made of rock. They have high health and are completely immune to fire.",
+    "maxHealth": 150,
+    "movementSpeed": 0.5,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 0.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": []
+  },
+  {
+    "race": "ZOLTAN",
+    "name": "Zoltan",
+    "description": "Beings of pure energy. They have low health but provide free power to the room they occupy.",
+    "maxHealth": 70,
+    "movementSpeed": 1.0,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": ["PROVIDES_POWER", "EXPLODES_ON_DEATH"]
+  },
+  {
+    "race": "SLUG",
+    "name": "Slug",
+    "description": "Telepathic slugs. They reveal adjacent rooms and enemy crew, and cannot be mind-controlled.",
+    "maxHealth": 100,
+    "movementSpeed": 1.0,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 1.0,
+    "specialAbilities": ["TELEPATHY", "MIND_CONTROL_IMMUNITY"]
+  },
+  {
+    "race": "LANIUS",
+    "name": "Lanius",
+    "description": "Metallic scavengers. They drain oxygen from the room they are in, but do not need to breathe.",
+    "maxHealth": 100,
+    "movementSpeed": 1.0,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 0.0,
+    "specialAbilities": ["DRAINS_OXYGEN"]
+  },
+  {
+    "race": "CRYSTAL",
+    "name": "Crystal",
+    "description": "Ancient ancestors of the Rockmen. They take reduced suffocation damage and can lock down rooms.",
+    "maxHealth": 125,
+    "movementSpeed": 0.8,
+    "repairSpeed": 1.0,
+    "combatDamage": 1.0,
+    "fireDamageMultiplier": 1.0,
+    "suffocationMultiplier": 0.5,
+    "specialAbilities": ["LOCKDOWN"]
+  }
+]
