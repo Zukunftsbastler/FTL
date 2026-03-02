@@ -28,4 +28,12 @@ export interface WeaponComponent extends Component {
    * Undefined means no target is set.
    */
   targetRoomEntity: Entity | undefined;
+
+  /**
+   * Charge rate multiplier applied this frame by ManningSystem.
+   * 1.0 = no buff; >1.0 = faster charging due to a gunner manning the WEAPONS room.
+   * ManningSystem resets this to 1.0 at the start of each frame, then sets it higher
+   * if a crew member with gunnery skill is in the WEAPONS room.
+   */
+  chargeRateMultiplier: number;
 }

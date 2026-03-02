@@ -80,6 +80,7 @@ export class ShipFactory {
       maxHull: template.maxHull,
       currentHull: template.maxHull,
       fuel: template.startingResources.fuel,
+      evasion: 0,
     };
     const factionComp: FactionComponent = {
       _type: 'Faction',
@@ -138,6 +139,7 @@ export class ShipFactory {
             maxCapacity: systemData.level,
             currentPower: 0,
             roomId: roomData.roomId,
+            damageAmount: 0,
           };
           world.addComponent(roomEntity, systemComp);
           spawnedSystems.push(systemComp);
@@ -196,8 +198,11 @@ export class ShipFactory {
         _type: 'Crew',
         name: crewData.name,
         race: crewData.race,
+        crewClass: crewData.crewClass,
         health: 100,
         maxHealth: 100,
+        skills: { ...crewData.skills },
+        xp: { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
       };
       const selectableComp: SelectableComponent = {
         _type: 'Selectable',
@@ -246,6 +251,7 @@ export class ShipFactory {
         powerRequired: weaponTemplate.powerCost,
         isPowered: false,
         targetRoomEntity: undefined,
+        chargeRateMultiplier: 1.0,
       };
 
       world.addComponent(weaponEntity, weaponComp);

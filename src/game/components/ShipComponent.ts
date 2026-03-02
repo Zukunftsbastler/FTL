@@ -11,4 +11,10 @@ export interface ShipComponent extends Component {
   currentHull: number;
   /** Fuel units remaining — consumed when jumping between sectors. */
   fuel: number;
+  /**
+   * Current evasion stat (0.0 – 0.5).
+   * Reset to 0 each frame by ManningSystem, then rebuilt from crewed stations.
+   * Reduces incoming hit chance: actualHit = clamp(accuracy - evasion, 0.05, 1.0).
+   */
+  evasion: number;
 }

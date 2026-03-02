@@ -1,3 +1,4 @@
+import { AssetLoader } from '../../utils/AssetLoader';
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { calculateWeaponCharge } from '../logic/WeaponMath';
@@ -10,6 +11,7 @@ import type { ProjectileComponent } from '../components/ProjectileComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
+import type { WeaponTemplate } from '../data/WeaponTemplate';
 
 /** Cap dt to prevent a single huge frame from firing weapons that weren't actually charged. */
 const MAX_DT = 0.1;
@@ -51,7 +53,7 @@ export class CombatSystem {
 
     // ── 3. Charge and fire ───────────────────────────────────────────────────
     for (const [, weapon] of allPlayerWeapons) {
-      weapon.charge = calculateWeaponCharge(weapon.charge, weapon.maxCharge, weapon.isPowered, dt);
+      weapon.charge = calculateWeaponCharge(weapon.charge, weapon.maxCharge, weapon.isPowered, dt, weapon.chargeRateMultiplier);
 
       if (weapon.charge >= weapon.maxCharge && weapon.targetRoomEntity !== undefined) {
         this.fireWeapon(world, weapon, playerShipEntity);
@@ -83,6 +85,9 @@ export class CombatSystem {
     const tx = tPos.x + (tRoom.width  * TILE_SIZE) / 2;
     const ty = tPos.y + (tRoom.height * TILE_SIZE) / 2;
 
+    // Look up weapon template for accuracy/neverMisses.
+    const tpl = this.getWeaponTemplate(weapon.templateId);
+
     // Spawn projectile entity.
     const projEntity = world.createEntity();
     const projComp: ProjectileComponent = {
@@ -95,6 +100,8 @@ export class CombatSystem {
       damage: 1,
       targetRoomEntity: weapon.targetRoomEntity,
       isEnemyOrigin: false,
+      accuracy: tpl?.accuracy ?? 1.0,
+      neverMisses: tpl?.neverMisses ?? false,
     };
     const posComp: PositionComponent = { _type: 'Position', x: ox, y: oy };
 
@@ -136,6 +143,12 @@ export class CombatSystem {
       }
     }
     return { ox: 0, oy: 0 };
+  }
+
+  /** Returns the WeaponTemplate for the given id, or undefined if not loaded. */
+  private getWeaponTemplate(templateId: string): WeaponTemplate | undefined {
+    const templates = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
+    return templates?.find((t) => t.id === templateId);
   }
 
   private findShipEntity(world: IWorld, factionId: 'PLAYER' | 'ENEMY'): Entity | null {

@@ -7,15 +7,31 @@ export interface ProjectileComponent extends Component {
   /** Starting pixel position (where the weapon fired from). */
   readonly originX: number;
   readonly originY: number;
-  /** Destination pixel position (centre of the target room). */
-  readonly targetX: number;
-  readonly targetY: number;
+  /**
+   * Destination pixel position.  Mutable — ProjectileSystem redirects this to an
+   * overshoot coordinate when the accuracy roll determines a miss.
+   */
+  targetX: number;
+  targetY: number;
   /** Travel speed in pixels per second. */
   readonly speed: number;
-  /** Hull damage applied on impact (reserved — actual math is in ProjectileSystem). */
+  /** Hull damage applied on impact. */
   readonly damage: number;
-  /** Room entity being targeted; used for system damage and impact flash. */
-  readonly targetRoomEntity: Entity;
+  /**
+   * Room entity being targeted.  Mutable — redirected to an adjacent room on a near-miss.
+   * Set to undefined when this is a complete miss (no impact should occur).
+   */
+  targetRoomEntity: Entity | undefined;
   /** True when the projectile originated from the enemy ship (future AI use). */
   readonly isEnemyOrigin: boolean;
+  /**
+   * Base hit probability from the weapon template (0.0–1.0).
+   * ProjectileSystem uses this together with the target ship's evasion on the first frame.
+   */
+  readonly accuracy: number;
+  /**
+   * When true the accuracy/evasion roll is skipped — the projectile always hits.
+   * Set from WeaponTemplate.neverMisses (Beam weapons).
+   */
+  readonly neverMisses: boolean;
 }

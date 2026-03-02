@@ -12,4 +12,9 @@ export interface SystemComponent extends Component {
   currentPower: number;
   /** Grid room ID — used to correlate with PathFinding / door logic. */
   readonly roomId: number;
+  /**
+   * Physical damage accumulated from weapon impacts (0 = pristine).
+   * Crew standing in this room will reduce this over time via RepairSystem.
+   */
+  damageAmount: number;
 }

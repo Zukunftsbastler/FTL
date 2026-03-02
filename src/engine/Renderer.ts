@@ -114,6 +114,29 @@ export class Renderer implements IRenderer {
     this.ctx.stroke();
   }
 
+  drawPolygon(
+    points: ReadonlyArray<{ x: number; y: number }>,
+    color: string,
+    filled = true,
+    lineWidth = 1,
+  ): void {
+    if (points.length < 2) return;
+    this.ctx.beginPath();
+    this.ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      this.ctx.lineTo(points[i].x, points[i].y);
+    }
+    this.ctx.closePath();
+    if (filled) {
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+    } else {
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth   = lineWidth;
+      this.ctx.stroke();
+    }
+  }
+
   drawTooltip(x: number, y: number, text: string): void {
     const FONT   = '12px monospace';
     const PAD_X  = 8;

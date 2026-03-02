@@ -15,31 +15,52 @@
       { "roomId": 0, "x": 0, "y": 0, "width": 1, "height": 2, "system": "PILOTING" },
       { "roomId": 1, "x": 1, "y": 0, "width": 2, "height": 2, "system": "SHIELDS"  },
       { "roomId": 2, "x": 3, "y": 0, "width": 2, "height": 2, "system": "WEAPONS"  },
+      { "roomId": 5, "x": 5, "y": 0, "width": 1, "height": 2, "system": "MEDBAY"   },
       { "roomId": 3, "x": 1, "y": 2, "width": 4, "height": 1, "system": "ENGINES"  },
       { "roomId": 4, "x": 0, "y": 2, "width": 1, "height": 1, "system": "OXYGEN"   }
     ],
     "doors": [
       { "roomA": 0, "roomB": 1,       "x": 1, "y": 0, "vertical": true  },
       { "roomA": 1, "roomB": 2,       "x": 3, "y": 0, "vertical": true  },
+      { "roomA": 2, "roomB": 5,       "x": 5, "y": 0, "vertical": true  },
       { "roomA": 0, "roomB": 4,       "x": 0, "y": 2, "vertical": false },
       { "roomA": 4, "roomB": 3,       "x": 1, "y": 2, "vertical": true  },
       { "roomA": 1, "roomB": 3,       "x": 2, "y": 2, "vertical": false },
       { "roomA": 2, "roomB": 3,       "x": 4, "y": 2, "vertical": false },
       { "roomA": 0, "roomB": "SPACE", "x": 0, "y": 0, "vertical": false },
-      { "roomA": 2, "roomB": "SPACE", "x": 5, "y": 0, "vertical": true  }
+      { "roomA": 5, "roomB": "SPACE", "x": 6, "y": 0, "vertical": true  }
     ],
     "systems": [
       { "type": "SHIELDS",  "level": 2 },
       { "type": "ENGINES",  "level": 2 },
       { "type": "WEAPONS",  "level": 2 },
       { "type": "OXYGEN",   "level": 1 },
-      { "type": "PILOTING", "level": 1 }
+      { "type": "PILOTING", "level": 1 },
+      { "type": "MEDBAY",   "level": 1 }
     ],
     "startingWeapons": ["burst_laser_2", "artemis_missile"],
     "startingCrew": [
-      { "name": "Ari",   "race": "HUMAN", "roomId": 0 },
-      { "name": "Bex",   "race": "HUMAN", "roomId": 2 },
-      { "name": "Caden", "race": "HUMAN", "roomId": 3 }
+      {
+        "name": "Ari",
+        "race": "HUMAN",
+        "crewClass": "PILOT",
+        "skills": { "piloting": 2, "engineering": 0, "gunnery": 0, "repair": 0, "combat": 1 },
+        "roomId": 0
+      },
+      {
+        "name": "Bex",
+        "race": "ENGI",
+        "crewClass": "ENGINEER",
+        "skills": { "piloting": 0, "engineering": 1, "gunnery": 0, "repair": 2, "combat": 0 },
+        "roomId": 5
+      },
+      {
+        "name": "Caden",
+        "race": "MANTIS",
+        "crewClass": "GUNNER",
+        "skills": { "piloting": 0, "engineering": 0, "gunnery": 2, "repair": 0, "combat": 2 },
+        "roomId": 2
+      }
     ]
   },
   {

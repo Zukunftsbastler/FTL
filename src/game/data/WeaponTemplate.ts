@@ -30,4 +30,16 @@ export interface WeaponTemplate {
 
   /** Missiles consumed per shot (0 for lasers and beams). */
   missileCost: number;
+
+  /**
+   * Base probability of hitting the target (0.0–1.0).
+   * Actual hit chance = clamp(accuracy - targetShip.evasion, 0.05, 1.0).
+   */
+  accuracy: number;
+
+  /**
+   * When true the weapon always hits, ignoring accuracy and evasion.
+   * Used for Beam weapons that cannot miss.
+   */
+  neverMisses: boolean;
 }

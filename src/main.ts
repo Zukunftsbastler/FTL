@@ -14,6 +14,8 @@ import { TargetingSystem } from './game/systems/TargetingSystem';
 import { CombatSystem } from './game/systems/CombatSystem';
 import { JumpSystem } from './game/systems/JumpSystem';
 import { ProjectileSystem } from './game/systems/ProjectileSystem';
+import { ManningSystem } from './game/systems/ManningSystem';
+import { RepairSystem } from './game/systems/RepairSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -153,6 +155,8 @@ async function init(): Promise<void> {
   const doorSystem      = new DoorSystem(input);
   const oxygenSystem    = new OxygenSystem();
   const crewSystem      = new CrewSystem();
+  const manningSystem   = new ManningSystem();
+  const repairSystem    = new RepairSystem();
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -206,10 +210,12 @@ async function init(): Promise<void> {
       selectionSystem.update(world);  // crew selection (left-click)
       movementSystem.update(world);   // crew movement (right-click + A*)
       powerSystem.update(world);      // power routing (hover + arrow keys)
+      manningSystem.update(world);    // manning buffs (charge rate, evasion)
       combatSystem.update(world);     // weapon charging + projectile spawning
       projectileSystem.update(world); // advance projectiles, apply impact damage
       oxygenSystem.update(world);     // O2 regen / decay / equalization
       crewSystem.update(world);       // suffocation damage
+      repairSystem.update(world);     // system repair + medbay healing
       jumpSystem.update(world);       // FTL button: draw + detect victory jump
 
       // Render all layers.

@@ -61,4 +61,18 @@ export interface IRenderer {
    * Automatically flips left if the box would overflow the right edge of the canvas.
    */
   drawTooltip(x: number, y: number, text: string): void;
+
+  /**
+   * Draws a closed polygon defined by an array of {x, y} vertices.
+   * @param points  Two or more vertices in drawing order.
+   * @param color   Fill or stroke colour.
+   * @param filled  True to fill, false to stroke.
+   * @param lineWidth  Only used when filled=false.
+   */
+  drawPolygon(
+    points: ReadonlyArray<{ x: number; y: number }>,
+    color: string,
+    filled?: boolean,
+    lineWidth?: number,
+  ): void;
 }

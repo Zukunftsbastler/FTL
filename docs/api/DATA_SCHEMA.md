@@ -15,30 +15,42 @@ interface WeaponTemplate {
   id: string;
   name: string;
   type: WeaponType;
-  
+
   /** Reactor power required to equip and charge this weapon */
   powerCost: number;
-  
+
   /** Time in seconds required to fire */
   cooldown: number;
-  
+
   /** Number of projectiles fired per cooldown (e.g., 3 for Burst Laser II) */
   projectiles: number;
-  
+
   damage: {
     hull: number;     // Damage applied to ship health
     system: number;   // Damage applied to system capacity
     ion: number;      // Ion damage (temporarily disables power)
     crew: number;     // Damage applied directly to crew in the target room
   };
-  
+
   /** Chance to start a fire in the target room (0.0 to 1.0) */
   fireChance: number;
   /** Chance to cause a hull breach (0.0 to 1.0) */
   breachChance: number;
-  
+
   /** Resource required to fire (e.g., 1 for Missiles, 0 for Lasers) */
   missileCost: number;
+
+  /**
+   * Probability of a projectile hitting the target (0.0 to 1.0).
+   * Actual hit chance = accuracy - targetShip.evasion (clamped to [0.05, 1.0]).
+   */
+  accuracy: number;
+
+  /**
+   * If true, this weapon always hits regardless of evasion (e.g., Beam weapons).
+   * Bypasses the hit/miss roll entirely.
+   */
+  neverMisses: boolean;
 }
 ```
 
@@ -108,10 +120,29 @@ interface ShipTemplate {
 
 type CrewRace = 'HUMAN' | 'ENGI' | 'MANTIS' | 'ROCKMAN' | 'ZOLTAN' | 'SLUG';
 
+/** Crew role that determines stat bonuses and visual class icon. */
+type CrewClass = 'ENGINEER' | 'GUNNER' | 'PILOT' | 'SECURITY';
+
+/**
+ * Crew skill levels (0–2).
+ * Each point increases effectiveness in the corresponding activity.
+ */
+interface CrewSkills {
+  piloting: number;     // 0–2 — boosts evasion when manning PILOTING room
+  engineering: number;  // 0–2 — boosts evasion when manning ENGINES room
+  gunnery: number;      // 0–2 — boosts weapon charge speed when manning WEAPONS room
+  repair: number;       // 0–2 — increases system repair rate
+  combat: number;       // 0–2 — future boarding/combat modifier
+}
+
 interface CrewTemplate {
   /** Display name for this crew member */
   name: string;
   race: CrewRace;
+  /** Primary role; determines UI icon displayed over the crew shape. */
+  crewClass: CrewClass;
+  /** Starting skill levels for this crew member. */
+  skills: CrewSkills;
   /** roomId of the room they spawn inside at game start */
   roomId: number;
 }

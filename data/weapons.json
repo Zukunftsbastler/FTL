@@ -9,7 +9,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 0 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.90,
+    "neverMisses": false
   },
   {
     "id": "burst_laser_2",
@@ -21,7 +23,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 0 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.80,
+    "neverMisses": false
   },
   {
     "id": "artemis_missile",
@@ -33,6 +37,8 @@
     "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 0 },
     "fireChance": 0.15,
     "breachChance": 0.20,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.70,
+    "neverMisses": false
   }
 ]

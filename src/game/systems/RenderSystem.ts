@@ -24,6 +24,7 @@ import type { ShipComponent } from '../components/ShipComponent';
 import type { SpriteComponent } from '../components/SpriteComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
+import type { CrewComponent } from '../components/CrewComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 
 // ── Room / door constants ─────────────────────────────────────────────────────
@@ -46,9 +47,40 @@ const AIRLOCK_CLOSED_COLOR = '#778899';
 
 // ── Crew constants ────────────────────────────────────────────────────────────
 const CREW_RADIUS      = 10;
-const CREW_FILL        = '#44cc44';
-const CREW_SELECT_RING = '#00ff66';
+const CREW_SELECT_RING = '#ffffff';
 const CREW_SELECT_LW   = 2;
+
+/** Fill colour indexed by race. */
+const CREW_RACE_COLOR: Record<string, string> = {
+  HUMAN:   '#4488ff',
+  ENGI:    '#aaaaaa',
+  MANTIS:  '#44cc44',
+  ROCKMAN: '#cc7733',
+  ZOLTAN:  '#eecc00',
+  SLUG:    '#9944cc',
+};
+
+/** Single-letter icon for each class, drawn centred inside the crew shape. */
+const CREW_CLASS_ICON: Record<string, string> = {
+  PILOT:    'P',
+  ENGINEER: 'E',
+  GUNNER:   'G',
+  SECURITY: 'S',
+};
+
+// ── Crew skill-sheet panel constants ─────────────────────────────────────────
+const PANEL_X        = 12;
+const PANEL_Y        = 90;
+const PANEL_W        = 196;
+const PANEL_H        = 170;
+const PANEL_BG       = 'rgba(8,14,28,0.92)';
+const PANEL_BORDER   = '#334466';
+const PANEL_TITLE_F  = '12px monospace';
+const PANEL_TEXT_F   = '11px monospace';
+const PANEL_TEXT_COL = '#aabbcc';
+const PANEL_VAL_COL  = '#eef';
+const SKILL_BAR_FULL = '●';
+const SKILL_BAR_EMPTY = '○';
 
 // ── Hit flash ─────────────────────────────────────────────────────────────────
 const HIT_FLASH_COLOR = 'rgba(255,255,255,0.6)';
@@ -125,10 +157,12 @@ export class RenderSystem {
     this.drawDoors(world);
     this.drawCrew(world);
     this.drawProjectiles(world);
+    this.drawMissIndicators();
     this.drawTargetingCrosshairs(world);
     this.drawSprites(world);
     this.drawPlayerDashboard(world);
     this.drawEnemyDashboard(world);
+    this.drawCrewSkillSheet(world);
     this.drawWeaponUI(world);
     this.drawTooltips(world);
   }
@@ -193,6 +227,16 @@ export class RenderSystem {
             POWER_COLOR,
             'center',
           );
+
+          // Damage indicator — orange tint overlay when damageAmount > 0.
+          if (system.damageAmount > 0) {
+            const dmgAlpha = Math.min(0.5, system.damageAmount * 0.15);
+            this.renderer.drawRect(
+              pos.x, pos.y, pw, ph,
+              `rgba(255,120,0,${dmgAlpha.toFixed(3)})`,
+              true,
+            );
+          }
         }
       }
     }
@@ -234,8 +278,13 @@ export class RenderSystem {
     for (const entity of entities) {
       const pos        = world.getComponent<PositionComponent>(entity, 'Position');
       const selectable = world.getComponent<SelectableComponent>(entity, 'Selectable');
-      if (pos === undefined || selectable === undefined) continue;
+      const crew       = world.getComponent<CrewComponent>(entity, 'Crew');
+      if (pos === undefined || selectable === undefined || crew === undefined) continue;
 
+      const color = CREW_RACE_COLOR[crew.race] ?? '#44cc44';
+      const icon  = CREW_CLASS_ICON[crew.crewClass] ?? '?';
+
+      // Selection ring.
       if (selectable.isSelected) {
         this.renderer.drawCircle(
           pos.x, pos.y,
@@ -245,7 +294,108 @@ export class RenderSystem {
           CREW_SELECT_LW,
         );
       }
-      this.renderer.drawCircle(pos.x, pos.y, CREW_RADIUS, CREW_FILL, true);
+
+      // Shape by race.
+      if (crew.race === 'ENGI') {
+        // Grey square.
+        const half = CREW_RADIUS;
+        this.renderer.drawRect(pos.x - half, pos.y - half, half * 2, half * 2, color, true);
+      } else if (crew.race === 'MANTIS') {
+        // Green upward-pointing triangle.
+        const r = CREW_RADIUS;
+        this.renderer.drawPolygon([
+          { x: pos.x,         y: pos.y - r },
+          { x: pos.x + r,     y: pos.y + r },
+          { x: pos.x - r,     y: pos.y + r },
+        ], color, true);
+      } else {
+        // Circle for all other races.
+        this.renderer.drawCircle(pos.x, pos.y, CREW_RADIUS, color, true);
+      }
+
+      // Class icon centred on the shape.
+      this.renderer.drawText(icon, pos.x, pos.y + 4, '9px monospace', '#000000', 'center');
+    }
+  }
+
+  // ── Miss indicators ─────────────────────────────────────────────────────────
+
+  private drawMissIndicators(): void {
+    for (const mp of this.projectileSystem.getMissDisplays()) {
+      this.renderer.drawText('MISS', mp.x, mp.y - 14, '13px monospace', '#ff4444', 'center');
+      // Small cross-out lines for visual flair.
+      this.renderer.drawLine(mp.x - 16, mp.y - 4, mp.x + 16, mp.y + 4, '#ff4444', 1);
+    }
+  }
+
+  // ── Crew skill-sheet panel ──────────────────────────────────────────────────
+
+  private drawCrewSkillSheet(world: IWorld): void {
+    const entities = world.query(['Crew', 'Selectable']);
+    for (const entity of entities) {
+      const selectable = world.getComponent<SelectableComponent>(entity, 'Selectable');
+      if (selectable?.isSelected !== true) continue;
+
+      const crew = world.getComponent<CrewComponent>(entity, 'Crew');
+      if (crew === undefined) continue;
+
+      const x  = PANEL_X;
+      const y  = PANEL_Y;
+      const w  = PANEL_W;
+      const h  = PANEL_H;
+      const px = x + 8;
+
+      // Background + border.
+      this.renderer.drawRect(x, y, w, h, PANEL_BG, true);
+      this.renderer.drawRect(x, y, w, h, PANEL_BORDER, false);
+
+      // Name + class.
+      this.renderer.drawText(
+        `${crew.name}  [${crew.crewClass}]`,
+        px, y + 18, PANEL_TITLE_F, PANEL_VAL_COL, 'left',
+      );
+
+      // Race.
+      this.renderer.drawText(
+        `Race: ${crew.race}`,
+        px, y + 34, PANEL_TEXT_F, PANEL_TEXT_COL, 'left',
+      );
+
+      // HP bar.
+      const hpFrac  = Math.max(0, crew.health / crew.maxHealth);
+      const barW    = w - 16;
+      const barH    = 6;
+      const barY    = y + 44;
+      this.renderer.drawRect(px, barY, barW, barH, '#223344', true);
+      if (hpFrac > 0) {
+        const col = hpFrac > 0.5 ? '#44ee44' : hpFrac > 0.25 ? '#eeaa00' : '#ee3333';
+        this.renderer.drawRect(px, barY, Math.round(barW * hpFrac), barH, col, true);
+      }
+      this.renderer.drawText(
+        `HP ${Math.round(crew.health)}/${crew.maxHealth}`,
+        px, y + 63, PANEL_TEXT_F, PANEL_TEXT_COL, 'left',
+      );
+
+      // Divider.
+      this.renderer.drawLine(x + 4, y + 70, x + w - 4, y + 70, PANEL_BORDER, 1);
+
+      // Skills.
+      const skills: Array<[string, number]> = [
+        ['Piloting',    crew.skills.piloting],
+        ['Engineering', crew.skills.engineering],
+        ['Gunnery',     crew.skills.gunnery],
+        ['Repair',      crew.skills.repair],
+        ['Combat',      crew.skills.combat],
+      ];
+
+      let sy = y + 85;
+      for (const [label, level] of skills) {
+        const dots = SKILL_BAR_FULL.repeat(level) + SKILL_BAR_EMPTY.repeat(2 - level);
+        this.renderer.drawText(`${label.padEnd(11)} ${dots}`, px, sy, PANEL_TEXT_F, PANEL_TEXT_COL, 'left');
+        sy += 15;
+      }
+
+      return; // only draw for the first (should be only) selected crew
     }
   }
 
