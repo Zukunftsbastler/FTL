@@ -1,25 +1,32 @@
 import { Time } from '../../engine/Time';
+import { TILE_SIZE } from '../constants';
 import { calculateWeaponCharge } from '../logic/WeaponMath';
 import type { Entity } from '../../engine/Entity';
 import type { IWorld } from '../../engine/IWorld';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
-import type { ShipComponent } from '../components/ShipComponent';
+import type { PositionComponent } from '../components/PositionComponent';
+import type { ProjectileComponent } from '../components/ProjectileComponent';
+import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 
 /** Cap dt to prevent a single huge frame from firing weapons that weren't actually charged. */
 const MAX_DT = 0.1;
 
+/** Projectile travel speed in pixels per second. */
+const PROJECTILE_SPEED = 600;
+
 /**
- * Manages weapon charging, firing, and instant damage application.
+ * Manages weapon charging and firing.  Damage is now deferred — when a weapon
+ * fires, a ProjectileComponent entity is spawned and travels to the target.
+ * ProjectileSystem handles impact and damage on arrival.
  *
  * Per-frame flow:
- *   1. Clear hitFlash from all player weapons (reset previous frame's flash).
- *   2. Find player ship entity and its WEAPONS system power budget.
- *   3. Iterate player weapons in entity-ID order: power each weapon until budget exhausted.
- *   4. Charge powered weapons; fire fully-charged weapons that have a target.
- *   5. Apply hull + system damage to the enemy ship/room.
+ *   1. Find player ship entity and its WEAPONS system power budget.
+ *   2. Iterate player weapons in entity-ID order: power each weapon until budget exhausted.
+ *   3. Charge powered weapons; fire fully-charged weapons that have a target.
+ *   4. Firing spawns a Projectile entity — no instant damage.
  */
 export class CombatSystem {
   update(world: IWorld): void {
@@ -28,16 +35,11 @@ export class CombatSystem {
     const playerShipEntity = this.findShipEntity(world, 'PLAYER');
     if (playerShipEntity === null) return;
 
-    // ── 1. Clear previous frame's hit flash ──────────────────────────────────
+    // ── 1. Compute power budget from player WEAPONS system ───────────────────
     const allPlayerWeapons = this.getShipWeapons(world, playerShipEntity);
-    for (const [, weapon] of allPlayerWeapons) {
-      weapon.hitFlash = false;
-    }
-
-    // ── 2. Compute power budget from player WEAPONS system ───────────────────
     let powerBudget = this.getWeaponSystemPower(world, playerShipEntity);
 
-    // ── 3. Determine which weapons are powered (in entity-ID order) ──────────
+    // ── 2. Determine which weapons are powered (in entity-ID order) ──────────
     for (const [, weapon] of allPlayerWeapons) {
       if (powerBudget >= weapon.powerRequired) {
         weapon.isPowered = true;
@@ -47,47 +49,93 @@ export class CombatSystem {
       }
     }
 
-    // ── 4. Charge and fire ───────────────────────────────────────────────────
-    const enemyShipEntity = this.findShipEntity(world, 'ENEMY');
-
+    // ── 3. Charge and fire ───────────────────────────────────────────────────
     for (const [, weapon] of allPlayerWeapons) {
       weapon.charge = calculateWeaponCharge(weapon.charge, weapon.maxCharge, weapon.isPowered, dt);
 
       if (weapon.charge >= weapon.maxCharge && weapon.targetRoomEntity !== undefined) {
-        this.fireWeapon(world, weapon, enemyShipEntity);
+        this.fireWeapon(world, weapon, playerShipEntity);
       }
     }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  /**
+   * Resets charge and spawns a traveling Projectile entity.
+   * Damage is applied by ProjectileSystem on impact.
+   */
   private fireWeapon(
     world: IWorld,
     weapon: WeaponComponent,
-    enemyShipEntity: Entity | null,
+    playerShipEntity: Entity,
   ): void {
-    weapon.charge    = 0;
-    weapon.hitFlash  = true;
+    weapon.charge = 0;
+    if (weapon.targetRoomEntity === undefined) return;
 
-    // Damage the target room's system capacity (if it has a System).
-    if (weapon.targetRoomEntity !== undefined) {
-      const system = world.getComponent<SystemComponent>(weapon.targetRoomEntity, 'System');
-      if (system !== undefined && system.maxCapacity > 0) {
-        system.maxCapacity -= 1;
-        // Clamp currentPower so it doesn't exceed the now-reduced capacity.
-        if (system.currentPower > system.maxCapacity) {
-          system.currentPower = system.maxCapacity;
-        }
+    // Origin: centre of the player's WEAPONS room (fallback: any owned room).
+    const { ox, oy } = this.getOrigin(world, playerShipEntity);
+
+    // Target: centre of the target room.
+    const tPos  = world.getComponent<PositionComponent>(weapon.targetRoomEntity, 'Position');
+    const tRoom = world.getComponent<RoomComponent>(weapon.targetRoomEntity, 'Room');
+    if (tPos === undefined || tRoom === undefined) return;
+    const tx = tPos.x + (tRoom.width  * TILE_SIZE) / 2;
+    const ty = tPos.y + (tRoom.height * TILE_SIZE) / 2;
+
+    // Spawn projectile entity.
+    const projEntity = world.createEntity();
+    const projComp: ProjectileComponent = {
+      _type: 'Projectile',
+      originX: ox,
+      originY: oy,
+      targetX: tx,
+      targetY: ty,
+      speed: PROJECTILE_SPEED,
+      damage: 1,
+      targetRoomEntity: weapon.targetRoomEntity,
+      isEnemyOrigin: false,
+    };
+    const posComp: PositionComponent = { _type: 'Position', x: ox, y: oy };
+
+    world.addComponent(projEntity, projComp);
+    world.addComponent(projEntity, posComp);
+  }
+
+  /**
+   * Returns the pixel centre of the player's WEAPONS system room,
+   * falling back to the first owned room if no WEAPONS room is found.
+   */
+  private getOrigin(world: IWorld, shipEntity: Entity): { ox: number; oy: number } {
+    const entities = world.query(['Room', 'System', 'Position', 'Owner']);
+    for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const sys = world.getComponent<SystemComponent>(entity, 'System');
+      if (sys?.type !== 'WEAPONS') continue;
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos !== undefined && room !== undefined) {
+        return {
+          ox: pos.x + (room.width  * TILE_SIZE) / 2,
+          oy: pos.y + (room.height * TILE_SIZE) / 2,
+        };
       }
     }
-
-    // Damage the enemy ship's hull.
-    if (enemyShipEntity !== null) {
-      const ship = world.getComponent<ShipComponent>(enemyShipEntity, 'Ship');
-      if (ship !== undefined && ship.currentHull > 0) {
-        ship.currentHull -= 1;
+    // Fallback: first room owned by this ship.
+    for (const entity of world.query(['Room', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos !== undefined && room !== undefined) {
+        return {
+          ox: pos.x + (room.width  * TILE_SIZE) / 2,
+          oy: pos.y + (room.height * TILE_SIZE) / 2,
+        };
       }
     }
+    return { ox: 0, oy: 0 };
   }
 
   private findShipEntity(world: IWorld, factionId: 'PLAYER' | 'ENEMY'): Entity | null {

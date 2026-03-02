@@ -79,6 +79,7 @@ export class ShipFactory {
       id: template.id,
       maxHull: template.maxHull,
       currentHull: template.maxHull,
+      fuel: template.startingResources.fuel,
     };
     const factionComp: FactionComponent = {
       _type: 'Faction',
@@ -245,7 +246,6 @@ export class ShipFactory {
         powerRequired: weaponTemplate.powerCost,
         isPowered: false,
         targetRoomEntity: undefined,
-        hitFlash: false,
       };
 
       world.addComponent(weaponEntity, weaponComp);

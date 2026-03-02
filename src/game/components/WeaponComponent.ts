@@ -28,10 +28,4 @@ export interface WeaponComponent extends Component {
    * Undefined means no target is set.
    */
   targetRoomEntity: Entity | undefined;
-
-  /**
-   * Set to true by CombatSystem for exactly one frame when the weapon fires.
-   * RenderSystem reads it to draw a hit-flash overlay on the target room.
-   */
-  hitFlash: boolean;
 }

@@ -7,6 +7,7 @@ import {
   WEAPON_BOX_MARGIN,
   WEAPON_BOX_BOTTOM,
 } from './TargetingSystem';
+import { ProjectileSystem } from './ProjectileSystem';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -15,6 +16,7 @@ import type { FactionComponent } from '../components/FactionComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
+import type { ProjectileComponent } from '../components/ProjectileComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
@@ -24,28 +26,25 @@ import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 
-// ── Visual constants ──────────────────────────────────────────────────────────
+// ── Room / door constants ─────────────────────────────────────────────────────
 const ROOM_FILL        = '#1a2033';
 const ROOM_BORDER      = '#4a6fa5';
 const LABEL_COLOR      = '#88aadd';
 const LABEL_FONT       = '11px monospace';
 const POWER_FONT       = '10px monospace';
 const POWER_COLOR      = '#ffdd44';
-const REACTOR_HUD_FONT  = '13px monospace';
-const REACTOR_HUD_COLOR = '#66eecc';
 
 /** Maximum red-overlay opacity at 0% O2. */
 const O2_OVERLAY_MAX_ALPHA = 0.75;
 
-/** Thickness of the door marker rectangle drawn over room borders. */
 const DOOR_THICK           = 5;
-/** How many pixels of door extend to each side of the wall centre. */
 const DOOR_HALF            = Math.floor(DOOR_THICK / 2);
-const DOOR_OPEN_COLOR      = '#aaaaaa';  // light grey  — interior door, passable
-const DOOR_CLOSED_COLOR    = '#dd5500';  // orange      — interior door, sealed
-const AIRLOCK_OPEN_COLOR   = '#ff3333';  // bright red  — venting to space!
-const AIRLOCK_CLOSED_COLOR = '#778899';  // steel grey  — sealed airlock
+const DOOR_OPEN_COLOR      = '#aaaaaa';
+const DOOR_CLOSED_COLOR    = '#dd5500';
+const AIRLOCK_OPEN_COLOR   = '#ff3333';
+const AIRLOCK_CLOSED_COLOR = '#778899';
 
+// ── Crew constants ────────────────────────────────────────────────────────────
 const CREW_RADIUS      = 10;
 const CREW_FILL        = '#44cc44';
 const CREW_SELECT_RING = '#00ff66';
@@ -60,6 +59,12 @@ const CROSSHAIR_LW    = 2;
 const CROSSHAIR_GAP   = 6;
 const CROSSHAIR_LEN   = 14;
 
+// ── Projectile rendering ──────────────────────────────────────────────────────
+const PROJ_PLAYER_COLOR = '#44aaff';  // blue laser (player)
+const PROJ_ENEMY_COLOR  = '#ff4422';  // red laser  (enemy)
+const PROJ_LINE_WIDTH   = 3;
+const PROJ_TAIL_LEN     = 22;         // pixels behind current position
+
 // ── Weapon UI ─────────────────────────────────────────────────────────────────
 const WEAPON_BOX_FILL         = '#0d1520';
 const WEAPON_BOX_BORDER       = '#334455';
@@ -73,18 +78,25 @@ const WEAPON_POWERED_COLOR    = '#44ee44';
 const WEAPON_UNPOWERED_COLOR  = '#555566';
 const WEAPON_UI_PAD           = 8;
 
-// ── HUD constants ─────────────────────────────────────────────────────────────
-const ENEMY_HULL_FONT  = '13px monospace';
-const ENEMY_HULL_COLOR = '#ff6644';
+// ── Dashboard constants ───────────────────────────────────────────────────────
+const DASH_FONT   = '13px monospace';
+const DASH_X      = 12;    // left margin for player dashboard
+const DASH_Y0     = 24;    // first line baseline
+const DASH_LINE_H = 20;    // spacing between dashboard lines
+
+const DIVIDER_COLOR = '#1c2e44';
+const DIVIDER_W     = 2;
 
 /**
  * ECS render system. Strict layer order:
+ *   Layer 0 — Center divider
  *   Layer 1 — Rooms   (fill + border + O2 overlay + hit flash + system label + power bar)
- *   Layer 2 — Doors   (thin rect on shared wall; colour indicates open/closed/airlock)
- *   Layer 3 — Crew    (coloured circle + selection ring)
- *   Layer 4 — Targeting crosshairs (red crosshair over targeted enemy rooms)
- *   Layer 5 — Sprites (cursor — topmost)
- *   HUD     — Reactor power (above weapon strip, left), Enemy hull (above weapon strip, right),
+ *   Layer 2 — Doors
+ *   Layer 3 — Crew
+ *   Layer 4 — Projectiles (traveling laser bolts)
+ *   Layer 5 — Targeting crosshairs
+ *   Layer 6 — Sprites (cursor — topmost)
+ *   HUD     — Player dashboard (top-left), Enemy dashboard (top-right),
  *             Weapon UI boxes (bottom strip), Tooltips (floating near cursor)
  *
  * Read-only: never mutates component data.
@@ -93,29 +105,49 @@ export class RenderSystem {
   private readonly renderer: IRenderer;
   private readonly targetingSystem: TargetingSystem;
   private readonly input: IInput;
+  private readonly projectileSystem: ProjectileSystem;
 
-  constructor(renderer: IRenderer, targetingSystem: TargetingSystem, input: IInput) {
-    this.renderer        = renderer;
-    this.targetingSystem = targetingSystem;
-    this.input           = input;
+  constructor(
+    renderer: IRenderer,
+    targetingSystem: TargetingSystem,
+    input: IInput,
+    projectileSystem: ProjectileSystem,
+  ) {
+    this.renderer         = renderer;
+    this.targetingSystem  = targetingSystem;
+    this.input            = input;
+    this.projectileSystem = projectileSystem;
   }
 
   update(world: IWorld): void {
+    this.drawCenterDivider();
     this.drawRooms(world);
     this.drawDoors(world);
     this.drawCrew(world);
+    this.drawProjectiles(world);
     this.drawTargetingCrosshairs(world);
     this.drawSprites(world);
-    this.drawReactorHUD(world);
-    this.drawEnemyHullHUD(world);
+    this.drawPlayerDashboard(world);
+    this.drawEnemyDashboard(world);
     this.drawWeaponUI(world);
     this.drawTooltips(world);
+  }
+
+  // ── Layer 0: center divider ──────────────────────────────────────────────
+
+  private drawCenterDivider(): void {
+    const { width, height } = this.renderer.getCanvasSize();
+    this.renderer.drawLine(
+      Math.round(width / 2), 0,
+      Math.round(width / 2), height,
+      DIVIDER_COLOR, DIVIDER_W,
+    );
   }
 
   // ── Layer 1: rooms ──────────────────────────────────────────────────────────
 
   private drawRooms(world: IWorld): void {
-    const flashSet = this.buildFlashSet(world);
+    const flashSet = this.projectileSystem.getImpactedRooms();
     const entities = world.query(['Room', 'Position']);
     for (const entity of entities) {
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
@@ -135,7 +167,7 @@ export class RenderSystem {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, `rgba(200,30,30,${alpha.toFixed(3)})`, true);
       }
 
-      // Hit flash — white overlay for one frame when a weapon fires at this room.
+      // Impact flash — white overlay on the exact frame a projectile hits.
       if (flashSet.has(entity)) {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, HIT_FLASH_COLOR, true);
       }
@@ -171,19 +203,6 @@ export class RenderSystem {
     const filled = '|'.repeat(current);
     const empty  = ' '.repeat(Math.max(0, max - current));
     return `[${filled}${empty}]`;
-  }
-
-  /** Returns the set of room entity IDs that should flash white this frame. */
-  private buildFlashSet(world: IWorld): Set<number> {
-    const flashSet = new Set<number>();
-    const entities = world.query(['Weapon']);
-    for (const entity of entities) {
-      const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
-      if (weapon?.hitFlash === true && weapon.targetRoomEntity !== undefined) {
-        flashSet.add(weapon.targetRoomEntity);
-      }
-    }
-    return flashSet;
   }
 
   // ── Layer 2: doors ──────────────────────────────────────────────────────────
@@ -230,7 +249,32 @@ export class RenderSystem {
     }
   }
 
-  // ── Layer 4: targeting crosshairs ───────────────────────────────────────────
+  // ── Layer 4: projectiles ─────────────────────────────────────────────────
+
+  private drawProjectiles(world: IWorld): void {
+    const entities = world.query(['Projectile', 'Position']);
+    for (const entity of entities) {
+      const proj = world.getComponent<ProjectileComponent>(entity, 'Projectile');
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      if (proj === undefined || pos === undefined) continue;
+
+      const dx = proj.targetX - pos.x;
+      const dy = proj.targetY - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 1) continue;  // at target — will be destroyed this frame by ProjectileSystem
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      // Draw a tail trailing behind the current position.
+      const tailX = pos.x - nx * PROJ_TAIL_LEN;
+      const tailY = pos.y - ny * PROJ_TAIL_LEN;
+      const color = proj.isEnemyOrigin ? PROJ_ENEMY_COLOR : PROJ_PLAYER_COLOR;
+      this.renderer.drawLine(tailX, tailY, pos.x, pos.y, color, PROJ_LINE_WIDTH);
+    }
+  }
+
+  // ── Layer 5: targeting crosshairs ───────────────────────────────────────────
 
   private drawTargetingCrosshairs(world: IWorld): void {
     const entities = world.query(['Weapon']);
@@ -254,17 +298,13 @@ export class RenderSystem {
     const l = CROSSHAIR_LEN;
     const w = CROSSHAIR_LW;
     const h = Math.floor(w / 2);
-    // top arm
     this.renderer.drawRect(cx - h, cy - g - l, w, l, CROSSHAIR_COLOR, true);
-    // bottom arm
     this.renderer.drawRect(cx - h, cy + g,     w, l, CROSSHAIR_COLOR, true);
-    // left arm
     this.renderer.drawRect(cx - g - l, cy - h, l, w, CROSSHAIR_COLOR, true);
-    // right arm
     this.renderer.drawRect(cx + g,     cy - h, l, w, CROSSHAIR_COLOR, true);
   }
 
-  // ── Layer 5: sprites ────────────────────────────────────────────────────────
+  // ── Layer 6: sprites ────────────────────────────────────────────────────────
 
   private drawSprites(world: IWorld): void {
     const entities = world.query(['Position', 'Sprite']);
@@ -277,27 +317,36 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: player reactor (above weapon strip, left) ────────────────────────
+  // ── HUD: player dashboard (top-left) ────────────────────────────────────
 
-  private drawReactorHUD(world: IWorld): void {
+  private drawPlayerDashboard(world: IWorld): void {
     const entities = world.query(['Ship', 'Faction', 'Reactor']);
     for (const entity of entities) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
       if (faction?.id !== 'PLAYER') continue;
+      const ship    = world.getComponent<ShipComponent>(entity, 'Ship');
       const reactor = world.getComponent<ReactorComponent>(entity, 'Reactor');
-      if (reactor === undefined) return;
+      if (ship === undefined || reactor === undefined) return;
 
-      const { height } = this.renderer.getCanvasSize();
-      const hudY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM - 5;
-      const text = `REACTOR: ${reactor.currentPower} / ${reactor.totalPower}`;
-      this.renderer.drawText(text, 12, hudY, REACTOR_HUD_FONT, REACTOR_HUD_COLOR, 'left');
+      this.renderer.drawText(
+        `HULL:    ${ship.currentHull} / ${ship.maxHull}`,
+        DASH_X, DASH_Y0, DASH_FONT, '#44ff44', 'left',
+      );
+      this.renderer.drawText(
+        `REACTOR: ${reactor.currentPower} / ${reactor.totalPower}`,
+        DASH_X, DASH_Y0 + DASH_LINE_H, DASH_FONT, '#66eecc', 'left',
+      );
+      this.renderer.drawText(
+        `FUEL:    ${ship.fuel}`,
+        DASH_X, DASH_Y0 + DASH_LINE_H * 2, DASH_FONT, '#ffaa44', 'left',
+      );
       return;
     }
   }
 
-  // ── HUD: enemy hull (above weapon strip, right) ───────────────────────────
+  // ── HUD: enemy dashboard (top-right) ────────────────────────────────────
 
-  private drawEnemyHullHUD(world: IWorld): void {
+  private drawEnemyDashboard(world: IWorld): void {
     const entities = world.query(['Ship', 'Faction']);
     for (const entity of entities) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
@@ -305,10 +354,11 @@ export class RenderSystem {
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
       if (ship === undefined) return;
 
-      const { width, height } = this.renderer.getCanvasSize();
-      const hudY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM - 5;
-      const text = `ENEMY HULL: ${ship.currentHull} / ${ship.maxHull}`;
-      this.renderer.drawText(text, width - 12, hudY, ENEMY_HULL_FONT, ENEMY_HULL_COLOR, 'right');
+      const { width } = this.renderer.getCanvasSize();
+      this.renderer.drawText(
+        `HULL: ${ship.currentHull} / ${ship.maxHull}`,
+        width - DASH_X, DASH_Y0, DASH_FONT, '#ff6644', 'right',
+      );
       return;
     }
   }
@@ -330,23 +380,18 @@ export class RenderSystem {
       const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       const by = boxBaseY;
 
-      // Box background.
       this.renderer.drawRect(bx, by, WEAPON_BOX_W, WEAPON_BOX_H, WEAPON_BOX_FILL, true);
 
-      // Box border — yellow when this weapon is selected for targeting.
       const borderColor = entity === selectedEntity ? WEAPON_BOX_SELECTED_COL : WEAPON_BOX_BORDER;
       this.renderer.drawRect(bx, by, WEAPON_BOX_W, WEAPON_BOX_H, borderColor, false);
 
-      // Weapon name.
       const name = this.getWeaponName(weapon.templateId);
       this.renderer.drawText(name, bx + WEAPON_UI_PAD, by + 16, WEAPON_NAME_FONT, WEAPON_NAME_COLOR, 'left');
 
-      // Power dots — green if powered, grey if not.
       const powColor = weapon.isPowered ? WEAPON_POWERED_COLOR : WEAPON_UNPOWERED_COLOR;
       const dots = '●'.repeat(weapon.powerRequired);
       this.renderer.drawText(dots, bx + WEAPON_UI_PAD, by + 32, WEAPON_NAME_FONT, powColor, 'left');
 
-      // Charge bar (empty background then filled portion).
       this.renderer.drawRect(bx + WEAPON_UI_PAD, chargeBarY, chargeBarW, WEAPON_CHARGE_H, WEAPON_CHARGE_EMPTY_COL, true);
       if (weapon.maxCharge > 0) {
         const fillW = Math.round((weapon.charge / weapon.maxCharge) * chargeBarW);
@@ -357,13 +402,13 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: contextual tooltips (topmost — always above other elements) ───────
+  // ── HUD: contextual tooltips ──────────────────────────────────────────────
 
   private drawTooltips(world: IWorld): void {
     const mouse = this.input.getMousePosition();
     const { height } = this.renderer.getCanvasSize();
 
-    // 1. Check weapon UI boxes (bottom strip) first — more specific.
+    // 1. Weapon UI boxes (bottom strip) — most specific.
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
     const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
     for (let i = 0; i < playerWeapons.length; i++) {
@@ -377,7 +422,7 @@ export class RenderSystem {
       }
     }
 
-    // 2. Check player system rooms.
+    // 2. Player system rooms.
     const playerShipEntity = this.findPlayerShipEntity(world);
     if (playerShipEntity === null) return;
 

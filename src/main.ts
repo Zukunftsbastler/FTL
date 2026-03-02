@@ -13,6 +13,7 @@ import { CrewSystem } from './game/systems/CrewSystem';
 import { TargetingSystem } from './game/systems/TargetingSystem';
 import { CombatSystem } from './game/systems/CombatSystem';
 import { JumpSystem } from './game/systems/JumpSystem';
+import { ProjectileSystem } from './game/systems/ProjectileSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -141,10 +142,11 @@ async function init(): Promise<void> {
 
   // ── Systems ─────────────────────────────────────────────────────────────────
 
-  const targetingSystem = new TargetingSystem(input, renderer);
-  const combatSystem    = new CombatSystem();
-  const jumpSystem      = new JumpSystem(input, renderer, enterStarMap);
-  const renderSystem    = new RenderSystem(renderer, targetingSystem, input);
+  const targetingSystem   = new TargetingSystem(input, renderer);
+  const combatSystem      = new CombatSystem();
+  const projectileSystem  = new ProjectileSystem();
+  const jumpSystem        = new JumpSystem(input, renderer, enterStarMap);
+  const renderSystem      = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
   const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
   const powerSystem     = new PowerSystem(input);
@@ -204,7 +206,8 @@ async function init(): Promise<void> {
       selectionSystem.update(world);  // crew selection (left-click)
       movementSystem.update(world);   // crew movement (right-click + A*)
       powerSystem.update(world);      // power routing (hover + arrow keys)
-      combatSystem.update(world);     // weapon charging + firing
+      combatSystem.update(world);     // weapon charging + projectile spawning
+      projectileSystem.update(world); // advance projectiles, apply impact damage
       oxygenSystem.update(world);     // O2 regen / decay / equalization
       crewSystem.update(world);       // suffocation damage
       jumpSystem.update(world);       // FTL button: draw + detect victory jump

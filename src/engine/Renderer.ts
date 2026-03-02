@@ -98,6 +98,22 @@ export class Renderer implements IRenderer {
     return { width: this.ctx.canvas.width, height: this.ctx.canvas.height };
   }
 
+  drawLine(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color: string,
+    lineWidth = 1,
+  ): void {
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1, y1);
+    this.ctx.lineTo(x2, y2);
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth   = lineWidth;
+    this.ctx.stroke();
+  }
+
   drawTooltip(x: number, y: number, text: string): void {
     const FONT   = '12px monospace';
     const PAD_X  = 8;

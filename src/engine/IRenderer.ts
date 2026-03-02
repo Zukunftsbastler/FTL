@@ -46,6 +46,16 @@ export interface IRenderer {
   /** Returns the current pixel dimensions of the rendering surface. Used for HUD layout. */
   getCanvasSize(): { width: number; height: number };
 
+  /** Draws a straight line between two points. */
+  drawLine(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color: string,
+    lineWidth?: number,
+  ): void;
+
   /**
    * Draws a small floating tooltip box near (x, y).
    * Automatically flips left if the box would overflow the right edge of the canvas.
