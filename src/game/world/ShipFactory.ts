@@ -2,8 +2,11 @@ import { AssetLoader } from '../../utils/AssetLoader';
 import { TILE_SIZE } from '../constants';
 import type { IWorld } from '../../engine/IWorld';
 import type { ShipTemplate } from '../data/ShipTemplate';
+import type { WeaponTemplate } from '../data/WeaponTemplate';
 import type { ShipComponent } from '../components/ShipComponent';
+import type { FactionComponent } from '../components/FactionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
+import type { OwnerComponent } from '../components/OwnerComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
@@ -12,6 +15,7 @@ import type { CrewComponent } from '../components/CrewComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
+import type { WeaponComponent } from '../components/WeaponComponent';
 
 /**
  * Translates a raw ShipTemplate (loaded from JSON) into ECS entities.
@@ -21,21 +25,26 @@ import type { PositionComponent } from '../components/PositionComponent';
  *   pixelY = startY + gridY * TILE_SIZE
  *   crewCentre = startXY + gridXY * TILE_SIZE + TILE_SIZE / 2
  *   doorPixel  = startXY + door.XY * TILE_SIZE  (the shared wall pixel boundary)
+ *
+ * Every child entity (room, door, crew, weapon) receives an OwnerComponent pointing
+ * at the ship root entity.  This allows multi-ship systems to scope queries correctly.
  */
 export class ShipFactory {
   /**
-   * Spawns a ship, all its rooms, all its doors, and all starting crew into the world.
+   * Spawns a ship, all its rooms, doors, crew, and weapons into the world.
    *
    * @param world       ECS world to populate.
    * @param templateId  The `id` in the loaded ships JSON array (e.g. 'kestrel_a').
    * @param startX      Pixel X of the ship's top-left corner on the canvas.
    * @param startY      Pixel Y of the ship's top-left corner on the canvas.
+   * @param faction     Which side this ship belongs to.
    */
   static spawnShip(
     world: IWorld,
     templateId: string,
     startX: number,
     startY: number,
+    faction: 'PLAYER' | 'ENEMY',
   ): void {
     const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
     if (allShips === undefined) {
@@ -52,23 +61,36 @@ export class ShipFactory {
       );
     }
 
-    // ── Ship root entity (+ reactor) ─────────────────────────────────────────
+    // ── Ship root entity ──────────────────────────────────────────────────────
     const shipEntity = world.createEntity();
+
     const shipComp: ShipComponent = {
       _type: 'Ship',
       id: template.id,
       maxHull: template.maxHull,
       currentHull: template.maxHull,
     };
+    const factionComp: FactionComponent = {
+      _type: 'Faction',
+      id: faction,
+    };
     const reactorComp: ReactorComponent = {
       _type: 'Reactor',
       totalPower: template.startingReactorPower,
-      currentPower: template.startingReactorPower, // all power available at start
+      currentPower: template.startingReactorPower,
     };
+
     world.addComponent(shipEntity, shipComp);
+    world.addComponent(shipEntity, factionComp);
     world.addComponent(shipEntity, reactorComp);
 
-    // ── Room entities (+ optional SystemComponent) ──────────────────────────
+    // Helper: owner component pointing back to the ship root.
+    const owner = (entity: number): OwnerComponent => ({
+      _type: 'Owner',
+      shipEntity: entity,
+    });
+
+    // ── Room entities ─────────────────────────────────────────────────────────
     for (const roomData of template.rooms) {
       const roomEntity = world.createEntity();
 
@@ -86,12 +108,12 @@ export class ShipFactory {
         x: startX + roomData.x * TILE_SIZE,
         y: startY + roomData.y * TILE_SIZE,
       };
-
       const oxygenComp: OxygenComponent = { _type: 'Oxygen', level: 100 };
 
       world.addComponent(roomEntity, roomComp);
       world.addComponent(roomEntity, posComp);
       world.addComponent(roomEntity, oxygenComp);
+      world.addComponent(roomEntity, owner(shipEntity));
 
       // If this room hosts a system, attach a SystemComponent with its capacity.
       if (roomData.system !== undefined) {
@@ -109,7 +131,7 @@ export class ShipFactory {
       }
     }
 
-    // ── Door entities ───────────────────────────────────────────────────────
+    // ── Door entities ──────────────────────────────────────────────────────────
     for (const doorData of template.doors) {
       const doorEntity = world.createEntity();
 
@@ -120,10 +142,6 @@ export class ShipFactory {
         isOpen: true,
         isVertical: doorData.vertical,
       };
-
-      // PositionComponent stores the pixel coordinate of the shared wall:
-      //   vertical door   → pos.x = pixel column boundary (startX + door.x * TILE_SIZE)
-      //   horizontal door → pos.y = pixel row    boundary (startY + door.y * TILE_SIZE)
       const posComp: PositionComponent = {
         _type: 'Position',
         x: startX + doorData.x * TILE_SIZE,
@@ -132,9 +150,10 @@ export class ShipFactory {
 
       world.addComponent(doorEntity, doorComp);
       world.addComponent(doorEntity, posComp);
+      world.addComponent(doorEntity, owner(shipEntity));
     }
 
-    // ── Crew entities ───────────────────────────────────────────────────────
+    // ── Crew entities ──────────────────────────────────────────────────────────
     for (const crewData of template.startingCrew) {
       const spawnRoom = template.rooms.find((r) => r.roomId === crewData.roomId);
       if (spawnRoom === undefined) {
@@ -163,7 +182,6 @@ export class ShipFactory {
         targetY: spawnRoom.y,
         path: [],
       };
-      // Crew spawns at centre of the first (top-left) tile of their assigned room.
       const posComp: PositionComponent = {
         _type: 'Position',
         x: startX + spawnRoom.x * TILE_SIZE + TILE_SIZE / 2,
@@ -174,6 +192,38 @@ export class ShipFactory {
       world.addComponent(crewEntity, selectableComp);
       world.addComponent(crewEntity, pathComp);
       world.addComponent(crewEntity, posComp);
+      world.addComponent(crewEntity, owner(shipEntity));
+    }
+
+    // ── Weapon entities ────────────────────────────────────────────────────────
+    const allWeapons = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
+    if (allWeapons === undefined) {
+      // Weapons JSON not loaded yet (e.g. enemy ship has none) — skip silently.
+      return;
+    }
+
+    for (const weaponId of template.startingWeapons) {
+      const weaponTemplate = allWeapons.find((w) => w.id === weaponId);
+      if (weaponTemplate === undefined) {
+        console.warn(`ShipFactory: weapon '${weaponId}' not found in weapons registry — skipped.`);
+        continue;
+      }
+
+      const weaponEntity = world.createEntity();
+
+      const weaponComp: WeaponComponent = {
+        _type: 'Weapon',
+        templateId: weaponTemplate.id,
+        charge: 0,
+        maxCharge: weaponTemplate.cooldown,
+        powerRequired: weaponTemplate.powerCost,
+        isPowered: false,
+        targetRoomEntity: undefined,
+        hitFlash: false,
+      };
+
+      world.addComponent(weaponEntity, weaponComp);
+      world.addComponent(weaponEntity, owner(shipEntity));
     }
   }
 }

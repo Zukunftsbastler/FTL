@@ -1,0 +1,141 @@
+import { TILE_SIZE } from '../constants';
+import type { Entity } from '../../engine/Entity';
+import type { IInput } from '../../engine/IInput';
+import type { IRenderer } from '../../engine/IRenderer';
+import type { IWorld } from '../../engine/IWorld';
+import type { FactionComponent } from '../components/FactionComponent';
+import type { OwnerComponent } from '../components/OwnerComponent';
+import type { PositionComponent } from '../components/PositionComponent';
+import type { RoomComponent } from '../components/RoomComponent';
+import type { WeaponComponent } from '../components/WeaponComponent';
+
+// ── Weapon UI layout constants ────────────────────────────────────────────────
+// Must match the values used in RenderSystem.drawWeaponUI().
+export const WEAPON_BOX_W      = 130;
+export const WEAPON_BOX_H      = 65;
+export const WEAPON_BOX_MARGIN = 8;
+export const WEAPON_BOX_BOTTOM = 10; // distance from bottom of canvas
+
+/**
+ * Manages the two-step weapon targeting interaction:
+ *   Step 1. Left-click a weapon box at the bottom of the screen → enter targeting mode.
+ *   Step 2. Left-click an enemy room → set weapon.targetRoomEntity; exit targeting mode.
+ *           Left-click anywhere else (or right-click) → cancel targeting.
+ *
+ * The "selected weapon entity" state is kept here (not in a component) because it is
+ * purely UI state that does not need to participate in ECS queries.
+ */
+export class TargetingSystem {
+  private readonly input: IInput;
+  private readonly renderer: IRenderer;
+
+  /** The weapon entity currently awaiting a target click, or null if idle. */
+  private selectedWeaponEntity: Entity | null = null;
+
+  constructor(input: IInput, renderer: IRenderer) {
+    this.input    = input;
+    this.renderer = renderer;
+  }
+
+  /** Exposed so RenderSystem can highlight the selected weapon box. */
+  getSelectedWeaponEntity(): Entity | null {
+    return this.selectedWeaponEntity;
+  }
+
+  update(world: IWorld): void {
+    const leftClick  = this.input.isMouseJustPressed(0);
+    const rightClick = this.input.isMouseJustPressed(2);
+    const mouse      = this.input.getMousePosition();
+
+    if (rightClick) {
+      this.selectedWeaponEntity = null;
+      return;
+    }
+
+    if (!leftClick) return;
+
+    const { height } = this.renderer.getCanvasSize();
+    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+
+    // ── Step 1: detect click on a weapon UI box ──────────────────────────────
+    const playerWeapons = this.getPlayerWeapons(world);
+    for (let i = 0; i < playerWeapons.length; i++) {
+      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      const by = boxBaseY;
+      if (
+        mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
+        mouse.y >= by && mouse.y <= by + WEAPON_BOX_H
+      ) {
+        const [entity] = playerWeapons[i];
+        // Toggle: clicking the already-selected weapon deselects it.
+        this.selectedWeaponEntity = this.selectedWeaponEntity === entity ? null : entity;
+        return;
+      }
+    }
+
+    // ── Step 2: when in targeting mode, click an enemy room ──────────────────
+    if (this.selectedWeaponEntity !== null) {
+      const targetEntity = this.getEnemyRoomAtMouse(world, mouse.x, mouse.y);
+      if (targetEntity !== null) {
+        const weapon = world.getComponent<WeaponComponent>(this.selectedWeaponEntity, 'Weapon');
+        if (weapon !== undefined) {
+          weapon.targetRoomEntity = targetEntity;
+        }
+      }
+      // Regardless of hit or miss, exit targeting mode after the click.
+      this.selectedWeaponEntity = null;
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /** Returns [entity, WeaponComponent] pairs for all player-owned weapons, in entity-ID order. */
+  getPlayerWeapons(world: IWorld): Array<[Entity, WeaponComponent]> {
+    const playerEntity = this.findShipEntity(world, 'PLAYER');
+    if (playerEntity === null) return [];
+
+    const result: Array<[Entity, WeaponComponent]> = [];
+    const entities = world.query(['Weapon', 'Owner']);
+    for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== playerEntity) continue;
+      const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
+      if (weapon !== undefined) result.push([entity, weapon]);
+    }
+    // Stable insertion-order (entity IDs are assigned sequentially).
+    result.sort(([a], [b]) => a - b);
+    return result;
+  }
+
+  private findShipEntity(world: IWorld, factionId: 'PLAYER' | 'ENEMY'): Entity | null {
+    const entities = world.query(['Ship', 'Faction']);
+    for (const entity of entities) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id === factionId) return entity;
+    }
+    return null;
+  }
+
+  private getEnemyRoomAtMouse(world: IWorld, mx: number, my: number): Entity | null {
+    const enemyShipEntity = this.findShipEntity(world, 'ENEMY');
+    if (enemyShipEntity === null) return null;
+
+    const entities = world.query(['Room', 'Position', 'Owner']);
+    for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== enemyShipEntity) continue;
+
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos === undefined || room === undefined) continue;
+
+      const right  = pos.x + room.width  * TILE_SIZE;
+      const bottom = pos.y + room.height * TILE_SIZE;
+
+      if (mx >= pos.x && mx < right && my >= pos.y && my < bottom) {
+        return entity;
+      }
+    }
+    return null;
+  }
+}

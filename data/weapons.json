@@ -1,0 +1,38 @@
+[
+  {
+    "id": "burst_laser_1",
+    "name": "Burst Laser I",
+    "type": "LASER",
+    "powerCost": 1,
+    "cooldown": 8,
+    "projectiles": 2,
+    "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 0 },
+    "fireChance": 0.0,
+    "breachChance": 0.0,
+    "missileCost": 0
+  },
+  {
+    "id": "burst_laser_2",
+    "name": "Burst Laser II",
+    "type": "LASER",
+    "powerCost": 2,
+    "cooldown": 12,
+    "projectiles": 3,
+    "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 0 },
+    "fireChance": 0.0,
+    "breachChance": 0.0,
+    "missileCost": 0
+  },
+  {
+    "id": "artemis_missile",
+    "name": "Artemis Missile",
+    "type": "MISSILE",
+    "powerCost": 1,
+    "cooldown": 14,
+    "projectiles": 1,
+    "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 0 },
+    "fireChance": 0.15,
+    "breachChance": 0.20,
+    "missileCost": 1
+  }
+]

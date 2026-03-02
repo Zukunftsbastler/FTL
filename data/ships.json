@@ -41,5 +41,34 @@
       { "name": "Bex",   "race": "HUMAN", "roomId": 2 },
       { "name": "Caden", "race": "HUMAN", "roomId": 3 }
     ]
+  },
+  {
+    "id": "rebel_a",
+    "name": "Rebel Fighter",
+    "playable": false,
+    "maxHull": 20,
+    "startingReactorPower": 6,
+    "startingResources": {
+      "scrap": 0,
+      "fuel": 0,
+      "missiles": 0,
+      "droneParts": 0
+    },
+    "rooms": [
+      { "roomId": 0, "x": 0, "y": 0, "width": 1, "height": 2, "system": "SHIELDS"  },
+      { "roomId": 1, "x": 1, "y": 0, "width": 1, "height": 2, "system": "WEAPONS"  },
+      { "roomId": 2, "x": 2, "y": 0, "width": 1, "height": 2, "system": "ENGINES"  }
+    ],
+    "doors": [
+      { "roomA": 0, "roomB": 1, "x": 1, "y": 0, "vertical": true },
+      { "roomA": 1, "roomB": 2, "x": 2, "y": 0, "vertical": true }
+    ],
+    "systems": [
+      { "type": "SHIELDS", "level": 2 },
+      { "type": "WEAPONS", "level": 1 },
+      { "type": "ENGINES", "level": 1 }
+    ],
+    "startingWeapons": [],
+    "startingCrew": []
   }
 ]

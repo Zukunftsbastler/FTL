@@ -1,0 +1,26 @@
+/**
+ * Pure weapon-charge function.  No ECS / DOM dependencies — fully unit-testable.
+ */
+
+/**
+ * Advances a weapon's charge by one simulation step.
+ *
+ * - If the weapon is not powered, the charge is frozen (no increase, no decrease).
+ * - Charge increases at a rate of 1 unit per second so that `maxCharge` equals the
+ *   weapon's cooldown in seconds.
+ * - Result is clamped to [0, maxCharge].
+ *
+ * @param currentCharge  Current charge level (0 … maxCharge).
+ * @param maxCharge      Full charge = ready to fire (equals weapon cooldown in seconds).
+ * @param isPowered      Whether the weapon has reactor power allocated to it.
+ * @param dt             Elapsed seconds since the last frame.
+ */
+export function calculateWeaponCharge(
+  currentCharge: number,
+  maxCharge: number,
+  isPowered: boolean,
+  dt: number,
+): number {
+  if (!isPowered) return currentCharge;
+  return Math.min(maxCharge, currentCharge + dt);
+}

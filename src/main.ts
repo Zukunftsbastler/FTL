@@ -10,10 +10,13 @@ import { PowerSystem } from './game/systems/PowerSystem';
 import { DoorSystem } from './game/systems/DoorSystem';
 import { OxygenSystem } from './game/systems/OxygenSystem';
 import { CrewSystem } from './game/systems/CrewSystem';
+import { TargetingSystem } from './game/systems/TargetingSystem';
+import { CombatSystem } from './game/systems/CombatSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
 import type { ShipTemplate } from './game/data/ShipTemplate';
+import type { WeaponTemplate } from './game/data/WeaponTemplate';
 import type { PositionComponent } from './game/components/PositionComponent';
 import type { SpriteComponent } from './game/components/SpriteComponent';
 
@@ -68,11 +71,24 @@ async function init(): Promise<void> {
   await Promise.all([
     generatePlaceholderAssets(),
     AssetLoader.loadJSON<ShipTemplate[]>('ships', '/data/ships.json'),
+    AssetLoader.loadJSON<WeaponTemplate[]>('weapons', '/data/weapons.json'),
   ]);
+
+  // ── Ship layout ─────────────────────────────────────────────────────────────
+  // Player ship: kestrel_a = 5×3 tile bounding box — anchored on the left.
+  // Enemy ship:  rebel_a   = 3×2 tile bounding box — anchored on the right.
+  const PLAYER_GRID_H = 3;
+  const ENEMY_GRID_W  = 3;
+  const ENEMY_GRID_H  = 2;
+
+  const playerShipX = 50;
+  const playerShipY = Math.round((canvas.height - PLAYER_GRID_H * TILE_SIZE) / 2);
+  const enemyShipX  = canvas.width  - 50 - ENEMY_GRID_W * TILE_SIZE;
+  const enemyShipY  = Math.round((canvas.height - ENEMY_GRID_H  * TILE_SIZE) / 2);
 
   // ── Entity setup ────────────────────────────────────────────────────────────
 
-  // Cursor entity (Sprint 2 — hovers above all game content).
+  // Cursor entity (hovers above all game content).
   const SPRITE_SIZE = 32;
   const cursorEntity = world.createEntity();
   world.addComponent(cursorEntity, { _type: 'Position', x: 0, y: 0 } as PositionComponent);
@@ -83,15 +99,13 @@ async function init(): Promise<void> {
     height: SPRITE_SIZE,
   } as SpriteComponent);
 
-  // Kestrel ship — centred on the canvas.  kestrel_a = 5 × 3 tile bounding box.
-  const SHIP_GRID_W = 5;
-  const SHIP_GRID_H = 3;
-  const shipX = Math.round((canvas.width  - SHIP_GRID_W * TILE_SIZE) / 2);
-  const shipY = Math.round((canvas.height - SHIP_GRID_H * TILE_SIZE) / 2);
-  ShipFactory.spawnShip(world, 'kestrel_a', shipX, shipY);
+  // Player ship (left side).
+  ShipFactory.spawnShip(world, 'kestrel_a', playerShipX, playerShipY, 'PLAYER');
 
-  // ── Pathfinder ───────────────────────────────────────────────────────────────
-  // Build the navigation graph from the same template used to spawn the ship.
+  // Enemy ship (right side).
+  ShipFactory.spawnShip(world, 'rebel_a', enemyShipX, enemyShipY, 'ENEMY');
+
+  // ── Pathfinder (player ship only) ────────────────────────────────────────────
   const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
   if (allShips === undefined) throw new Error('main: ships JSON missing after load.');
   const template = allShips.find((s) => s.id === 'kestrel_a');
@@ -100,9 +114,11 @@ async function init(): Promise<void> {
 
   // ── Systems ─────────────────────────────────────────────────────────────────
 
-  const renderSystem    = new RenderSystem(renderer);
-  const selectionSystem = new SelectionSystem(input, shipX, shipY);
-  const movementSystem  = new MovementSystem(input, shipX, shipY, pathfinder);
+  const targetingSystem = new TargetingSystem(input, renderer);
+  const combatSystem    = new CombatSystem();
+  const renderSystem    = new RenderSystem(renderer, targetingSystem);
+  const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
+  const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
   const powerSystem     = new PowerSystem(input);
   const doorSystem      = new DoorSystem(input);
   const oxygenSystem    = new OxygenSystem();
@@ -129,9 +145,11 @@ async function init(): Promise<void> {
 
     // 3. Logic systems.
     doorSystem.update(world);       // toggle doors (left-click)
+    targetingSystem.update(world);  // weapon selection + targeting (left-click)
     selectionSystem.update(world);  // crew selection (left-click)
     movementSystem.update(world);   // crew movement (right-click + A*)
     powerSystem.update(world);      // power routing (hover + arrow keys)
+    combatSystem.update(world);     // weapon charging + firing
     oxygenSystem.update(world);     // O2 regen / decay / equalization
     crewSystem.update(world);       // suffocation damage
 

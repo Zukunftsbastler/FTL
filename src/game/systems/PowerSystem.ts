@@ -1,7 +1,10 @@
 import { TILE_SIZE } from '../constants';
 import { allocatePower, deallocatePower } from '../logic/PowerMath';
+import type { Entity } from '../../engine/Entity';
 import type { IInput } from '../../engine/IInput';
 import type { IWorld } from '../../engine/IWorld';
+import type { FactionComponent } from '../components/FactionComponent';
+import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
@@ -10,10 +13,13 @@ import type { SystemComponent } from '../components/SystemComponent';
 /**
  * Handles keyboard-driven power allocation for ship systems.
  *
- * Interaction model (no on-screen buttons needed yet):
- *   - Hover the mouse over a room that contains a System.
+ * Interaction model:
+ *   - Hover the mouse over a room on the PLAYER ship that contains a System.
  *   - Press ArrowUp   → allocate 1 power from the reactor to that system.
  *   - Press ArrowDown → deallocate 1 power from that system back to the reactor.
+ *
+ * With multiple ships in the world, only the PLAYER faction's reactor and rooms
+ * are affected.
  */
 export class PowerSystem {
   private readonly input: IInput;
@@ -25,16 +31,15 @@ export class PowerSystem {
   update(world: IWorld): void {
     const up   = this.input.isKeyJustPressed('ArrowUp');
     const down = this.input.isKeyJustPressed('ArrowDown');
-    if (!up && !down) return; // nothing to do this frame
+    if (!up && !down) return;
 
-    // Find the reactor (attached to the ship entity).
-    const reactorEntities = world.query(['Reactor']);
-    if (reactorEntities.length === 0) return;
-    const reactor = world.getComponent<ReactorComponent>(reactorEntities[0], 'Reactor');
+    const playerShipEntity = this.findPlayerShipEntity(world);
+    if (playerShipEntity === null) return;
+
+    const reactor = world.getComponent<ReactorComponent>(playerShipEntity, 'Reactor');
     if (reactor === undefined) return;
 
-    // Find the hovered system room.
-    const hoveredSystem = this.getHoveredSystem(world);
+    const hoveredSystem = this.getHoveredPlayerSystem(world, playerShipEntity);
     if (hoveredSystem === null) return;
 
     if (up)   allocatePower(reactor, hoveredSystem);
@@ -43,26 +48,39 @@ export class PowerSystem {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  private findPlayerShipEntity(world: IWorld): Entity | null {
+    const entities = world.query(['Ship', 'Faction', 'Reactor']);
+    for (const entity of entities) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id === 'PLAYER') return entity;
+    }
+    return null;
+  }
+
   /**
-   * Returns the SystemComponent of the room the mouse is currently over,
-   * or null if the mouse isn't over any system room.
+   * Returns the SystemComponent of the player-owned room currently under the mouse,
+   * or null if the mouse is not hovering over any player system room.
    */
-  private getHoveredSystem(world: IWorld): SystemComponent | null {
+  private getHoveredPlayerSystem(
+    world: IWorld,
+    playerShipEntity: Entity,
+  ): SystemComponent | null {
     const mouse = this.input.getMousePosition();
-    const entities = world.query(['Room', 'System', 'Position']);
+    const entities = world.query(['Room', 'System', 'Position', 'Owner']);
 
     for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== playerShipEntity) continue;
+
       const pos    = world.getComponent<PositionComponent>(entity, 'Position');
       const room   = world.getComponent<RoomComponent>(entity, 'Room');
       const system = world.getComponent<SystemComponent>(entity, 'System');
       if (pos === undefined || room === undefined || system === undefined) continue;
 
-      const left   = pos.x;
-      const top    = pos.y;
       const right  = pos.x + room.width  * TILE_SIZE;
       const bottom = pos.y + room.height * TILE_SIZE;
 
-      if (mouse.x >= left && mouse.x < right && mouse.y >= top && mouse.y < bottom) {
+      if (mouse.x >= pos.x && mouse.x < right && mouse.y >= pos.y && mouse.y < bottom) {
         return system;
       }
     }
