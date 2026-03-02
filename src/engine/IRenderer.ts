@@ -63,6 +63,26 @@ export interface IRenderer {
   drawTooltip(x: number, y: number, text: string): void;
 
   /**
+   * Draws a filled or stroked ellipse centred at (cx, cy).
+   * @param cx      Centre X.
+   * @param cy      Centre Y.
+   * @param rx      Horizontal radius.
+   * @param ry      Vertical radius.
+   * @param color   Fill or stroke colour (may include alpha, e.g. 'rgba(...)').
+   * @param filled  True to fill, false to stroke.
+   * @param lineWidth  Only used when filled=false.
+   */
+  drawEllipse(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    color: string,
+    filled?: boolean,
+    lineWidth?: number,
+  ): void;
+
+  /**
    * Draws a closed polygon defined by an array of {x, y} vertices.
    * @param points  Two or more vertices in drawing order.
    * @param color   Fill or stroke colour.

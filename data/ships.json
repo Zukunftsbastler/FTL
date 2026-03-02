@@ -89,7 +89,7 @@
       { "type": "WEAPONS", "level": 1 },
       { "type": "ENGINES", "level": 1 }
     ],
-    "startingWeapons": [],
+    "startingWeapons": ["burst_laser_1"],
     "startingCrew": []
   }
 ]

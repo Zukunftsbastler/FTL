@@ -16,6 +16,8 @@ import { JumpSystem } from './game/systems/JumpSystem';
 import { ProjectileSystem } from './game/systems/ProjectileSystem';
 import { ManningSystem } from './game/systems/ManningSystem';
 import { RepairSystem } from './game/systems/RepairSystem';
+import { ShieldSystem } from './game/systems/ShieldSystem';
+import { EnemyAISystem } from './game/systems/EnemyAISystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -157,6 +159,8 @@ async function init(): Promise<void> {
   const crewSystem      = new CrewSystem();
   const manningSystem   = new ManningSystem();
   const repairSystem    = new RepairSystem();
+  const shieldSystem    = new ShieldSystem();
+  const enemyAISystem   = new EnemyAISystem();
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -211,8 +215,10 @@ async function init(): Promise<void> {
       movementSystem.update(world);   // crew movement (right-click + A*)
       powerSystem.update(world);      // power routing (hover + arrow keys)
       manningSystem.update(world);    // manning buffs (charge rate, evasion)
+      shieldSystem.update(world);     // shield recharge + max-layer updates
+      enemyAISystem.update(world);    // assign targets to charged enemy weapons
       combatSystem.update(world);     // weapon charging + projectile spawning
-      projectileSystem.update(world); // advance projectiles, apply impact damage
+      projectileSystem.update(world); // advance projectiles, shield check, damage
       oxygenSystem.update(world);     // O2 regen / decay / equalization
       crewSystem.update(world);       // suffocation damage
       repairSystem.update(world);     // system repair + medbay healing

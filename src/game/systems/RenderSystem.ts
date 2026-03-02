@@ -1,3 +1,4 @@
+import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { AssetLoader } from '../../utils/AssetLoader';
 import {
@@ -25,6 +26,7 @@ import type { SpriteComponent } from '../components/SpriteComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { CrewComponent } from '../components/CrewComponent';
+import type { ShieldComponent } from '../components/ShieldComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 
 // ── Room / door constants ─────────────────────────────────────────────────────
@@ -119,6 +121,17 @@ const DASH_LINE_H = 20;    // spacing between dashboard lines
 const DIVIDER_COLOR = '#1c2e44';
 const DIVIDER_W     = 2;
 
+// ── Shield constants ──────────────────────────────────────────────────────────
+/** How many pixels of padding beyond the ship bounding box the shield ellipse uses. */
+const SHIELD_PAD_X  = 22;
+const SHIELD_PAD_Y  = 16;
+const SHIELD_COLOR  = 'rgba(80,160,255,0.22)';
+const SHIELD_STROKE = 'rgba(120,200,255,0.70)';
+const SHIELD_LW     = 2;
+const SHIELD_FLASH  = 'rgba(200,230,255,0.60)';
+/** Duration (seconds) the shield flashes brighter after absorbing a hit. */
+const SHIELD_FLASH_DURATION = 0.20;
+
 /**
  * ECS render system. Strict layer order:
  *   Layer 0 — Center divider
@@ -139,6 +152,9 @@ export class RenderSystem {
   private readonly input: IInput;
   private readonly projectileSystem: ProjectileSystem;
 
+  /** Maps ship entity → remaining flash timer (seconds) for shield-hit flashes. */
+  private readonly shieldFlashTimers = new Map<number, number>();
+
   constructor(
     renderer: IRenderer,
     targetingSystem: TargetingSystem,
@@ -152,6 +168,7 @@ export class RenderSystem {
   }
 
   update(world: IWorld): void {
+    this.updateShieldFlashTimers(world);
     this.drawCenterDivider();
     this.drawRooms(world);
     this.drawDoors(world);
@@ -159,12 +176,81 @@ export class RenderSystem {
     this.drawProjectiles(world);
     this.drawMissIndicators();
     this.drawTargetingCrosshairs(world);
+    this.drawShields(world);
     this.drawSprites(world);
     this.drawPlayerDashboard(world);
     this.drawEnemyDashboard(world);
     this.drawCrewSkillSheet(world);
     this.drawWeaponUI(world);
     this.drawTooltips(world);
+  }
+
+  // ── Shield flash timer management ────────────────────────────────────────
+
+  private updateShieldFlashTimers(world: IWorld): void {
+    void world; // signature kept for clarity; no ECS query needed here
+
+    const dt = Time.deltaTime;
+
+    // Tick down existing timers.
+    for (const [entity, remaining] of this.shieldFlashTimers) {
+      const next = remaining - dt;
+      if (next <= 0) {
+        this.shieldFlashTimers.delete(entity);
+      } else {
+        this.shieldFlashTimers.set(entity, next);
+      }
+    }
+
+    // Start (or reset) flash for ships hit by a projectile this frame.
+    for (const shipEntity of this.projectileSystem.getShieldHitShips()) {
+      this.shieldFlashTimers.set(shipEntity, SHIELD_FLASH_DURATION);
+    }
+  }
+
+  // ── Shield bubbles ────────────────────────────────────────────────────────
+
+  private drawShields(world: IWorld): void {
+    const shipEntities = world.query(['Ship', 'Shield']);
+    for (const shipEntity of shipEntities) {
+      const shield = world.getComponent<ShieldComponent>(shipEntity, 'Shield');
+      if (shield === undefined || Math.floor(shield.currentLayers) < 1) continue;
+
+      // Compute bounding box from all rooms owned by this ship.
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const roomEntities = world.query(['Room', 'Position', 'Owner']);
+      for (const re of roomEntities) {
+        const owner = world.getComponent<OwnerComponent>(re, 'Owner');
+        if (owner?.shipEntity !== shipEntity) continue;
+        const pos  = world.getComponent<PositionComponent>(re, 'Position');
+        const room = world.getComponent<RoomComponent>(re, 'Room');
+        if (pos === undefined || room === undefined) continue;
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + room.width  * TILE_SIZE);
+        maxY = Math.max(maxY, pos.y + room.height * TILE_SIZE);
+      }
+      if (!isFinite(minX)) continue;
+
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const rx = (maxX - minX) / 2 + SHIELD_PAD_X;
+      const ry = (maxY - minY) / 2 + SHIELD_PAD_Y;
+
+      const isFlashing = this.shieldFlashTimers.has(shipEntity);
+
+      // Fill layer (semi-transparent).
+      this.renderer.drawEllipse(cx, cy, rx, ry, isFlashing ? SHIELD_FLASH : SHIELD_COLOR, true);
+      // Stroke border.
+      this.renderer.drawEllipse(cx, cy, rx, ry, SHIELD_STROKE, false, SHIELD_LW);
+
+      // Draw one ring per active layer beyond the first.
+      const layers = Math.floor(shield.currentLayers);
+      for (let l = 1; l < layers; l++) {
+        const extra = l * 8;
+        this.renderer.drawEllipse(cx, cy, rx + extra, ry + extra, SHIELD_STROKE, false, SHIELD_LW);
+      }
+    }
   }
 
   // ── Layer 0: center divider ──────────────────────────────────────────────

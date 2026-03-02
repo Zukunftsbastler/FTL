@@ -114,6 +114,27 @@ export class Renderer implements IRenderer {
     this.ctx.stroke();
   }
 
+  drawEllipse(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    color: string,
+    filled = true,
+    lineWidth = 1,
+  ): void {
+    this.ctx.beginPath();
+    this.ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    if (filled) {
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+    } else {
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth   = lineWidth;
+      this.ctx.stroke();
+    }
+  }
+
   drawPolygon(
     points: ReadonlyArray<{ x: number; y: number }>,
     color: string,

@@ -17,6 +17,7 @@ import type { SelectableComponent } from '../components/SelectableComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
+import type { ShieldComponent } from '../components/ShieldComponent';
 
 /**
  * System types in the order they should receive auto-power on spawn.
@@ -158,6 +159,17 @@ export class ShipFactory {
       while (reactorComp.currentPower > 0 && sys.currentPower < sys.maxCapacity) {
         allocatePower(reactorComp, sys);
       }
+    }
+
+    // ── Shield component (attached to ship root if SHIELDS system exists) ─────
+    const hasShields = spawnedSystems.some((s) => s.type === 'SHIELDS');
+    if (hasShields) {
+      const shieldComp: ShieldComponent = {
+        _type: 'Shield',
+        currentLayers: 0,
+        maxLayers: 0,
+      };
+      world.addComponent(shipEntity, shieldComp);
     }
 
     // ── Door entities ──────────────────────────────────────────────────────────

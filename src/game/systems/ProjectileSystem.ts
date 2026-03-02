@@ -5,6 +5,7 @@ import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ProjectileComponent } from '../components/ProjectileComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { ShieldComponent } from '../components/ShieldComponent';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 
@@ -12,14 +13,14 @@ import type { SystemComponent } from '../components/SystemComponent';
 const MAX_DT = 0.1;
 
 /**
- * Factor by which the overshoot target extends beyond the intended room center.
- * A factor of 4 sends the projectile roughly 4× the origin→target distance off-screen.
+ * Factor by which the overshoot target extends beyond the intended room centre.
+ * 4× sends the projectile roughly 4× the origin→target distance off-screen.
  */
 const MISS_OVERSHOOT_FACTOR = 4.0;
 
 /**
- * Probability that a projectile which would otherwise "hit" instead impacts a
- * random nearby room (near-miss / scatter).  Applied per projectile.
+ * Probability that a shot which would otherwise "hit" lands on a random other
+ * room instead of the intended target (scatter / near-miss).
  */
 const NEAR_MISS_CHANCE = 0.08;
 
@@ -28,58 +29,55 @@ const NEAR_MISS_CHANCE = 0.08;
  *
  * Accuracy / evasion roll (performed once per projectile on its first frame):
  *   hitChance = clamp(accuracy - targetShip.evasion, 0.05, 1.0)
- *   If neverMisses = true, the roll is skipped (always hit).
+ *   neverMisses = true → roll skipped, always hits.
  *
- * On a full MISS:
- *   • targetX/Y are redirected to an overshoot point far past the enemy ship.
- *   • No damage is applied.  The miss display position (original room centre) is
- *     stored and returned via getMissDisplays() so RenderSystem can draw "MISS".
+ * On full MISS:
+ *   • targetX/Y redirected to an overshoot point past the enemy ship.
+ *   • No damage; miss display position stored for RenderSystem "MISS" text.
  *
- * On a NEAR-MISS (8% chance for shots that would otherwise hit):
- *   • The projectile is redirected to a random other room on the enemy ship.
- *   • Damage is still applied (to the new room).
+ * On NEAR-MISS (8 % of hits):
+ *   • Projectile redirected to a random other room on the same ship.
+ *   • Damage still applies (to the new room).
  *
- * On a HIT:
- *   1. System damageAmount is incremented on the target room.
- *   2. Hull damage is applied to the owning ship.
- *   3. The target room entity is added to impactedRooms for RenderSystem flash.
- *   4. The projectile entity is destroyed.
+ * On HIT — shield check first:
+ *   • If target ship has ≥ 1 shield layer: deplete 1 layer, destroy projectile (no hull damage).
+ *     Ship is added to shieldHitShips for the visual flash in RenderSystem.
+ *   • Else: damage system damageAmount, reduce hull — add room to impactedRooms for flash.
  */
 export class ProjectileSystem {
-  /** Room entities that were hit this frame. Cleared at the start of each update(). */
+  /** Room entities damaged this frame — cleared at start of each update(). */
   private readonly impactedRooms = new Set<number>();
 
+  /** Ship entities whose shields absorbed a hit this frame — cleared each update(). */
+  private readonly shieldHitShips = new Set<number>();
+
   /**
-   * Projectile entities that have been evaluated for accuracy this session.
-   * Cleared when the entity is destroyed.
+   * Projectile entities already evaluated for accuracy (Set cleared when entity destroyed).
    */
   private readonly evaluatedProjectiles = new Set<number>();
 
   /**
    * Maps projectile entity → display position for "MISS" text.
-   * Populated when a miss is determined; entry removed when projectile is destroyed.
+   * Entry removed when the projectile is destroyed.
    */
   private readonly missMap = new Map<number, { displayX: number; displayY: number }>();
 
-  /** Called by RenderSystem to drive the hit-flash overlay. */
-  getImpactedRooms(): ReadonlySet<number> {
-    return this.impactedRooms;
-  }
+  getImpactedRooms(): ReadonlySet<number> { return this.impactedRooms; }
+  getShieldHitShips(): ReadonlySet<number> { return this.shieldHitShips; }
 
   /**
-   * Returns an array of canvas positions where "MISS" should be rendered this frame.
-   * Each position is the centre of the room that was originally targeted.
+   * Returns canvas positions where "MISS" should be rendered this frame.
+   * Each entry is the centre of the room that was originally targeted.
    */
   getMissDisplays(): ReadonlyArray<{ x: number; y: number }> {
     const result: Array<{ x: number; y: number }> = [];
-    for (const display of this.missMap.values()) {
-      result.push({ x: display.displayX, y: display.displayY });
-    }
+    for (const d of this.missMap.values()) result.push({ x: d.displayX, y: d.displayY });
     return result;
   }
 
   update(world: IWorld): void {
     this.impactedRooms.clear();
+    this.shieldHitShips.clear();
     const dt = Math.min(Time.deltaTime, MAX_DT);
 
     const entities = world.query(['Projectile', 'Position']);
@@ -88,7 +86,7 @@ export class ProjectileSystem {
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
       if (proj === undefined || pos === undefined) continue;
 
-      // ── Accuracy roll (once per projectile, on first frame) ────────────────
+      // ── Accuracy roll (once per projectile) ───────────────────────────────
       if (!this.evaluatedProjectiles.has(entity)) {
         this.evaluatedProjectiles.add(entity);
         this.evaluateAccuracy(world, entity, proj);
@@ -100,22 +98,26 @@ export class ProjectileSystem {
       const step = proj.speed * dt;
 
       if (dist <= step) {
-        // Projectile reached (or passed) its target this frame.
         pos.x = proj.targetX;
         pos.y = proj.targetY;
 
         if (this.missMap.has(entity)) {
-          // Complete miss — no damage.
+          // Complete miss — no damage, "MISS" text already shown while in flight.
           this.missMap.delete(entity);
         } else if (proj.targetRoomEntity !== undefined) {
-          this.applyImpact(world, proj);
-          this.impactedRooms.add(proj.targetRoomEntity);
+          // Check shields before applying damage.
+          const shielded = this.checkAndAbsorbShield(world, proj.targetRoomEntity);
+          if (shielded) {
+            // Shield absorbed the hit — no hull/system damage.
+          } else {
+            this.applyImpact(world, proj);
+            this.impactedRooms.add(proj.targetRoomEntity);
+          }
         }
 
         this.evaluatedProjectiles.delete(entity);
         world.destroyEntity(entity);
       } else {
-        // Advance toward target.
         const nx = dx / dist;
         const ny = dy / dist;
         pos.x += nx * step;
@@ -127,34 +129,29 @@ export class ProjectileSystem {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   /**
-   * Rolls accuracy vs evasion for a projectile.
-   * Mutates proj.targetX/Y and proj.targetRoomEntity if the shot misses or near-misses.
+   * Rolls accuracy vs evasion for a newly spawned projectile.
+   * Mutates proj.targetX/Y and proj.targetRoomEntity on miss/near-miss.
    */
   private evaluateAccuracy(world: IWorld, entity: number, proj: ProjectileComponent): void {
     if (proj.neverMisses || proj.targetRoomEntity === undefined) return;
 
-    // Determine target ship evasion.
-    const evasion = this.getTargetShipEvasion(world, proj.targetRoomEntity);
+    const evasion   = this.getTargetShipEvasion(world, proj.targetRoomEntity);
     const hitChance = Math.max(0.05, Math.min(1.0, proj.accuracy - evasion));
 
-    const roll = Math.random();
-
-    if (roll > hitChance) {
-      // Full miss: redirect projectile to overshoot beyond the target ship.
+    if (Math.random() > hitChance) {
+      // Full miss.
       const displayX = proj.targetX;
       const displayY = proj.targetY;
-
       const dx = proj.targetX - proj.originX;
       const dy = proj.targetY - proj.originY;
       proj.targetX = proj.originX + dx * MISS_OVERSHOOT_FACTOR;
       proj.targetY = proj.originY + dy * MISS_OVERSHOOT_FACTOR;
       proj.targetRoomEntity = undefined;
-
       this.missMap.set(entity, { displayX, displayY });
       return;
     }
 
-    // Hit — check for near-miss scatter.
+    // Near-miss scatter.
     if (Math.random() < NEAR_MISS_CHANCE) {
       const redirect = this.findNearMissTarget(world, proj.targetRoomEntity);
       if (redirect !== null) {
@@ -165,7 +162,28 @@ export class ProjectileSystem {
     }
   }
 
-  /** Returns the evasion of the ship that owns targetRoomEntity. */
+  /**
+   * If the ship owning `targetRoomEntity` has an active shield layer, deplete it
+   * and record the ship for the visual flash.
+   *
+   * @returns true if a shield absorbed the hit (no further damage should be applied).
+   */
+  private checkAndAbsorbShield(world: IWorld, targetRoomEntity: number): boolean {
+    const ownerComp = world.getComponent<OwnerComponent>(targetRoomEntity, 'Owner');
+    if (ownerComp === undefined) return false;
+
+    const shield = world.getComponent<ShieldComponent>(ownerComp.shipEntity, 'Shield');
+    if (shield === undefined) return false;
+
+    const activeLayers = Math.floor(shield.currentLayers);
+    if (activeLayers < 1) return false;
+
+    // Deplete one layer and reset fractional progress.
+    shield.currentLayers = activeLayers - 1;
+    this.shieldHitShips.add(ownerComp.shipEntity);
+    return true;
+  }
+
   private getTargetShipEvasion(world: IWorld, targetRoomEntity: number): number {
     const ownerComp = world.getComponent<OwnerComponent>(targetRoomEntity, 'Owner');
     if (ownerComp === undefined) return 0;
@@ -173,21 +191,16 @@ export class ProjectileSystem {
     return ship?.evasion ?? 0;
   }
 
-  /**
-   * Picks a random room on the same ship as originalTargetEntity (excluding the
-   * original room) to serve as the near-miss redirect target.
-   */
   private findNearMissTarget(
     world: IWorld,
-    originalTargetEntity: number,
+    originalTarget: number,
   ): { entity: number; x: number; y: number } | null {
-    const ownerComp = world.getComponent<OwnerComponent>(originalTargetEntity, 'Owner');
+    const ownerComp = world.getComponent<OwnerComponent>(originalTarget, 'Owner');
     if (ownerComp === undefined) return null;
 
     const candidates: Array<{ entity: number; x: number; y: number }> = [];
-    const roomEntities = world.query(['Room', 'Position', 'Owner']);
-    for (const roomEntity of roomEntities) {
-      if (roomEntity === originalTargetEntity) continue;
+    for (const roomEntity of world.query(['Room', 'Position', 'Owner'])) {
+      if (roomEntity === originalTarget) continue;
       const owner = world.getComponent<OwnerComponent>(roomEntity, 'Owner');
       if (owner?.shipEntity !== ownerComp.shipEntity) continue;
       const pos  = world.getComponent<PositionComponent>(roomEntity, 'Position');
@@ -207,17 +220,15 @@ export class ProjectileSystem {
   private applyImpact(world: IWorld, proj: ProjectileComponent): void {
     if (proj.targetRoomEntity === undefined) return;
 
-    // Increment physical damage on the target room's system.
     const system = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
     if (system !== undefined && system.maxCapacity > 0) {
-      system.maxCapacity -= 1;
+      system.maxCapacity  -= 1;
       system.damageAmount += 1;
       if (system.currentPower > system.maxCapacity) {
         system.currentPower = system.maxCapacity;
       }
     }
 
-    // Damage the ship that owns the target room.
     const ownerComp = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
     if (ownerComp === undefined) return;
     const ship = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
