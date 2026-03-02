@@ -161,6 +161,24 @@ export class MapSystem {
     }
   }
 
+  /** Marks all nodes as visited (mercenary "reveal map" reward). */
+  revealAllNodes(): void {
+    for (const node of this.nodes) node.visited = true;
+  }
+
+  /**
+   * Pushes the rebel fleet back by `steps` advance-steps
+   * (minimum: off the left edge so it never goes behind the start).
+   */
+  delayRebels(steps: number): void {
+    this.rebelFleetX = Math.max(-REBEL_ADVANCE, this.rebelFleetX - REBEL_ADVANCE * steps);
+  }
+
+  /** Advances the rebel fleet forward by `steps` extra advance-steps. */
+  advanceRebels(steps: number): void {
+    this.rebelFleetX += REBEL_ADVANCE * steps;
+  }
+
   /** Resets the map and regenerates it (call when entering a new sector). */
   nextSector(canvasW: number, canvasH: number): void {
     this.generated = false;

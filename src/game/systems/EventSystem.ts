@@ -87,10 +87,13 @@ export class EventSystem {
     input: IInput,
     world: IWorld,
     callbacks: {
-      onCombat:    (shipId: string) => void;
-      onReward:    (reward: EventReward) => void;
-      onNextEvent: (eventId: string) => void;
-      onContinue:  () => void;
+      onCombat:        (shipId: string) => void;
+      onReward:        (reward: EventReward) => void;
+      /** Applies reward effects without transitioning state (used when combat also fires). */
+      onInstantReward: (reward: EventReward) => void;
+      onNextEvent:     (eventId: string) => void;
+      onStore:         () => void;
+      onContinue:      () => void;
     },
   ): void {
     const event = this.currentEvent;
@@ -214,14 +217,20 @@ export class EventSystem {
   private resolveChoice(
     choice: EventChoice,
     callbacks: {
-      onCombat:    (shipId: string) => void;
-      onReward:    (reward: EventReward) => void;
-      onNextEvent: (eventId: string) => void;
-      onContinue:  () => void;
+      onCombat:        (shipId: string) => void;
+      onReward:        (reward: EventReward) => void;
+      onInstantReward: (reward: EventReward) => void;
+      onNextEvent:     (eventId: string) => void;
+      onStore:         () => void;
+      onContinue:      () => void;
     },
   ): void {
     if (choice.triggerCombatWithShipId !== undefined) {
+      // Apply inline reward effects (e.g. system damage) before entering combat.
+      if (choice.reward !== undefined) callbacks.onInstantReward(choice.reward);
       callbacks.onCombat(choice.triggerCombatWithShipId);
+    } else if (choice.openStore === true) {
+      callbacks.onStore();
     } else if (choice.randomOutcomes !== undefined) {
       // RNG branching: accumulate chance values until we find the selected outcome.
       const roll = Math.random();
@@ -283,23 +292,35 @@ export class EventSystem {
       });
     }
 
+    if (kind === 'drone') {
+      // Drone schematics are not yet implemented; always unsatisfied.
+      return false;
+    }
+
     return false;
   }
 
   /** Builds a short inline text summarising a choice's reward for display. */
   private buildRewardPreview(choice: EventChoice): string {
     if (choice.triggerCombatWithShipId !== undefined) return '[COMBAT]';
+    if (choice.openStore               === true)      return '[STORE]';
     if (choice.randomOutcomes          !== undefined) return '[RNG]';
     if (choice.nextEventId             !== undefined) return '[→ event]';
     if (choice.reward === undefined) return '';
     const r = choice.reward;
     const parts: string[] = [];
-    if (r.scrap      !== undefined) parts.push(`${r.scrap >= 0 ? '+' : ''}${r.scrap} scrap`);
-    if (r.fuel       !== undefined) parts.push(`+${r.fuel} fuel`);
-    if (r.missiles   !== undefined) parts.push(`+${r.missiles} missiles`);
-    if (r.hullRepair !== undefined) parts.push(`${r.hullRepair >= 0 ? '+' : ''}${r.hullRepair} hull`);
-    if (r.weaponId   !== undefined) parts.push('weapon');
-    if (r.crewMember === true)      parts.push('crew');
+    if (r.scrap           !== undefined) parts.push(`${r.scrap >= 0 ? '+' : ''}${r.scrap} scrap`);
+    if (r.fuel            !== undefined) parts.push(`+${r.fuel} fuel`);
+    if (r.missiles        !== undefined) parts.push(`+${r.missiles} missiles`);
+    if (r.hullRepair      !== undefined) parts.push(`${r.hullRepair >= 0 ? '+' : ''}${r.hullRepair} hull`);
+    if (r.weaponId        !== undefined) parts.push('weapon');
+    if (r.crewMember      === true)      parts.push('+crew');
+    if (r.loseCrewMember  === true)      parts.push('-crew');
+    if (r.crewDamage      !== undefined) parts.push(`-${r.crewDamage} crew HP`);
+    if (r.systemDamage    !== undefined) parts.push('sys dmg');
+    if (r.revealMap       === true)      parts.push('reveal map');
+    if (r.delayRebels     !== undefined) parts.push('delay rebels');
+    if (r.fleetAdvancement !== undefined) parts.push('fleet adv.');
     return parts.join(', ');
   }
 }

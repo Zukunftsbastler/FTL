@@ -7,6 +7,21 @@ export interface EventReward {
   weaponId?:   string;
   /** If true, a generic random crew member joins the ship. */
   crewMember?: boolean;
+  /** If true, a random player crew member is permanently destroyed. */
+  loseCrewMember?: boolean;
+  /** Apply hull-independent damage to a random player crew member's health. */
+  crewDamage?: number;
+  /**
+   * Apply physical damage to named ship systems.
+   * Keys are SystemType strings (e.g. "ENGINES"); values are damage amounts.
+   */
+  systemDamage?: Record<string, number>;
+  /** If true, all unvisited map nodes are revealed (visited flag set). */
+  revealMap?: boolean;
+  /** Push the rebel fleet back by this many advance-steps. */
+  delayRebels?: number;
+  /** Advance the rebel fleet forward by this many extra steps. */
+  fleetAdvancement?: number;
 }
 
 /** A single selectable option in an EventTemplate. */
@@ -26,6 +41,8 @@ export interface EventChoice {
   reward?: EventReward;
   /** If set, starts combat against the ship template with this ID. */
   triggerCombatWithShipId?: string;
+  /** If true, transitions the game to the STORE state when selected. */
+  openStore?: boolean;
 }
 
 /** A narrative encounter loaded from data/events.json. */

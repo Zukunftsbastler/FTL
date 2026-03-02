@@ -31,8 +31,11 @@ import type { EventTemplate } from './game/data/EventTemplate';
 import type { EventReward } from './game/data/EventTemplate';
 import type { CrewRace } from './game/data/CrewRace';
 import type { CrewClass } from './game/data/CrewClass';
+import type { CrewComponent } from './game/components/CrewComponent';
 import type { FactionComponent } from './game/components/FactionComponent';
+import type { OwnerComponent } from './game/components/OwnerComponent';
 import type { ShipComponent } from './game/components/ShipComponent';
+import type { SystemComponent } from './game/components/SystemComponent';
 import type { WeaponComponent } from './game/components/WeaponComponent';
 
 // ── Canvas Setup ─────────────────────────────────────────────────────────────
@@ -129,38 +132,104 @@ async function init(): Promise<void> {
   }
 
   /**
-   * Applies an EventReward to the player ship and returns to the Star Map.
-   * Called when a narrative choice grants resources.
+   * Applies all side-effects of an EventReward WITHOUT transitioning state.
+   * Used both by applyEventReward (→ STAR_MAP) and as onInstantReward before combat.
+   */
+  function applyRewardEffects(reward: EventReward): void {
+    // ── Find player ship root ──────────────────────────────────────────────
+    let playerShipEntity: number | undefined;
+    let ship: ShipComponent | undefined;
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      playerShipEntity = entity;
+      ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      break;
+    }
+    if (ship === undefined || playerShipEntity === undefined) return;
+
+    // ── Ship resources ─────────────────────────────────────────────────────
+    if (reward.scrap      !== undefined) ship.scrap = Math.max(0, ship.scrap + reward.scrap);
+    if (reward.fuel       !== undefined) ship.fuel       += reward.fuel;
+    if (reward.missiles   !== undefined) ship.missiles   += reward.missiles;
+    if (reward.hullRepair !== undefined) {
+      ship.currentHull = Math.min(ship.maxHull, Math.max(0, ship.currentHull + reward.hullRepair));
+    }
+    if (reward.weaponId !== undefined) ship.cargoWeapons.push(reward.weaponId);
+
+    // ── Crew gain ──────────────────────────────────────────────────────────
+    if (reward.crewMember === true) {
+      const races:   CrewRace[]  = ['HUMAN', 'ENGI', 'MANTIS'];
+      const classes: CrewClass[] = ['ENGINEER', 'GUNNER', 'PILOT', 'SECURITY'];
+      const names    = ['Ally', 'Crest', 'Dorn', 'Exa', 'Fyra'];
+      ShipFactory.spawnCrewMember(world, {
+        name:      names[Math.floor(Math.random() * names.length)],
+        race:      races[Math.floor(Math.random() * races.length)],
+        crewClass: classes[Math.floor(Math.random() * classes.length)],
+        skills:    { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
+        roomId:    0,
+      }, playerShipEntity);
+    }
+
+    // ── Crew loss ──────────────────────────────────────────────────────────
+    if (reward.loseCrewMember === true) {
+      const pool: number[] = [];
+      for (const e of world.query(['Crew', 'Owner'])) {
+        const o = world.getComponent<OwnerComponent>(e, 'Owner');
+        if (o?.shipEntity === playerShipEntity) pool.push(e);
+      }
+      if (pool.length > 0) {
+        world.destroyEntity(pool[Math.floor(Math.random() * pool.length)]);
+      }
+    }
+
+    // ── Crew damage ────────────────────────────────────────────────────────
+    if (reward.crewDamage !== undefined) {
+      const pool: number[] = [];
+      for (const e of world.query(['Crew', 'Owner'])) {
+        const o = world.getComponent<OwnerComponent>(e, 'Owner');
+        if (o?.shipEntity === playerShipEntity) pool.push(e);
+      }
+      if (pool.length > 0) {
+        const target = pool[Math.floor(Math.random() * pool.length)];
+        const crew = world.getComponent<CrewComponent>(target, 'Crew');
+        if (crew !== undefined) {
+          crew.health -= reward.crewDamage;
+          if (crew.health <= 0) world.destroyEntity(target);
+        }
+      }
+    }
+
+    // ── System damage ──────────────────────────────────────────────────────
+    if (reward.systemDamage !== undefined) {
+      for (const [sysType, amount] of Object.entries(reward.systemDamage)) {
+        for (const e of world.query(['System', 'Owner'])) {
+          const o = world.getComponent<OwnerComponent>(e, 'Owner');
+          if (o?.shipEntity !== playerShipEntity) continue;
+          const sys = world.getComponent<SystemComponent>(e, 'System');
+          if (sys?.type === sysType) { sys.damageAmount += amount; break; }
+        }
+      }
+    }
+
+    // ── Map / rebel fleet effects ──────────────────────────────────────────
+    if (reward.revealMap        === true)      mapSystem.revealAllNodes();
+    if (reward.delayRebels      !== undefined) mapSystem.delayRebels(reward.delayRebels);
+    if (reward.fleetAdvancement !== undefined) mapSystem.advanceRebels(reward.fleetAdvancement);
+  }
+
+  /**
+   * Applies an EventReward and transitions to STAR_MAP (or GAME_OVER if hull reaches 0).
+   * Called by the onReward callback from EventSystem.
    */
   function applyEventReward(reward: EventReward): void {
+    applyRewardEffects(reward);
+    // Check if hull damage caused by the event is lethal.
     for (const entity of world.query(['Ship', 'Faction'])) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
       if (faction?.id !== 'PLAYER') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
-      if (ship === undefined) break;
-      if (reward.scrap      !== undefined) ship.scrap = Math.max(0, ship.scrap + reward.scrap);
-      if (reward.fuel       !== undefined) ship.fuel       += reward.fuel;
-      if (reward.missiles   !== undefined) ship.missiles   += reward.missiles;
-      if (reward.hullRepair !== undefined) {
-        ship.currentHull = Math.min(ship.maxHull, Math.max(0, ship.currentHull + reward.hullRepair));
-      }
-      if (reward.weaponId !== undefined) {
-        ship.cargoWeapons.push(reward.weaponId);
-      }
-      if (reward.crewMember === true) {
-        const races:   CrewRace[]  = ['HUMAN', 'ENGI', 'MANTIS'];
-        const classes: CrewClass[] = ['ENGINEER', 'GUNNER', 'PILOT', 'SECURITY'];
-        const names    = ['Ally', 'Crest', 'Dorn', 'Exa', 'Fyra'];
-        ShipFactory.spawnCrewMember(world, {
-          name:      names[Math.floor(Math.random() * names.length)],
-          race:      races[Math.floor(Math.random() * races.length)],
-          crewClass: classes[Math.floor(Math.random() * classes.length)],
-          skills:    { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
-          roomId:    0,
-        }, entity);
-      }
-      // Hull damage from events can cause game over.
-      if (ship.currentHull <= 0) {
+      if (ship !== undefined && ship.currentHull <= 0) {
         currentState = 'GAME_OVER';
         return;
       }
@@ -336,10 +405,12 @@ async function init(): Promise<void> {
       // ── Narrative Event screen ─────────────────────────────────────────────
       renderer.clear('#020810');
       eventSystem.drawEventScreen(renderer, input, world, {
-        onCombat:    (shipId) => { enterCombat(shipId); },
-        onReward:    (reward) => { applyEventReward(reward); },
-        onNextEvent: (id)     => { eventSystem.loadEvent(id); },
-        onContinue:  ()       => { currentState = 'STAR_MAP'; },
+        onCombat:        (shipId) => { enterCombat(shipId); },
+        onReward:        (reward) => { applyEventReward(reward); },
+        onInstantReward: (reward) => { applyRewardEffects(reward); },
+        onNextEvent:     (id)     => { eventSystem.loadEvent(id); },
+        onStore:         ()       => { currentState = 'STORE'; },
+        onContinue:      ()       => { currentState = 'STAR_MAP'; },
       });
 
     } else if (currentState === 'UPGRADE') {
