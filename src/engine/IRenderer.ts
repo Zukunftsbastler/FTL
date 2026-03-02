@@ -42,4 +42,7 @@ export interface IRenderer {
     filled?: boolean,
     lineWidth?: number,
   ): void;
+
+  /** Returns the current pixel dimensions of the rendering surface. Used for HUD layout. */
+  getCanvasSize(): { width: number; height: number };
 }

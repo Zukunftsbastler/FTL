@@ -6,6 +6,7 @@ import { World } from './engine/World';
 import { RenderSystem } from './game/systems/RenderSystem';
 import { SelectionSystem } from './game/systems/SelectionSystem';
 import { MovementSystem } from './game/systems/MovementSystem';
+import { PowerSystem } from './game/systems/PowerSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -99,6 +100,7 @@ async function init(): Promise<void> {
   const renderSystem    = new RenderSystem(renderer);
   const selectionSystem = new SelectionSystem(input, shipX, shipY);
   const movementSystem  = new MovementSystem(input, shipX, shipY, pathfinder);
+  const powerSystem     = new PowerSystem(input);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -123,6 +125,7 @@ async function init(): Promise<void> {
     //    right-click on the same frame as a selection still moves the crew.
     selectionSystem.update(world);
     movementSystem.update(world);
+    powerSystem.update(world);
 
     // 4. Render all layers.
     renderSystem.update(world);

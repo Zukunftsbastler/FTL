@@ -3,15 +3,21 @@ import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { PositionComponent } from '../components/PositionComponent';
+import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 import type { SpriteComponent } from '../components/SpriteComponent';
+import type { SystemComponent } from '../components/SystemComponent';
 
 // ── Visual constants ──────────────────────────────────────────────────────────
 const ROOM_FILL        = '#1a2033';
 const ROOM_BORDER      = '#4a6fa5';
 const LABEL_COLOR      = '#88aadd';
 const LABEL_FONT       = '11px monospace';
+const POWER_FONT       = '10px monospace';
+const POWER_COLOR      = '#ffdd44';  // yellow pips
+const REACTOR_HUD_FONT = '13px monospace';
+const REACTOR_HUD_COLOR = '#66eecc';
 
 /** Thickness of the door marker rectangle drawn over room borders. */
 const DOOR_THICK       = 5;
@@ -26,10 +32,11 @@ const CREW_SELECT_LW   = 2;
 
 /**
  * ECS render system. Strict layer order:
- *   Layer 1 — Rooms   (fill + border + system label)
+ *   Layer 1 — Rooms   (fill + border + system label + power bar)
  *   Layer 2 — Doors   (thin rect on shared wall; SPACE-vent doors omitted)
  *   Layer 3 — Crew    (coloured circle + selection ring)
  *   Layer 4 — Sprites (cursor — topmost)
+ *   HUD     — Reactor power display (bottom-left corner)
  *
  * Read-only: never mutates component data.
  */
@@ -45,6 +52,7 @@ export class RenderSystem {
     this.drawDoors(world);
     this.drawCrew(world);
     this.drawSprites(world);
+    this.drawReactorHUD(world);
   }
 
   // ── Layer 1: rooms ──────────────────────────────────────────────────────────
@@ -52,8 +60,8 @@ export class RenderSystem {
   private drawRooms(world: IWorld): void {
     const entities = world.query(['Room', 'Position']);
     for (const entity of entities) {
-      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
-      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      const pos    = world.getComponent<PositionComponent>(entity, 'Position');
+      const room   = world.getComponent<RoomComponent>(entity, 'Room');
       if (pos === undefined || room === undefined) continue;
 
       const pw = room.width  * TILE_SIZE;
@@ -66,13 +74,34 @@ export class RenderSystem {
         this.renderer.drawText(
           room.system,
           pos.x + pw / 2,
-          pos.y + ph / 2 + 4,
+          pos.y + ph / 2,
           LABEL_FONT,
           LABEL_COLOR,
           'center',
         );
+
+        // Draw power bar if this room has an active system component.
+        const system = world.getComponent<SystemComponent>(entity, 'System');
+        if (system !== undefined) {
+          const bar = this.buildPowerBar(system.currentPower, system.maxCapacity);
+          this.renderer.drawText(
+            bar,
+            pos.x + pw / 2,
+            pos.y + ph / 2 + 13,
+            POWER_FONT,
+            POWER_COLOR,
+            'center',
+          );
+        }
       }
     }
+  }
+
+  /** Builds a text string like `[||  ]` for 2 / 4. */
+  private buildPowerBar(current: number, max: number): string {
+    const filled = '|'.repeat(current);
+    const empty  = ' '.repeat(max - current);
+    return `[${filled}${empty}]`;
   }
 
   // ── Layer 2: doors ──────────────────────────────────────────────────────────
@@ -146,5 +175,18 @@ export class RenderSystem {
 
       this.renderer.drawSprite(sprite.assetId, pos.x, pos.y, sprite.width, sprite.height);
     }
+  }
+
+  // ── HUD: reactor power display (bottom-left) ─────────────────────────────
+
+  private drawReactorHUD(world: IWorld): void {
+    const reactorEntities = world.query(['Reactor']);
+    if (reactorEntities.length === 0) return;
+    const reactor = world.getComponent<ReactorComponent>(reactorEntities[0], 'Reactor');
+    if (reactor === undefined) return;
+
+    const { height } = this.renderer.getCanvasSize();
+    const text = `REACTOR: ${reactor.currentPower} / ${reactor.totalPower}`;
+    this.renderer.drawText(text, 12, height - 12, REACTOR_HUD_FONT, REACTOR_HUD_COLOR, 'left');
   }
 }

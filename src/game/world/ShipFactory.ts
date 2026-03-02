@@ -3,7 +3,9 @@ import { TILE_SIZE } from '../constants';
 import type { IWorld } from '../../engine/IWorld';
 import type { ShipTemplate } from '../data/ShipTemplate';
 import type { ShipComponent } from '../components/ShipComponent';
+import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { SystemComponent } from '../components/SystemComponent';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
@@ -49,7 +51,7 @@ export class ShipFactory {
       );
     }
 
-    // ── Ship root entity ────────────────────────────────────────────────────
+    // ── Ship root entity (+ reactor) ─────────────────────────────────────────
     const shipEntity = world.createEntity();
     const shipComp: ShipComponent = {
       _type: 'Ship',
@@ -57,9 +59,15 @@ export class ShipFactory {
       maxHull: template.maxHull,
       currentHull: template.maxHull,
     };
+    const reactorComp: ReactorComponent = {
+      _type: 'Reactor',
+      totalPower: template.startingReactorPower,
+      currentPower: template.startingReactorPower, // all power available at start
+    };
     world.addComponent(shipEntity, shipComp);
+    world.addComponent(shipEntity, reactorComp);
 
-    // ── Room entities ───────────────────────────────────────────────────────
+    // ── Room entities (+ optional SystemComponent) ──────────────────────────
     for (const roomData of template.rooms) {
       const roomEntity = world.createEntity();
 
@@ -80,6 +88,21 @@ export class ShipFactory {
 
       world.addComponent(roomEntity, roomComp);
       world.addComponent(roomEntity, posComp);
+
+      // If this room hosts a system, attach a SystemComponent with its capacity.
+      if (roomData.system !== undefined) {
+        const systemData = template.systems.find((s) => s.type === roomData.system);
+        if (systemData !== undefined) {
+          const systemComp: SystemComponent = {
+            _type: 'System',
+            type: systemData.type,
+            maxCapacity: systemData.level,
+            currentPower: 0,
+            roomId: roomData.roomId,
+          };
+          world.addComponent(roomEntity, systemComp);
+        }
+      }
     }
 
     // ── Door entities ───────────────────────────────────────────────────────

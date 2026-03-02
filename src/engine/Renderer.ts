@@ -93,4 +93,8 @@ export class Renderer implements IRenderer {
       this.ctx.stroke();
     }
   }
+
+  getCanvasSize(): { width: number; height: number } {
+    return { width: this.ctx.canvas.width, height: this.ctx.canvas.height };
+  }
 }
