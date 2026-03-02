@@ -97,4 +97,32 @@ export class Renderer implements IRenderer {
   getCanvasSize(): { width: number; height: number } {
     return { width: this.ctx.canvas.width, height: this.ctx.canvas.height };
   }
+
+  drawTooltip(x: number, y: number, text: string): void {
+    const FONT   = '12px monospace';
+    const PAD_X  = 8;
+    const PAD_Y  = 5;
+    const LINE_H = 14;
+
+    this.ctx.font = FONT;
+    const textW = this.ctx.measureText(text).width;
+    const boxW  = textW + PAD_X * 2;
+    const boxH  = LINE_H + PAD_Y * 2;
+
+    // Position right of cursor; flip left if too close to the right edge.
+    let bx = x + 14;
+    if (bx + boxW > this.ctx.canvas.width - 4) bx = x - boxW - 8;
+    const by = Math.max(4, y - boxH - 4);
+
+    this.ctx.fillStyle = 'rgba(8,12,24,0.92)';
+    this.ctx.fillRect(bx, by, boxW, boxH);
+
+    this.ctx.strokeStyle = '#445566';
+    this.ctx.lineWidth   = 1;
+    this.ctx.strokeRect(bx, by, boxW, boxH);
+
+    this.ctx.fillStyle = '#cceeff';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(text, bx + PAD_X, by + PAD_Y + LINE_H - 1);
+  }
 }

@@ -1,5 +1,6 @@
 import { AssetLoader } from '../../utils/AssetLoader';
 import { TILE_SIZE } from '../constants';
+import { allocatePower } from '../logic/PowerMath';
 import type { IWorld } from '../../engine/IWorld';
 import type { ShipTemplate } from '../data/ShipTemplate';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
@@ -18,6 +19,12 @@ import type { PositionComponent } from '../components/PositionComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 
 /**
+ * System types in the order they should receive auto-power on spawn.
+ * OXYGEN first prevents immediate crew suffocation.
+ */
+const POWER_PRIORITY: string[] = ['OXYGEN', 'SHIELDS', 'PILOTING', 'ENGINES', 'WEAPONS'];
+
+/**
  * Translates a raw ShipTemplate (loaded from JSON) into ECS entities.
  *
  * Coordinate contract:
@@ -28,6 +35,9 @@ import type { WeaponComponent } from '../components/WeaponComponent';
  *
  * Every child entity (room, door, crew, weapon) receives an OwnerComponent pointing
  * at the ship root entity.  This allows multi-ship systems to scope queries correctly.
+ *
+ * After spawning all rooms, vital systems are auto-powered in priority order
+ * (OXYGEN → SHIELDS → PILOTING → ENGINES → WEAPONS) until the reactor pool is empty.
  */
 export class ShipFactory {
   /**
@@ -91,6 +101,8 @@ export class ShipFactory {
     });
 
     // ── Room entities ─────────────────────────────────────────────────────────
+    const spawnedSystems: SystemComponent[] = [];
+
     for (const roomData of template.rooms) {
       const roomEntity = world.createEntity();
 
@@ -127,7 +139,21 @@ export class ShipFactory {
             roomId: roomData.roomId,
           };
           world.addComponent(roomEntity, systemComp);
+          spawnedSystems.push(systemComp);
         }
+      }
+    }
+
+    // ── Auto-power vital systems ──────────────────────────────────────────────
+    // Sort by POWER_PRIORITY so OXYGEN is powered before SHIELDS, etc.
+    spawnedSystems.sort((a, b) => {
+      const pa = POWER_PRIORITY.indexOf(a.type);
+      const pb = POWER_PRIORITY.indexOf(b.type);
+      return (pa === -1 ? POWER_PRIORITY.length : pa) - (pb === -1 ? POWER_PRIORITY.length : pb);
+    });
+    for (const sys of spawnedSystems) {
+      while (reactorComp.currentPower > 0 && sys.currentPower < sys.maxCapacity) {
+        allocatePower(reactorComp, sys);
       }
     }
 
@@ -198,7 +224,7 @@ export class ShipFactory {
     // ── Weapon entities ────────────────────────────────────────────────────────
     const allWeapons = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
     if (allWeapons === undefined) {
-      // Weapons JSON not loaded yet (e.g. enemy ship has none) — skip silently.
+      // Weapons JSON not loaded yet — skip silently.
       return;
     }
 

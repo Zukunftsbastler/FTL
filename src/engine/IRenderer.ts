@@ -45,4 +45,10 @@ export interface IRenderer {
 
   /** Returns the current pixel dimensions of the rendering surface. Used for HUD layout. */
   getCanvasSize(): { width: number; height: number };
+
+  /**
+   * Draws a small floating tooltip box near (x, y).
+   * Automatically flips left if the box would overflow the right edge of the canvas.
+   */
+  drawTooltip(x: number, y: number, text: string): void;
 }

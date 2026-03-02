@@ -12,11 +12,14 @@ import { OxygenSystem } from './game/systems/OxygenSystem';
 import { CrewSystem } from './game/systems/CrewSystem';
 import { TargetingSystem } from './game/systems/TargetingSystem';
 import { CombatSystem } from './game/systems/CombatSystem';
+import { JumpSystem } from './game/systems/JumpSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
+import type { GameState } from './engine/GameState';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { WeaponTemplate } from './game/data/WeaponTemplate';
+import type { WeaponComponent } from './game/components/WeaponComponent';
 import type { PositionComponent } from './game/components/PositionComponent';
 import type { SpriteComponent } from './game/components/SpriteComponent';
 
@@ -86,6 +89,16 @@ async function init(): Promise<void> {
   const enemyShipX  = canvas.width  - 50 - ENEMY_GRID_W * TILE_SIZE;
   const enemyShipY  = Math.round((canvas.height - ENEMY_GRID_H  * TILE_SIZE) / 2);
 
+  // ── Star map nodes (fractional canvas positions, computed once) ─────────────
+  const STAR_RADIUS = 18;
+  const stars = [
+    { x: Math.round(canvas.width * 0.20), y: Math.round(canvas.height * 0.30), name: 'Vega'   },
+    { x: Math.round(canvas.width * 0.50), y: Math.round(canvas.height * 0.50), name: 'Altair' },
+    { x: Math.round(canvas.width * 0.75), y: Math.round(canvas.height * 0.25), name: 'Deneb'  },
+    { x: Math.round(canvas.width * 0.35), y: Math.round(canvas.height * 0.65), name: 'Rigel'  },
+    { x: Math.round(canvas.width * 0.65), y: Math.round(canvas.height * 0.70), name: 'Sirius' },
+  ];
+
   // ── Entity setup ────────────────────────────────────────────────────────────
 
   // Cursor entity (hovers above all game content).
@@ -99,11 +112,8 @@ async function init(): Promise<void> {
     height: SPRITE_SIZE,
   } as SpriteComponent);
 
-  // Player ship (left side).
+  // Player ship only — enemy is spawned on each combat entry.
   ShipFactory.spawnShip(world, 'kestrel_a', playerShipX, playerShipY, 'PLAYER');
-
-  // Enemy ship (right side).
-  ShipFactory.spawnShip(world, 'rebel_a', enemyShipX, enemyShipY, 'ENEMY');
 
   // ── Pathfinder (player ship only) ────────────────────────────────────────────
   const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
@@ -112,11 +122,29 @@ async function init(): Promise<void> {
   if (template === undefined) throw new Error('main: kestrel_a template not found.');
   const pathfinder = new Pathfinder(template.rooms, template.doors);
 
+  // ── State machine ────────────────────────────────────────────────────────────
+  let currentState: GameState = 'STAR_MAP';
+
+  function enterCombat(): void {
+    ShipFactory.spawnShip(world, 'rebel_a', enemyShipX, enemyShipY, 'ENEMY');
+    // Clear any stale weapon targets left over from a previous combat session.
+    for (const entity of world.query(['Weapon'])) {
+      const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
+      if (weapon !== undefined) weapon.targetRoomEntity = undefined;
+    }
+    currentState = 'COMBAT';
+  }
+
+  function enterStarMap(): void {
+    currentState = 'STAR_MAP';
+  }
+
   // ── Systems ─────────────────────────────────────────────────────────────────
 
   const targetingSystem = new TargetingSystem(input, renderer);
   const combatSystem    = new CombatSystem();
-  const renderSystem    = new RenderSystem(renderer, targetingSystem);
+  const jumpSystem      = new JumpSystem(input, renderer, enterStarMap);
+  const renderSystem    = new RenderSystem(renderer, targetingSystem, input);
   const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
   const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
   const powerSystem     = new PowerSystem(input);
@@ -132,31 +160,60 @@ async function init(): Promise<void> {
     Time.tick(timestamp, lastTimestamp);
     lastTimestamp = timestamp;
 
-    // 1. Clear canvas.
-    renderer.clear('#000000');
+    if (currentState === 'STAR_MAP') {
+      // ── Star Map ─────────────────────────────────────────────────────────────
+      const { width } = renderer.getCanvasSize();
+      renderer.clear('#00000f');
 
-    // 2. Sync cursor sprite to mouse position (centred on hotspot).
-    const mouse     = input.getMousePosition();
-    const entityPos = world.getComponent<PositionComponent>(cursorEntity, 'Position');
-    if (entityPos !== undefined) {
-      entityPos.x = mouse.x - SPRITE_SIZE / 2;
-      entityPos.y = mouse.y - SPRITE_SIZE / 2;
+      renderer.drawText('STAR MAP', width / 2, 55, '28px monospace', '#aaccff', 'center');
+      renderer.drawText('Click a star to engage', width / 2, 85, '14px monospace', '#556677', 'center');
+
+      for (const star of stars) {
+        renderer.drawCircle(star.x, star.y, STAR_RADIUS,     '#aaddff', true);
+        renderer.drawCircle(star.x, star.y, STAR_RADIUS + 5, '#223355', false, 1);
+        renderer.drawText(star.name, star.x, star.y + STAR_RADIUS + 18, '13px monospace', '#88aacc', 'center');
+      }
+
+      if (input.isMouseJustPressed(0)) {
+        const mouse = input.getMousePosition();
+        for (const star of stars) {
+          const dx = mouse.x - star.x;
+          const dy = mouse.y - star.y;
+          if (dx * dx + dy * dy <= STAR_RADIUS * STAR_RADIUS) {
+            enterCombat();
+            break;
+          }
+        }
+      }
+
+    } else {
+      // ── Combat ───────────────────────────────────────────────────────────────
+      renderer.clear('#000000');
+
+      // Sync cursor sprite to mouse position (centred on hotspot).
+      const mouse     = input.getMousePosition();
+      const entityPos = world.getComponent<PositionComponent>(cursorEntity, 'Position');
+      if (entityPos !== undefined) {
+        entityPos.x = mouse.x - SPRITE_SIZE / 2;
+        entityPos.y = mouse.y - SPRITE_SIZE / 2;
+      }
+
+      // Logic systems.
+      doorSystem.update(world);       // toggle doors (left-click)
+      targetingSystem.update(world);  // weapon selection + targeting (left-click)
+      selectionSystem.update(world);  // crew selection (left-click)
+      movementSystem.update(world);   // crew movement (right-click + A*)
+      powerSystem.update(world);      // power routing (hover + arrow keys)
+      combatSystem.update(world);     // weapon charging + firing
+      oxygenSystem.update(world);     // O2 regen / decay / equalization
+      crewSystem.update(world);       // suffocation damage
+      jumpSystem.update(world);       // FTL button: draw + detect victory jump
+
+      // Render all layers.
+      renderSystem.update(world);
     }
 
-    // 3. Logic systems.
-    doorSystem.update(world);       // toggle doors (left-click)
-    targetingSystem.update(world);  // weapon selection + targeting (left-click)
-    selectionSystem.update(world);  // crew selection (left-click)
-    movementSystem.update(world);   // crew movement (right-click + A*)
-    powerSystem.update(world);      // power routing (hover + arrow keys)
-    combatSystem.update(world);     // weapon charging + firing
-    oxygenSystem.update(world);     // O2 regen / decay / equalization
-    crewSystem.update(world);       // suffocation damage
-
-    // 4. Render all layers.
-    renderSystem.update(world);
-
-    // 5. Flush "just pressed" — last, so every system above can read this frame's events.
+    // Flush "just pressed" — last, so every system above can read this frame's events.
     input.update();
 
     requestAnimationFrame(gameLoop);

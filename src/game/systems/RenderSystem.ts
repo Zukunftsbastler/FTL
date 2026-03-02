@@ -7,11 +7,13 @@ import {
   WEAPON_BOX_MARGIN,
   WEAPON_BOX_BOTTOM,
 } from './TargetingSystem';
+import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
+import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
@@ -83,17 +85,19 @@ const ENEMY_HULL_COLOR = '#ff6644';
  *   Layer 4 — Targeting crosshairs (red crosshair over targeted enemy rooms)
  *   Layer 5 — Sprites (cursor — topmost)
  *   HUD     — Reactor power (above weapon strip, left), Enemy hull (above weapon strip, right),
- *             Weapon UI boxes (bottom strip)
+ *             Weapon UI boxes (bottom strip), Tooltips (floating near cursor)
  *
  * Read-only: never mutates component data.
  */
 export class RenderSystem {
   private readonly renderer: IRenderer;
   private readonly targetingSystem: TargetingSystem;
+  private readonly input: IInput;
 
-  constructor(renderer: IRenderer, targetingSystem: TargetingSystem) {
+  constructor(renderer: IRenderer, targetingSystem: TargetingSystem, input: IInput) {
     this.renderer        = renderer;
     this.targetingSystem = targetingSystem;
+    this.input           = input;
   }
 
   update(world: IWorld): void {
@@ -105,6 +109,7 @@ export class RenderSystem {
     this.drawReactorHUD(world);
     this.drawEnemyHullHUD(world);
     this.drawWeaponUI(world);
+    this.drawTooltips(world);
   }
 
   // ── Layer 1: rooms ──────────────────────────────────────────────────────────
@@ -272,7 +277,7 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: player reactor (above weapon strip, left) ───────────────────────
+  // ── HUD: player reactor (above weapon strip, left) ────────────────────────
 
   private drawReactorHUD(world: IWorld): void {
     const entities = world.query(['Ship', 'Faction', 'Reactor']);
@@ -290,7 +295,7 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: enemy hull (above weapon strip, right) ──────────────────────────
+  // ── HUD: enemy hull (above weapon strip, right) ───────────────────────────
 
   private drawEnemyHullHUD(world: IWorld): void {
     const entities = world.query(['Ship', 'Faction']);
@@ -308,7 +313,7 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: weapon UI boxes (bottom strip) ──────────────────────────────────
+  // ── HUD: weapon UI boxes (bottom strip) ───────────────────────────────────
 
   private drawWeaponUI(world: IWorld): void {
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
@@ -350,6 +355,57 @@ export class RenderSystem {
         }
       }
     }
+  }
+
+  // ── HUD: contextual tooltips (topmost — always above other elements) ───────
+
+  private drawTooltips(world: IWorld): void {
+    const mouse = this.input.getMousePosition();
+    const { height } = this.renderer.getCanvasSize();
+
+    // 1. Check weapon UI boxes (bottom strip) first — more specific.
+    const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
+    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    for (let i = 0; i < playerWeapons.length; i++) {
+      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      if (
+        mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
+        mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
+      ) {
+        this.renderer.drawTooltip(mouse.x, mouse.y, 'Click to select, then click enemy room to target');
+        return;
+      }
+    }
+
+    // 2. Check player system rooms.
+    const playerShipEntity = this.findPlayerShipEntity(world);
+    if (playerShipEntity === null) return;
+
+    const entities = world.query(['Room', 'System', 'Position', 'Owner']);
+    for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== playerShipEntity) continue;
+
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos === undefined || room === undefined) continue;
+
+      const right  = pos.x + room.width  * TILE_SIZE;
+      const bottom = pos.y + room.height * TILE_SIZE;
+      if (mouse.x >= pos.x && mouse.x < right && mouse.y >= pos.y && mouse.y < bottom) {
+        this.renderer.drawTooltip(mouse.x, mouse.y, 'UP / DOWN to route power');
+        return;
+      }
+    }
+  }
+
+  private findPlayerShipEntity(world: IWorld): number | null {
+    const entities = world.query(['Ship', 'Faction']);
+    for (const entity of entities) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id === 'PLAYER') return entity;
+    }
+    return null;
   }
 
   /** Looks up the display name for a weapon template; falls back to the raw templateId. */
