@@ -9,7 +9,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.1,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "burst_laser_2",
@@ -21,7 +23,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.1,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "burst_laser_3",
@@ -33,7 +37,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.1,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "heavy_laser_1",
@@ -45,7 +51,9 @@
     "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 30 },
     "fireChance": 0.3,
     "breachChance": 0.3,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "flak_1",
@@ -57,7 +65,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "leto_missile",
@@ -69,7 +79,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.1,
     "breachChance": 0.1,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "artemis_missile",
@@ -81,7 +93,9 @@
     "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 30 },
     "fireChance": 0.1,
     "breachChance": 0.2,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "hermes_missile",
@@ -93,7 +107,9 @@
     "damage": { "hull": 3, "system": 3, "ion": 0, "crew": 45 },
     "fireChance": 0.3,
     "breachChance": 0.3,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "pegasus_missile",
@@ -105,7 +121,9 @@
     "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 30 },
     "fireChance": 0.1,
     "breachChance": 0.2,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "breach_missile",
@@ -117,7 +135,9 @@
     "damage": { "hull": 4, "system": 4, "ion": 0, "crew": 60 },
     "fireChance": 0.1,
     "breachChance": 1.0,
-    "missileCost": 1
+    "missileCost": 1,
+    "accuracy": 0.95,
+    "neverMisses": false
   },
   {
     "id": "mini_beam",
@@ -129,7 +149,9 @@
     "damage": { "hull": 1, "system": 1, "ion": 0, "crew": 15 },
     "fireChance": 0.1,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 1.0,
+    "neverMisses": true
   },
   {
     "id": "halberd_beam",
@@ -141,7 +163,9 @@
     "damage": { "hull": 2, "system": 2, "ion": 0, "crew": 30 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 1.0,
+    "neverMisses": true
   },
   {
     "id": "glaive_beam",
@@ -153,7 +177,9 @@
     "damage": { "hull": 3, "system": 3, "ion": 0, "crew": 45 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 1.0,
+    "neverMisses": true
   },
   {
     "id": "ion_blast_1",
@@ -165,7 +191,9 @@
     "damage": { "hull": 0, "system": 0, "ion": 1, "crew": 0 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.85,
+    "neverMisses": false
   },
   {
     "id": "ion_blast_2",
@@ -177,6 +205,8 @@
     "damage": { "hull": 0, "system": 0, "ion": 1, "crew": 0 },
     "fireChance": 0.0,
     "breachChance": 0.0,
-    "missileCost": 0
+    "missileCost": 0,
+    "accuracy": 0.85,
+    "neverMisses": false
   }
 ]

@@ -7,4 +7,6 @@ export type SystemType =
   | 'MEDBAY'
   | 'PILOTING'
   | 'SENSORS'
-  | 'DOORS';
+  | 'DOORS'
+  | 'CLOAKING'
+  | 'TELEPORTER';

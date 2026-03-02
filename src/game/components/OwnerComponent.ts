@@ -7,6 +7,6 @@ import type { Entity } from '../../engine/Entity';
  */
 export interface OwnerComponent extends Component {
   readonly _type: 'Owner';
-  /** The ship root entity this entity belongs to. */
-  readonly shipEntity: Entity;
+  /** The ship root entity this entity belongs to. Mutable to support crew boarding/teleportation. */
+  shipEntity: Entity;
 }

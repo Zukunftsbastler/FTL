@@ -16,6 +16,9 @@ import { ProjectileSystem } from './game/systems/ProjectileSystem';
 import { ManningSystem } from './game/systems/ManningSystem';
 import { RepairSystem } from './game/systems/RepairSystem';
 import { ShieldSystem } from './game/systems/ShieldSystem';
+import { EvasionSystem } from './game/systems/EvasionSystem';
+import { CloakingSystem } from './game/systems/CloakingSystem';
+import { TeleportSystem } from './game/systems/TeleportSystem';
 import { EnemyAISystem } from './game/systems/EnemyAISystem';
 import { VictorySystem } from './game/systems/VictorySystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
@@ -290,7 +293,13 @@ async function init(): Promise<void> {
   const manningSystem   = new ManningSystem();
   const repairSystem    = new RepairSystem();
   const shieldSystem    = new ShieldSystem();
+  const evasionSystem   = new EvasionSystem();
+  const cloakingSystem  = new CloakingSystem(input);
+  const teleportSystem  = new TeleportSystem(input);
   const enemyAISystem   = new EnemyAISystem();
+
+  // Inject CombatSystem into RenderSystem so beam displays can be drawn.
+  renderSystem.setCombatSystem(combatSystem);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -367,11 +376,14 @@ async function init(): Promise<void> {
       targetingSystem.update(world);  // weapon selection + targeting (left-click)
       selectionSystem.update(world);  // crew selection (left-click)
       movementSystem.update(world);   // crew movement (right-click + A*)
+      teleportSystem.update(world);   // crew teleportation 'T' key
       powerSystem.update(world);      // power routing (hover + arrow keys)
-      manningSystem.update(world);    // manning buffs (charge rate, evasion)
+      evasionSystem.update(world);    // reset evasion + ENGINES power baseline
+      manningSystem.update(world);    // manning buffs (charge rate, crew evasion bonus)
+      cloakingSystem.update(world);   // cloak activation + evasion bonus + freeze enemy charges
       shieldSystem.update(world);     // shield recharge + max-layer updates
       enemyAISystem.update(world);    // assign targets to charged enemy weapons
-      combatSystem.update(world);     // weapon charging + projectile spawning
+      combatSystem.update(world);     // weapon charging + projectile spawning + beam fire
       projectileSystem.update(world); // advance projectiles, shield check, damage
       oxygenSystem.update(world);     // O2 regen / decay / equalization
       crewSystem.update(world);       // suffocation damage

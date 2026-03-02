@@ -109,7 +109,7 @@ export class ProjectileSystem {
           this.missMap.delete(entity);
         } else if (proj.targetRoomEntity !== undefined) {
           // Check shields before applying damage.
-          const shielded = this.checkAndAbsorbShield(world, proj.targetRoomEntity);
+          const shielded = this.checkAndAbsorbShield(world, proj.targetRoomEntity, proj);
           if (shielded) {
             // Shield absorbed the hit — no hull/system damage.
           } else {
@@ -173,9 +173,21 @@ export class ProjectileSystem {
    * If the ship owning `targetRoomEntity` has an active shield layer, deplete it
    * and record the ship for the visual flash.
    *
+   * Weapon-type rules:
+   *   MISSILE — bypasses shields entirely (returns false immediately).
+   *   ION     — absorbed by shields AND applies ion damage to the SHIELDS system.
+   *   LASER   — absorbed normally (hull/system damage negated, one layer depleted).
+   *
    * @returns true if a shield absorbed the hit (no further damage should be applied).
    */
-  private checkAndAbsorbShield(world: IWorld, targetRoomEntity: number): boolean {
+  private checkAndAbsorbShield(
+    world: IWorld,
+    targetRoomEntity: number,
+    proj: ProjectileComponent,
+  ): boolean {
+    // Missiles pierce shields.
+    if (proj.weaponType === 'MISSILE') return false;
+
     const ownerComp = world.getComponent<OwnerComponent>(targetRoomEntity, 'Owner');
     if (ownerComp === undefined) return false;
 
@@ -188,7 +200,30 @@ export class ProjectileSystem {
     // Deplete one layer and reset fractional progress.
     shield.currentLayers = activeLayers - 1;
     this.shieldHitShips.add(ownerComp.shipEntity);
+
+    // ION: additionally damage the SHIELDS system (power disruption).
+    if (proj.ionDamage > 0) {
+      this.applyIonToShieldsSystem(world, ownerComp.shipEntity, proj.ionDamage);
+    }
+
     return true;
+  }
+
+  /**
+   * Adds ion damage to the SHIELDS system of the given ship.
+   * Ion damage increments `damageAmount` without reducing `maxCapacity`,
+   * temporarily disrupting shield recharge until repaired.
+   */
+  private applyIonToShieldsSystem(world: IWorld, shipEntity: number, ionDamage: number): void {
+    for (const roomEntity of world.query(['System', 'Owner'])) {
+      const owner = world.getComponent<OwnerComponent>(roomEntity, 'Owner');
+      if (owner?.shipEntity !== shipEntity) continue;
+      const sys = world.getComponent<SystemComponent>(roomEntity, 'System');
+      if (sys?.type === 'SHIELDS') {
+        sys.damageAmount += ionDamage;
+        return;
+      }
+    }
   }
 
   private getTargetShipEvasion(world: IWorld, targetRoomEntity: number): number {
@@ -228,7 +263,9 @@ export class ProjectileSystem {
     if (proj.targetRoomEntity === undefined) return;
 
     const system = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
-    if (system !== undefined && system.maxCapacity > 0) {
+
+    // Physical damage: reduce system capacity and hull.
+    if (proj.damage > 0 && system !== undefined && system.maxCapacity > 0) {
       system.maxCapacity  -= 1;
       system.damageAmount += 1;
       if (system.currentPower > system.maxCapacity) {
@@ -236,11 +273,19 @@ export class ProjectileSystem {
       }
     }
 
-    const ownerComp = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
-    if (ownerComp === undefined) return;
-    const ship = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
-    if (ship !== undefined && ship.currentHull > 0) {
-      ship.currentHull -= 1;
+    // Ion damage: disrupts the targeted system without reducing maxCapacity.
+    if (proj.ionDamage > 0 && system !== undefined) {
+      system.damageAmount += proj.ionDamage;
+    }
+
+    if (proj.damage > 0) {
+      const ownerComp = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
+      if (ownerComp === undefined) return;
+      const ship = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
+      if (ship !== undefined && ship.currentHull > 0) {
+        ship.currentHull -= proj.damage;
+        if (ship.currentHull < 0) ship.currentHull = 0;
+      }
     }
   }
 

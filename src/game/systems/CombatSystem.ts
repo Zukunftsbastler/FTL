@@ -4,14 +4,31 @@ import { TILE_SIZE } from '../constants';
 import { calculateWeaponCharge } from '../logic/WeaponMath';
 import type { Entity } from '../../engine/Entity';
 import type { IWorld } from '../../engine/IWorld';
+import type { CloakComponent } from '../components/CloakComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ProjectileComponent } from '../components/ProjectileComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { ShieldComponent } from '../components/ShieldComponent';
+import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
+
+/**
+ * A beam weapon line drawn for a brief duration after firing.
+ * RenderSystem reads these each frame to draw the beam visual.
+ */
+export interface BeamDisplay {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  /** Seconds remaining before the beam visual is removed. */
+  timer: number;
+}
 
 /** Cap dt to prevent a single huge frame from firing weapons that weren't actually charged. */
 const MAX_DT = 0.1;
@@ -33,8 +50,20 @@ const PROJECTILE_SPEED = 600;
  *      can pick a new room for the next shot.
  */
 export class CombatSystem {
+  /** Beam visuals rendered for a short duration after a beam fires. */
+  private readonly beamDisplays: BeamDisplay[] = [];
+
+  /** Returns the current beam display list (read-only view for RenderSystem). */
+  getBeamDisplays(): ReadonlyArray<BeamDisplay> { return this.beamDisplays; }
+
   update(world: IWorld): void {
     const dt = Math.min(Time.deltaTime, MAX_DT);
+
+    // Tick down and remove expired beam displays.
+    for (let i = this.beamDisplays.length - 1; i >= 0; i--) {
+      this.beamDisplays[i].timer -= dt;
+      if (this.beamDisplays[i].timer <= 0) this.beamDisplays.splice(i, 1);
+    }
 
     for (const faction of (['PLAYER', 'ENEMY'] as const)) {
       const shipEntity = this.findShipEntity(world, faction);
@@ -96,7 +125,12 @@ export class CombatSystem {
       );
 
       if (weapon.charge >= weapon.maxCharge && weapon.targetRoomEntity !== undefined) {
-        this.fireWeapon(world, weapon, shipEntity, isEnemy);
+        const tpl = this.getWeaponTemplate(weapon.templateId);
+        if (tpl?.type === 'BEAM') {
+          this.fireBeam(world, weapon, shipEntity, isEnemy, tpl);
+        } else {
+          this.fireWeapon(world, weapon, shipEntity, isEnemy, tpl);
+        }
       }
     }
   }
@@ -107,15 +141,28 @@ export class CombatSystem {
    * Resets charge and spawns a traveling Projectile entity.
    * For enemy weapons, clears targetRoomEntity after firing so EnemyAISystem
    * can assign a new target for the next shot.
+   *
+   * If the player ship is cloaked when firing, the cloak is immediately terminated.
    */
   private fireWeapon(
     world: IWorld,
     weapon: WeaponComponent,
     shipEntity: Entity,
     isEnemy: boolean,
+    tpl: WeaponTemplate | undefined,
   ): void {
     weapon.charge = 0;
     if (weapon.targetRoomEntity === undefined) return;
+
+    // Firing while cloaked terminates the cloak.
+    if (!isEnemy) {
+      const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
+      if (cloak?.isActive === true) {
+        cloak.isActive      = false;
+        cloak.durationTimer = 0;
+        cloak.cooldownTimer = cloak.maxCooldown;
+      }
+    }
 
     // Origin: centre of the ship's WEAPONS room.
     const { ox, oy } = this.getOrigin(world, shipEntity);
@@ -127,23 +174,22 @@ export class CombatSystem {
     const tx = tPos.x + (tRoom.width  * TILE_SIZE) / 2;
     const ty = tPos.y + (tRoom.height * TILE_SIZE) / 2;
 
-    // Look up weapon template for accuracy / neverMisses.
-    const tpl = this.getWeaponTemplate(weapon.templateId);
-
     // Spawn projectile entity.
     const projEntity = world.createEntity();
     const projComp: ProjectileComponent = {
-      _type: 'Projectile',
-      originX: ox,
-      originY: oy,
-      targetX: tx,
-      targetY: ty,
-      speed: PROJECTILE_SPEED,
-      damage: 1,
+      _type:            'Projectile',
+      originX:          ox,
+      originY:          oy,
+      targetX:          tx,
+      targetY:          ty,
+      speed:            PROJECTILE_SPEED,
+      damage:           tpl?.damage.hull ?? 1,
       targetRoomEntity: weapon.targetRoomEntity,
-      isEnemyOrigin: isEnemy,
-      accuracy: tpl?.accuracy ?? 1.0,
-      neverMisses: tpl?.neverMisses ?? false,
+      isEnemyOrigin:    isEnemy,
+      accuracy:         tpl?.accuracy    ?? 1.0,
+      neverMisses:      tpl?.neverMisses ?? false,
+      weaponType:       tpl?.type        ?? 'LASER',
+      ionDamage:        tpl?.damage.ion  ?? 0,
     };
     const posComp: PositionComponent = { _type: 'Position', x: ox, y: oy };
 
@@ -154,6 +200,89 @@ export class CombatSystem {
     if (isEnemy) {
       weapon.targetRoomEntity = undefined;
     }
+  }
+
+  /**
+   * Fires a beam weapon: instantly damages all enemy rooms whose centre-Y
+   * falls within the target room's vertical span.
+   *
+   * Shield mitigation: each active shield layer reduces the beam's hull damage
+   * by 1 (down to 0).  Shield layers are NOT consumed by beams.
+   */
+  private fireBeam(
+    world: IWorld,
+    weapon: WeaponComponent,
+    shipEntity: Entity,
+    isEnemy: boolean,
+    tpl: WeaponTemplate,
+  ): void {
+    weapon.charge = 0;
+    if (weapon.targetRoomEntity === undefined) return;
+
+    // Firing while cloaked terminates the cloak.
+    if (!isEnemy) {
+      const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
+      if (cloak?.isActive === true) {
+        cloak.isActive      = false;
+        cloak.durationTimer = 0;
+        cloak.cooldownTimer = cloak.maxCooldown;
+      }
+    }
+
+    // Find target ship entity.
+    const targetOwner = world.getComponent<OwnerComponent>(weapon.targetRoomEntity, 'Owner');
+    if (targetOwner === undefined) return;
+    const targetShipEntity = targetOwner.shipEntity;
+
+    // Get active shield layers on the target (beams reduce damage per layer, do NOT consume layers).
+    const shield = world.getComponent<ShieldComponent>(targetShipEntity, 'Shield');
+    const activeLayers = shield !== undefined ? Math.floor(shield.currentLayers) : 0;
+    const effectiveDamage = Math.max(0, tpl.damage.hull - activeLayers);
+
+    // Determine the beam's Y sweep from the target room centre.
+    const tPos  = world.getComponent<PositionComponent>(weapon.targetRoomEntity, 'Position');
+    const tRoom = world.getComponent<RoomComponent>(weapon.targetRoomEntity, 'Room');
+    if (tPos === undefined || tRoom === undefined) return;
+    const beamY = tPos.y + (tRoom.height * TILE_SIZE) / 2;
+
+    // Instant multi-room damage: hit every target-ship room whose vertical span contains beamY.
+    if (effectiveDamage > 0) {
+      const targetShip = world.getComponent<ShipComponent>(targetShipEntity, 'Ship');
+      for (const roomEntity of world.query(['Room', 'Position', 'Owner'])) {
+        const owner = world.getComponent<OwnerComponent>(roomEntity, 'Owner');
+        if (owner?.shipEntity !== targetShipEntity) continue;
+
+        const pos  = world.getComponent<PositionComponent>(roomEntity, 'Position');
+        const room = world.getComponent<RoomComponent>(roomEntity, 'Room');
+        if (pos === undefined || room === undefined) continue;
+
+        const roomTop    = pos.y;
+        const roomBottom = pos.y + room.height * TILE_SIZE;
+        if (beamY < roomTop || beamY > roomBottom) continue;
+
+        // Apply system damage.
+        const sys = world.getComponent<SystemComponent>(roomEntity, 'System');
+        if (sys !== undefined && sys.maxCapacity > 0) {
+          sys.maxCapacity  = Math.max(0, sys.maxCapacity  - effectiveDamage);
+          sys.damageAmount = sys.damageAmount + effectiveDamage;
+          if (sys.currentPower > sys.maxCapacity) sys.currentPower = sys.maxCapacity;
+        }
+
+        // Apply hull damage (once per room hit, not per shield).
+        if (targetShip !== undefined && targetShip.currentHull > 0) {
+          targetShip.currentHull = Math.max(0, targetShip.currentHull - effectiveDamage);
+        }
+      }
+    }
+
+    // Build beam display line for RenderSystem.
+    const { ox, oy } = this.getOrigin(world, shipEntity);
+    const beamColor  = isEnemy ? '#ff6600' : '#00ff88';
+    const endX = tPos.x + (tRoom.width * TILE_SIZE) / 2;
+    this.beamDisplays.push({ x1: ox, y1: oy, x2: endX, y2: beamY, color: beamColor, timer: 0.45 });
+
+    // Clear target for enemy so AI picks a fresh room next shot.
+    if (isEnemy) weapon.targetRoomEntity = undefined;
   }
 
   /**

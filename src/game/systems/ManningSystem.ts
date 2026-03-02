@@ -47,8 +47,9 @@ export class ManningSystem {
     const playerShipEntity = this.findPlayerShipEntity(world);
     if (playerShipEntity === null) return;
 
+    // Note: evasion is reset to 0 by EvasionSystem each frame (runs before ManningSystem).
+    // ManningSystem only adds crew-skill bonuses on top of the EvasionSystem baseline.
     const ship = world.getComponent<ShipComponent>(playerShipEntity, 'Ship');
-    if (ship !== undefined) ship.evasion = 0;
 
     // ── 2. Build room-bounds snapshot for the player ship ─────────────────────
     const rooms = this.collectPlayerRooms(world, playerShipEntity);

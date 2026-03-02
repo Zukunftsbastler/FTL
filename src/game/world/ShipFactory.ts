@@ -18,6 +18,7 @@ import type { SelectableComponent } from '../components/SelectableComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
+import type { CloakComponent } from '../components/CloakComponent';
 import type { ShieldComponent } from '../components/ShieldComponent';
 
 /**
@@ -175,6 +176,20 @@ export class ShipFactory {
         maxLayers: 0,
       };
       world.addComponent(shipEntity, shieldComp);
+    }
+
+    // ── Cloak component (attached to ship root if CLOAKING system exists) ─────
+    const hasCloaking = spawnedSystems.some((s) => s.type === 'CLOAKING');
+    if (hasCloaking) {
+      const cloakComp: CloakComponent = {
+        _type:        'Cloak',
+        isActive:     false,
+        durationTimer: 0,
+        cooldownTimer: 0,
+        maxDuration:  5.0,   // 5-second active duration
+        maxCooldown:  10.0,  // 10-second cooldown between uses
+      };
+      world.addComponent(shipEntity, cloakComp);
     }
 
     // ── Door entities ──────────────────────────────────────────────────────────

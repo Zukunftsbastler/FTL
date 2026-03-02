@@ -34,4 +34,15 @@ export interface ProjectileComponent extends Component {
    * Set from WeaponTemplate.neverMisses (Beam weapons).
    */
   readonly neverMisses: boolean;
+  /**
+   * Weapon type that spawned this projectile ('LASER', 'MISSILE', 'ION').
+   * Used by ProjectileSystem to decide whether to bypass shields (MISSILE)
+   * and whether to apply ion damage on impact (ION).
+   */
+  readonly weaponType: string;
+  /**
+   * Ion damage applied to the target ship's SHIELDS system on impact.
+   * Non-zero only for ION weapon projectiles.
+   */
+  readonly ionDamage: number;
 }

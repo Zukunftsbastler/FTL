@@ -10,9 +10,11 @@ import {
   WEAPON_BOX_BOTTOM,
 } from './TargetingSystem';
 import { ProjectileSystem } from './ProjectileSystem';
+import { CombatSystem } from './CombatSystem';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
+import type { CloakComponent } from '../components/CloakComponent';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
@@ -122,6 +124,11 @@ const DASH_LINE_H = 20;    // spacing between dashboard lines
 const DIVIDER_COLOR = '#1c2e44';
 const DIVIDER_W     = 2;
 
+// ── Cloak constants ───────────────────────────────────────────────────────────
+const CLOAK_OVERLAY  = 'rgba(80,180,255,0.28)';
+/** Beam weapon display color constants (player / enemy). */
+const BEAM_LW        = 3;
+
 // ── Shield constants ──────────────────────────────────────────────────────────
 /** How many pixels of padding beyond the ship bounding box the shield ellipse uses. */
 const SHIELD_PAD_X  = 22;
@@ -152,6 +159,8 @@ export class RenderSystem {
   private readonly targetingSystem: TargetingSystem;
   private readonly input: IInput;
   private readonly projectileSystem: ProjectileSystem;
+  /** Injected after construction so there is no circular dependency at init time. */
+  private combatSystem: CombatSystem | null = null;
 
   /** Maps ship entity → remaining flash timer (seconds) for shield-hit flashes. */
   private readonly shieldFlashTimers = new Map<number, number>();
@@ -168,6 +177,11 @@ export class RenderSystem {
     this.projectileSystem = projectileSystem;
   }
 
+  /** Provides access to CombatSystem beam displays. Call once after construction. */
+  setCombatSystem(cs: CombatSystem): void {
+    this.combatSystem = cs;
+  }
+
   update(world: IWorld): void {
     this.updateShieldFlashTimers(world);
     this.drawCenterDivider();
@@ -175,12 +189,14 @@ export class RenderSystem {
     this.drawDoors(world);
     this.drawCrew(world);
     this.drawProjectiles(world);
+    this.drawBeams();
     this.drawMissIndicators();
     this.drawTargetingCrosshairs(world);
     this.drawShields(world);
     this.drawSprites(world);
     this.drawPlayerDashboard(world);
     this.drawEnemyDashboard(world);
+    this.drawCloakHUD(world);
     this.drawCrewSkillSheet(world);
     this.drawWeaponUI(world);
     this.drawTooltips(world);
@@ -269,6 +285,14 @@ export class RenderSystem {
 
   private drawRooms(world: IWorld): void {
     const flashSet = this.projectileSystem.getImpactedRooms();
+
+    // Pre-build a set of cloaked ship entities for O(1) lookup per room.
+    const cloakedShips = new Set<number>();
+    for (const shipEntity of world.query(['Cloak'])) {
+      const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
+      if (cloak?.isActive === true) cloakedShips.add(shipEntity);
+    }
+
     const entities = world.query(['Room', 'Position']);
     for (const entity of entities) {
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
@@ -325,6 +349,12 @@ export class RenderSystem {
             );
           }
         }
+      }
+
+      // Cloak overlay — blue tint on all rooms of cloaked ships.
+      const roomOwner = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (roomOwner !== undefined && cloakedShips.has(roomOwner.shipEntity)) {
+        this.renderer.drawRect(pos.x, pos.y, pw, ph, CLOAK_OVERLAY, true);
       }
     }
   }
@@ -405,6 +435,15 @@ export class RenderSystem {
     }
   }
 
+  // ── Beam displays ────────────────────────────────────────────────────────────
+
+  private drawBeams(): void {
+    if (this.combatSystem === null) return;
+    for (const beam of this.combatSystem.getBeamDisplays()) {
+      this.renderer.drawLine(beam.x1, beam.y1, beam.x2, beam.y2, beam.color, BEAM_LW);
+    }
+  }
+
   // ── Miss indicators ─────────────────────────────────────────────────────────
 
   private drawMissIndicators(): void {
@@ -412,6 +451,33 @@ export class RenderSystem {
       this.renderer.drawText('MISS', mp.x, mp.y - 14, '13px monospace', '#ff4444', 'center');
       // Small cross-out lines for visual flair.
       this.renderer.drawLine(mp.x - 16, mp.y - 4, mp.x + 16, mp.y + 4, '#ff4444', 1);
+    }
+  }
+
+  // ── Cloak HUD (status line below player dashboard) ───────────────────────────
+
+  private drawCloakHUD(world: IWorld): void {
+    for (const shipEntity of world.query(['Ship', 'Faction', 'Cloak'])) {
+      const faction = world.getComponent<FactionComponent>(shipEntity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
+      if (cloak === undefined) continue;
+
+      let label: string;
+      let color: string;
+      if (cloak.isActive) {
+        label = `CLOAK: ACTIVE (${cloak.durationTimer.toFixed(1)}s)`;
+        color = '#44ddff';
+      } else if (cloak.cooldownTimer > 0) {
+        label = `CLOAK: cooldown (${cloak.cooldownTimer.toFixed(1)}s)`;
+        color = '#556677';
+      } else {
+        label = 'CLOAK: ready  [C]';
+        color = '#88bbcc';
+      }
+
+      this.renderer.drawText(label, DASH_X, DASH_Y0 + DASH_LINE_H * 5, DASH_FONT, color, 'left');
+      return;
     }
   }
 
