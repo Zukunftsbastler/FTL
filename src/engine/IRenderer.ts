@@ -1,0 +1,35 @@
+/** Rendering contract. Must only be called from Render Systems or UI Systems — never from gameplay logic. */
+export interface IRenderer {
+  /** Fills the entire canvas with the given hex colour. Called once at the start of each frame. */
+  clear(hexColor: string): void;
+
+  /** Draws a filled or stroked rectangle. Useful for UI, health bars, and debug overlays. */
+  drawRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string,
+    filled?: boolean,
+  ): void;
+
+  /** Draws a pre-loaded sprite at the given position. Rotation is in radians. */
+  drawSprite(
+    assetId: string,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number,
+    rotation?: number,
+  ): void;
+
+  /** Draws text onto the canvas. */
+  drawText(
+    text: string,
+    x: number,
+    y: number,
+    font: string,
+    color: string,
+    align?: 'left' | 'center' | 'right',
+  ): void;
+}
