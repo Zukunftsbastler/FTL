@@ -158,6 +158,47 @@ export class Renderer implements IRenderer {
     }
   }
 
+  drawTextWrapped(
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number,
+    font: string,
+    color: string,
+    align: 'left' | 'center' | 'right' = 'left',
+  ): number {
+    this.ctx.font      = font;
+    this.ctx.fillStyle = color;
+    this.ctx.textAlign = align;
+
+    const words: string[] = text.split(' ');
+    let   line            = '';
+    let   currentY        = y;
+
+    for (const word of words) {
+      const testLine  = line.length === 0 ? word : `${line} ${word}`;
+      const testWidth = this.ctx.measureText(testLine).width;
+
+      if (testWidth > maxWidth && line.length > 0) {
+        // Current line is full — flush it and start a new one with the current word.
+        this.ctx.fillText(line, x, currentY);
+        line     = word;
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+
+    // Flush the last partial line.
+    if (line.length > 0) {
+      this.ctx.fillText(line, x, currentY);
+      currentY += lineHeight;
+    }
+
+    return currentY;
+  }
+
   drawTooltip(x: number, y: number, text: string): void {
     const FONT   = '12px monospace';
     const PAD_X  = 8;

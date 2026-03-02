@@ -63,6 +63,31 @@ export interface IRenderer {
   drawTooltip(x: number, y: number, text: string): void;
 
   /**
+   * Draws multi-line text, automatically wrapping at word boundaries within `maxWidth`.
+   *
+   * @param text       The string to render (spaces are used as word boundaries).
+   * @param x          Left edge of the text block (for left-align) or centre x (for centre-align).
+   * @param y          Baseline of the first line.
+   * @param maxWidth   Maximum pixel width before a line break is forced.
+   * @param lineHeight Pixel distance between successive baselines.
+   * @param font       CSS font string, e.g. '14px monospace'.
+   * @param color      CSS colour string.
+   * @param align      Text alignment within each line.
+   * @returns          The y-coordinate of the baseline immediately after the last line drawn.
+   *                   Callers use this to position content below the wrapped block.
+   */
+  drawTextWrapped(
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number,
+    font: string,
+    color: string,
+    align?: 'left' | 'center' | 'right',
+  ): number;
+
+  /**
    * Draws a filled or stroked ellipse centred at (cx, cy).
    * @param cx      Centre X.
    * @param cy      Centre Y.

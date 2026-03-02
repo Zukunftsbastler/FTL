@@ -19,12 +19,17 @@ import { ShieldSystem } from './game/systems/ShieldSystem';
 import { EnemyAISystem } from './game/systems/EnemyAISystem';
 import { VictorySystem } from './game/systems/VictorySystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
+import { EventSystem } from './game/systems/EventSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
 import type { GameState } from './engine/GameState';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { WeaponTemplate } from './game/data/WeaponTemplate';
+import type { EventTemplate } from './game/data/EventTemplate';
+import type { EventReward } from './game/data/EventTemplate';
+import type { CrewRace } from './game/data/CrewRace';
+import type { CrewClass } from './game/data/CrewClass';
 import type { FactionComponent } from './game/components/FactionComponent';
 import type { ShipComponent } from './game/components/ShipComponent';
 import type { WeaponComponent } from './game/components/WeaponComponent';
@@ -83,6 +88,7 @@ async function init(): Promise<void> {
     generatePlaceholderAssets(),
     AssetLoader.loadJSON<ShipTemplate[]>('ships', '/data/ships.json'),
     AssetLoader.loadJSON<WeaponTemplate[]>('weapons', '/data/weapons.json'),
+    AssetLoader.loadJSON<EventTemplate[]>('events', '/data/events.json'),
   ]);
 
   // ── Ship layout ─────────────────────────────────────────────────────────────
@@ -133,15 +139,51 @@ async function init(): Promise<void> {
   // ── State machine ────────────────────────────────────────────────────────────
   let currentState: GameState = 'STAR_MAP';
 
-  function enterCombat(): void {
+  function enterCombat(shipTemplateId = 'rebel_a'): void {
     victorySystem.reset();
-    ShipFactory.spawnShip(world, 'rebel_a', enemyShipX, enemyShipY, 'ENEMY');
+    ShipFactory.spawnShip(world, shipTemplateId, enemyShipX, enemyShipY, 'ENEMY');
     // Clear any stale weapon targets left over from a previous combat session.
     for (const entity of world.query(['Weapon'])) {
       const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
       if (weapon !== undefined) weapon.targetRoomEntity = undefined;
     }
     currentState = 'COMBAT';
+  }
+
+  /**
+   * Applies an EventReward to the player ship and returns to the Star Map.
+   * Called when a narrative choice grants resources.
+   */
+  function applyEventReward(reward: EventReward): void {
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship === undefined) break;
+      if (reward.scrap      !== undefined) ship.scrap      += reward.scrap;
+      if (reward.fuel       !== undefined) ship.fuel       += reward.fuel;
+      if (reward.missiles   !== undefined) ship.missiles   += reward.missiles;
+      if (reward.hullRepair !== undefined) {
+        ship.currentHull = Math.min(ship.maxHull, ship.currentHull + reward.hullRepair);
+      }
+      if (reward.weaponId !== undefined) {
+        ship.cargoWeapons.push(reward.weaponId);
+      }
+      if (reward.crewMember === true) {
+        const races:   CrewRace[]  = ['HUMAN', 'ENGI', 'MANTIS'];
+        const classes: CrewClass[] = ['ENGINEER', 'GUNNER', 'PILOT', 'SECURITY'];
+        const names    = ['Ally', 'Crest', 'Dorn', 'Exa', 'Fyra'];
+        ShipFactory.spawnCrewMember(world, {
+          name:      names[Math.floor(Math.random() * names.length)],
+          race:      races[Math.floor(Math.random() * races.length)],
+          crewClass: classes[Math.floor(Math.random() * classes.length)],
+          skills:    { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
+          roomId:    0,
+        }, entity);
+      }
+      break;
+    }
+    currentState = 'STAR_MAP';
   }
 
   /**
@@ -184,6 +226,7 @@ async function init(): Promise<void> {
   const projectileSystem  = new ProjectileSystem();
   const victorySystem     = new VictorySystem();
   const upgradeSystem     = new UpgradeSystem();
+  const eventSystem       = new EventSystem();
   const renderSystem      = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
   const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
@@ -249,7 +292,9 @@ async function init(): Promise<void> {
               if (star.nodeType === 'STORE') {
                 currentState = 'STORE';
               } else {
-                enterCombat();
+                // Route through a random narrative event instead of direct combat.
+                eventSystem.loadRandomEvent();
+                currentState = 'EVENT';
               }
               break;
             }
@@ -307,6 +352,16 @@ async function init(): Promise<void> {
       if (restart) {
         window.location.reload();
       }
+
+    } else if (currentState === 'EVENT') {
+      // ── Narrative Event screen ─────────────────────────────────────────────
+      renderer.clear('#020810');
+      eventSystem.drawEventScreen(renderer, input, {
+        onCombat:    (shipId) => { enterCombat(shipId); },
+        onReward:    (reward) => { applyEventReward(reward); },
+        onNextEvent: (id)     => { eventSystem.loadEvent(id); },
+        onContinue:  ()       => { currentState = 'STAR_MAP'; },
+      });
 
     } else if (currentState === 'UPGRADE') {
       // ── Upgrade screen ────────────────────────────────────────────────────

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "safe_passage",
+    "text": "You arrive at a quiet sector. Friendly traders acknowledge you with a wave over the comms. The star system is peaceful and uneventful — a rare luxury in these dangerous times.",
+    "choices": [
+      { "text": "Continue on course." }
+    ]
+  },
+  {
+    "id": "distress_beacon",
+    "text": "Your sensors pick up a distress beacon from a drifting ship. Scans show no life signs — the crew is long gone. The hull is still largely intact and holds salvageable materials.",
+    "choices": [
+      { "text": "Scavenge the wreck.", "reward": { "scrap": 18, "fuel": 1 } },
+      { "text": "Leave it — could be a trap." }
+    ]
+  },
+  {
+    "id": "rebel_patrol",
+    "text": "An armed Rebel patrol vessel drops out of FTL directly ahead. Your hails go unanswered. Warning klaxons blare as they lock weapons onto your ship. There is nowhere to hide.",
+    "choices": [
+      { "text": "Prepare to fight!", "triggerCombatWithShipId": "rebel_a" },
+      { "text": "Attempt to escape at full burn." }
+    ]
+  },
+  {
+    "id": "abandoned_cache",
+    "text": "A Federation emergency supply cache drifts at the edge of the system. The access codes are standard issue — clearly meant to be used by vessels in need. Your crew looks to you for the call.",
+    "choices": [
+      { "text": "Open the cache.", "reward": { "missiles": 4, "scrap": 8 } },
+      { "text": "Leave it for someone who needs it more." }
+    ]
+  },
+  {
+    "id": "anomalous_signal",
+    "text": "Your sensors detect an anomalous signal emanating from a nearby gas giant. The signature matches a Federation automated beacon. It could be nothing — or it could be exactly what you need.",
+    "choices": [
+      { "text": "Investigate the signal.", "nextEventId": "abandoned_cache" },
+      { "text": "No time — press on." }
+    ]
+  }
+]
