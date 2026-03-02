@@ -1,3 +1,4 @@
+import { AssetLoader } from '../utils/AssetLoader';
 import type { IRenderer } from './IRenderer';
 
 /** Canvas 2D implementation of IRenderer. Constructed once in main.ts and passed to UI/render systems. */
@@ -33,14 +34,30 @@ export class Renderer implements IRenderer {
 
   drawSprite(
     assetId: string,
-    _x: number,
-    _y: number,
-    _width?: number,
-    _height?: number,
-    _rotation?: number,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number,
+    rotation?: number,
   ): void {
-    // Asset pipeline not yet implemented. Stub added for interface compliance.
-    console.warn(`Renderer.drawSprite: asset '${assetId}' not yet loaded.`);
+    const image = AssetLoader.getImage(assetId);
+    if (image === undefined) {
+      console.warn(`Renderer.drawSprite: asset '${assetId}' not found in registry.`);
+      return;
+    }
+
+    const w = width ?? image.naturalWidth;
+    const h = height ?? image.naturalHeight;
+
+    if (rotation !== undefined && rotation !== 0) {
+      this.ctx.save();
+      this.ctx.translate(x + w / 2, y + h / 2);
+      this.ctx.rotate(rotation);
+      this.ctx.drawImage(image, -w / 2, -h / 2, w, h);
+      this.ctx.restore();
+    } else {
+      this.ctx.drawImage(image, x, y, w, h);
+    }
   }
 
   drawText(
