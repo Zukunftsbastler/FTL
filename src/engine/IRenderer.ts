@@ -32,4 +32,14 @@ export interface IRenderer {
     color: string,
     align?: 'left' | 'center' | 'right',
   ): void;
+
+  /** Draws a filled or stroked circle centred at (x, y). lineWidth only applies when filled=false. */
+  drawCircle(
+    x: number,
+    y: number,
+    radius: number,
+    color: string,
+    filled?: boolean,
+    lineWidth?: number,
+  ): void;
 }

@@ -4,25 +4,29 @@ import type { IWorld } from '../../engine/IWorld';
 import type { ShipTemplate } from '../data/ShipTemplate';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { CrewComponent } from '../components/CrewComponent';
+import type { SelectableComponent } from '../components/SelectableComponent';
+import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 
 /**
  * Translates a raw ShipTemplate (loaded from JSON) into ECS entities.
  *
  * Coordinate contract:
- *   pixelX = startX + room.x * TILE_SIZE
- *   pixelY = startY + room.y * TILE_SIZE
+ *   pixelX = startX + gridX * TILE_SIZE
+ *   pixelY = startY + gridY * TILE_SIZE
+ *   crewPixel = startXY + gridXY * TILE_SIZE + TILE_SIZE / 2  (centre of first tile)
  *
  * Call AssetLoader.loadJSON<ShipTemplate[]>('ships', ...) before using this factory.
  */
 export class ShipFactory {
   /**
-   * Spawns a ship and all its rooms into the world.
+   * Spawns a ship, all its rooms, and all starting crew into the world.
    *
    * @param world       The ECS world to add entities to.
    * @param templateId  The `id` field of the desired ship in the loaded JSON array.
-   * @param startX      Pixel X offset for the ship's top-left corner on the canvas.
-   * @param startY      Pixel Y offset for the ship's top-left corner on the canvas.
+   * @param startX      Pixel X of the ship's top-left corner on the canvas.
+   * @param startY      Pixel Y of the ship's top-left corner on the canvas.
    */
   static spawnShip(
     world: IWorld,
@@ -69,7 +73,6 @@ export class ShipFactory {
         system: roomData.system,
       };
 
-      // Convert grid coordinates to pixel coordinates using the global tile size.
       const posComp: PositionComponent = {
         _type: 'Position',
         x: startX + roomData.x * TILE_SIZE,
@@ -78,6 +81,52 @@ export class ShipFactory {
 
       world.addComponent(roomEntity, roomComp);
       world.addComponent(roomEntity, posComp);
+    }
+
+    // ── Crew entities ───────────────────────────────────────────────────────
+    for (const crewData of template.startingCrew) {
+      // Find the room this crew member spawns in so we can compute pixel coords.
+      const spawnRoom = template.rooms.find((r) => r.roomId === crewData.roomId);
+      if (spawnRoom === undefined) {
+        console.warn(
+          `ShipFactory: crew '${crewData.name}' references unknown roomId ${crewData.roomId} — skipped.`,
+        );
+        continue;
+      }
+
+      const crewEntity = world.createEntity();
+
+      const crewComp: CrewComponent = {
+        _type: 'Crew',
+        name: crewData.name,
+        race: crewData.race,
+        health: 100,
+        maxHealth: 100,
+      };
+
+      const selectableComp: SelectableComponent = {
+        _type: 'Selectable',
+        isSelected: false,
+      };
+
+      // Crew spawns at the centre of the first (top-left) tile of their assigned room.
+      const pathComp: PathfindingComponent = {
+        _type: 'Pathfinding',
+        targetX: spawnRoom.x,
+        targetY: spawnRoom.y,
+        path: [],
+      };
+
+      const posComp: PositionComponent = {
+        _type: 'Position',
+        x: startX + spawnRoom.x * TILE_SIZE + TILE_SIZE / 2,
+        y: startY + spawnRoom.y * TILE_SIZE + TILE_SIZE / 2,
+      };
+
+      world.addComponent(crewEntity, crewComp);
+      world.addComponent(crewEntity, selectableComp);
+      world.addComponent(crewEntity, pathComp);
+      world.addComponent(crewEntity, posComp);
     }
   }
 }

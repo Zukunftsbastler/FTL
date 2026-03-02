@@ -4,6 +4,8 @@ import { Renderer } from './engine/Renderer';
 import { Time } from './engine/Time';
 import { World } from './engine/World';
 import { RenderSystem } from './game/systems/RenderSystem';
+import { SelectionSystem } from './game/systems/SelectionSystem';
+import { MovementSystem } from './game/systems/MovementSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { TILE_SIZE } from './game/constants';
 import type { ShipTemplate } from './game/data/ShipTemplate';
@@ -32,16 +34,8 @@ const renderer = new Renderer(ctx);
 const world    = new World();
 const input    = new Input(canvas);
 
-// ── Systems ───────────────────────────────────────────────────────────────────
-
-const renderSystem = new RenderSystem(renderer);
-
 // ── Asset Helpers ─────────────────────────────────────────────────────────────
 
-/**
- * Programmatically generates a 32×32 cursor sprite and registers it in the
- * AssetLoader. Uses a temporary off-screen canvas — permitted during init.
- */
 function generatePlaceholderAssets(): Promise<void> {
   const SIZE = 32;
   const tmpCanvas = document.createElement('canvas');
@@ -73,26 +67,29 @@ async function init(): Promise<void> {
 
   // ── Entity setup ────────────────────────────────────────────────────────────
 
-  // Sprint 2 cursor entity — still active, hovers above the ship grid.
+  // Cursor entity (Sprint 2 — hovers above all game content).
   const SPRITE_SIZE = 32;
   const cursorEntity = world.createEntity();
-  const cursorPos: PositionComponent = { _type: 'Position', x: 0, y: 0 };
-  const cursorSprite: SpriteComponent = {
+  world.addComponent(cursorEntity, { _type: 'Position', x: 0, y: 0 } as PositionComponent);
+  world.addComponent(cursorEntity, {
     _type: 'Sprite',
     assetId: 'cursor-sprite',
-    width:  SPRITE_SIZE,
+    width: SPRITE_SIZE,
     height: SPRITE_SIZE,
-  };
-  world.addComponent(cursorEntity, cursorPos);
-  world.addComponent(cursorEntity, cursorSprite);
+  } as SpriteComponent);
 
-  // Sprint 3: spawn the Kestrel ship centred on the canvas.
-  // kestrel_a occupies a 5 × 3 tile bounding box.
+  // Kestrel ship — centred on the canvas.  kestrel_a = 5 × 3 tile bounding box.
   const SHIP_GRID_W = 5;
   const SHIP_GRID_H = 3;
   const shipX = Math.round((canvas.width  - SHIP_GRID_W * TILE_SIZE) / 2);
   const shipY = Math.round((canvas.height - SHIP_GRID_H * TILE_SIZE) / 2);
   ShipFactory.spawnShip(world, 'kestrel_a', shipX, shipY);
+
+  // ── Systems ─────────────────────────────────────────────────────────────────
+
+  const renderSystem    = new RenderSystem(renderer);
+  const selectionSystem = new SelectionSystem(input, shipX, shipY);
+  const movementSystem  = new MovementSystem(input, shipX, shipY);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -105,7 +102,7 @@ async function init(): Promise<void> {
     // 1. Clear canvas.
     renderer.clear('#000000');
 
-    // 2. Sync cursor entity to mouse position.
+    // 2. Sync cursor sprite to mouse position (centred on hotspot).
     const mouse     = input.getMousePosition();
     const entityPos = world.getComponent<PositionComponent>(cursorEntity, 'Position');
     if (entityPos !== undefined) {
@@ -113,15 +110,15 @@ async function init(): Promise<void> {
       entityPos.y = mouse.y - SPRITE_SIZE / 2;
     }
 
-    // 3. Log a single line per click (proves isMouseJustPressed fires exactly once).
-    if (input.isMouseJustPressed(0)) {
-      console.log(`[Input] Left click at (${Math.round(mouse.x)}, ${Math.round(mouse.y)})`);
-    }
+    // 3. Logic systems — order matters: selection before movement so a
+    //    right-click on the same frame as a selection still moves the crew.
+    selectionSystem.update(world);
+    movementSystem.update(world);
 
-    // 4. Run all systems — rooms first, then sprites on top.
+    // 4. Render all layers.
     renderSystem.update(world);
 
-    // 5. Flush "just pressed" — must come last so all systems see the event this frame.
+    // 5. Flush "just pressed" — last, so every system above can read this frame's events.
     input.update();
 
     requestAnimationFrame(gameLoop);

@@ -99,6 +99,21 @@ interface ShipTemplate {
   
   /** Array of weapon IDs equipped at the start */
   startingWeapons: string[];
+
+  /** Crew members that board the ship at game start */
+  startingCrew: CrewTemplate[];
+}
+
+// ── Crew ──────────────────────────────────────────────────────────────────────
+
+type CrewRace = 'HUMAN' | 'ENGI' | 'MANTIS' | 'ROCKMAN' | 'ZOLTAN' | 'SLUG';
+
+interface CrewTemplate {
+  /** Display name for this crew member */
+  name: string;
+  race: CrewRace;
+  /** roomId of the room they spawn inside at game start */
+  roomId: number;
 }
 ```
 

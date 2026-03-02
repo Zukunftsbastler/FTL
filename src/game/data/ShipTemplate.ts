@@ -1,3 +1,4 @@
+import type { CrewTemplate } from './CrewTemplate';
 import type { DoorTemplate } from './DoorTemplate';
 import type { RoomTemplate } from './RoomTemplate';
 import type { SystemType } from './SystemType';
@@ -34,4 +35,7 @@ export interface ShipTemplate {
 
   /** Weapon template IDs equipped in the weapons bay at game start. */
   startingWeapons: string[];
+
+  /** Crew members that board the ship at game start. */
+  startingCrew: CrewTemplate[];
 }

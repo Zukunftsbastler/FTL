@@ -73,4 +73,24 @@ export class Renderer implements IRenderer {
     this.ctx.textAlign = align;
     this.ctx.fillText(text, x, y);
   }
+
+  drawCircle(
+    x: number,
+    y: number,
+    radius: number,
+    color: string,
+    filled = true,
+    lineWidth = 1,
+  ): void {
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (filled) {
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+    } else {
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = lineWidth;
+      this.ctx.stroke();
+    }
+  }
 }

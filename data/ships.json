@@ -35,6 +35,11 @@
       { "type": "OXYGEN",   "level": 1 },
       { "type": "PILOTING", "level": 1 }
     ],
-    "startingWeapons": ["burst_laser_2", "artemis_missile"]
+    "startingWeapons": ["burst_laser_2", "artemis_missile"],
+    "startingCrew": [
+      { "name": "Ari",   "race": "HUMAN", "roomId": 0 },
+      { "name": "Bex",   "race": "HUMAN", "roomId": 2 },
+      { "name": "Caden", "race": "HUMAN", "roomId": 3 }
+    ]
   }
 ]

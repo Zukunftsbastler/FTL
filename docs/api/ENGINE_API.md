@@ -100,9 +100,17 @@ Assets are pre-loaded during the loading screen state. Gameplay systems only tri
 interface IAudio {
   /** Plays a pre-loaded sound effect once. */
   playSound(assetId: string, volume?: number): void;
-  
+
   /** Plays a looping background track, stopping the previous one. */
   playMusic(assetId: string, volume?: number): void;
 }
 declare const Audio: IAudio;
+
+## 7. Renderer Extension (added Sprint 4)
+The following method was added to `IRenderer` to support drawing crew circles:
+
+```typescript
+/** Draws a filled or stroked circle centred at (x, y). lineWidth only applies when filled=false. */
+drawCircle(x: number, y: number, radius: number, color: string, filled?: boolean, lineWidth?: number): void;
+```
 ```
