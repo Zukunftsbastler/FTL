@@ -640,6 +640,14 @@ export class RenderSystem {
       const name = this.getWeaponName(weapon.templateId);
       this.renderer.drawText(name, bx + WEAPON_UI_PAD, by + 16, WEAPON_NAME_FONT, WEAPON_NAME_COLOR, 'left');
 
+      // Power toggle indicator — small square top-right corner of each box.
+      const piqSize = 10;
+      const piqX = bx + WEAPON_BOX_W - WEAPON_UI_PAD - piqSize;
+      const piqY = by + WEAPON_UI_PAD;
+      const piqColor = weapon.userPowered ? WEAPON_POWERED_COLOR : '#442222';
+      this.renderer.drawRect(piqX, piqY, piqSize, piqSize, piqColor, true);
+      this.renderer.drawRect(piqX, piqY, piqSize, piqSize, weapon.userPowered ? '#aaffaa' : '#664444', false);
+
       const powColor = weapon.isPowered ? WEAPON_POWERED_COLOR : WEAPON_UNPOWERED_COLOR;
       const dots = '●'.repeat(weapon.powerRequired);
       this.renderer.drawText(dots, bx + WEAPON_UI_PAD, by + 32, WEAPON_NAME_FONT, powColor, 'left');
@@ -669,7 +677,7 @@ export class RenderSystem {
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
       ) {
-        this.renderer.drawTooltip(mouse.x, mouse.y, 'Click to select, then click enemy room to target');
+        this.renderer.drawTooltip(mouse.x, mouse.y, 'Left-click to target | Right-click to toggle power');
         return;
       }
     }

@@ -7,6 +7,7 @@ import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 
 // ── Weapon UI layout constants ────────────────────────────────────────────────
@@ -47,18 +48,46 @@ export class TargetingSystem {
     const rightClick = this.input.isMouseJustPressed(2);
     const mouse      = this.input.getMousePosition();
 
+    const { height } = this.renderer.getCanvasSize();
+    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const playerWeapons = this.getPlayerWeapons(world);
+
+    // ── Right-click on weapon box: toggle power ──────────────────────────────
     if (rightClick) {
+      for (let i = 0; i < playerWeapons.length; i++) {
+        const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+        if (
+          mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
+          mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
+        ) {
+          const [, weapon] = playerWeapons[i];
+          if (weapon.userPowered) {
+            // Turn off — always allowed.
+            weapon.userPowered = false;
+            if (this.selectedWeaponEntity === playerWeapons[i][0]) {
+              this.selectedWeaponEntity = null;
+            }
+          } else {
+            // Turn on — validate against available power pool.
+            const pool = this.getWeaponSystemPower(world);
+            const usedByOthers = playerWeapons.reduce(
+              (sum, [, w]) => sum + (w.userPowered ? w.powerRequired : 0), 0,
+            );
+            if (weapon.powerRequired <= pool - usedByOthers) {
+              weapon.userPowered = true;
+            }
+          }
+          return;
+        }
+      }
+      // Right-click elsewhere: cancel targeting.
       this.selectedWeaponEntity = null;
       return;
     }
 
     if (!leftClick) return;
 
-    const { height } = this.renderer.getCanvasSize();
-    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
-
-    // ── Step 1: detect click on a weapon UI box ──────────────────────────────
-    const playerWeapons = this.getPlayerWeapons(world);
+    // ── Left-click on a weapon UI box: select for targeting (if powered) ─────
     for (let i = 0; i < playerWeapons.length; i++) {
       const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       const by = boxBaseY;
@@ -66,7 +95,8 @@ export class TargetingSystem {
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= by && mouse.y <= by + WEAPON_BOX_H
       ) {
-        const [entity] = playerWeapons[i];
+        const [entity, weapon] = playerWeapons[i];
+        if (!weapon.userPowered) return; // unpowered weapons cannot be targeted
         // Toggle: clicking the already-selected weapon deselects it.
         this.selectedWeaponEntity = this.selectedWeaponEntity === entity ? null : entity;
         return;
@@ -105,6 +135,20 @@ export class TargetingSystem {
     // Stable insertion-order (entity IDs are assigned sequentially).
     result.sort(([a], [b]) => a - b);
     return result;
+  }
+
+  /** Returns the current power allocated to the player's WEAPONS system, or 0 if absent. */
+  private getWeaponSystemPower(world: IWorld): number {
+    const playerEntity = this.findShipEntity(world, 'PLAYER');
+    if (playerEntity === null) return 0;
+    const entities = world.query(['System', 'Owner']);
+    for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== playerEntity) continue;
+      const sys = world.getComponent<SystemComponent>(entity, 'System');
+      if (sys?.type === 'WEAPONS') return sys.currentPower;
+    }
+    return 0;
   }
 
   private findShipEntity(world: IWorld, factionId: 'PLAYER' | 'ENEMY'): Entity | null {

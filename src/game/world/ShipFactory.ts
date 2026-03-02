@@ -266,6 +266,7 @@ export class ShipFactory {
         charge: 0,
         maxCharge: weaponTemplate.cooldown,
         powerRequired: weaponTemplate.powerCost,
+        userPowered: false,
         isPowered: false,
         targetRoomEntity: undefined,
         chargeRateMultiplier: 1.0,

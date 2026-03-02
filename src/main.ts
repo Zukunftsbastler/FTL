@@ -20,6 +20,7 @@ import { EnemyAISystem } from './game/systems/EnemyAISystem';
 import { VictorySystem } from './game/systems/VictorySystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
 import { EventSystem } from './game/systems/EventSystem';
+import { MapSystem } from './game/systems/MapSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -33,8 +34,6 @@ import type { CrewClass } from './game/data/CrewClass';
 import type { FactionComponent } from './game/components/FactionComponent';
 import type { ShipComponent } from './game/components/ShipComponent';
 import type { WeaponComponent } from './game/components/WeaponComponent';
-import type { PositionComponent } from './game/components/PositionComponent';
-import type { SpriteComponent } from './game/components/SpriteComponent';
 
 // ── Canvas Setup ─────────────────────────────────────────────────────────────
 
@@ -103,28 +102,7 @@ async function init(): Promise<void> {
   const enemyShipX  = canvas.width  - 50 - ENEMY_GRID_W * TILE_SIZE;
   const enemyShipY  = Math.round((canvas.height - ENEMY_GRID_H  * TILE_SIZE) / 2);
 
-  // ── Star map nodes (fractional canvas positions, computed once) ─────────────
-  const STAR_RADIUS = 18;
-  const stars: Array<{ x: number; y: number; name: string; nodeType: 'COMBAT' | 'STORE' }> = [
-    { x: Math.round(canvas.width * 0.20), y: Math.round(canvas.height * 0.30), name: 'Vega',   nodeType: 'COMBAT' },
-    { x: Math.round(canvas.width * 0.50), y: Math.round(canvas.height * 0.50), name: 'Altair', nodeType: 'COMBAT' },
-    { x: Math.round(canvas.width * 0.75), y: Math.round(canvas.height * 0.25), name: 'STORE',  nodeType: 'STORE'  },
-    { x: Math.round(canvas.width * 0.35), y: Math.round(canvas.height * 0.65), name: 'Rigel',  nodeType: 'COMBAT' },
-    { x: Math.round(canvas.width * 0.65), y: Math.round(canvas.height * 0.70), name: 'Sirius', nodeType: 'COMBAT' },
-  ];
-
   // ── Entity setup ────────────────────────────────────────────────────────────
-
-  // Cursor entity (hovers above all game content).
-  const SPRITE_SIZE = 32;
-  const cursorEntity = world.createEntity();
-  world.addComponent(cursorEntity, { _type: 'Position', x: 0, y: 0 } as PositionComponent);
-  world.addComponent(cursorEntity, {
-    _type: 'Sprite',
-    assetId: 'cursor-sprite',
-    width: SPRITE_SIZE,
-    height: SPRITE_SIZE,
-  } as SpriteComponent);
 
   // Player ship only — enemy is spawned on each combat entry.
   ShipFactory.spawnShip(world, 'kestrel_a', playerShipX, playerShipY, 'PLAYER');
@@ -232,6 +210,7 @@ async function init(): Promise<void> {
   const victorySystem     = new VictorySystem();
   const upgradeSystem     = new UpgradeSystem();
   const eventSystem       = new EventSystem();
+  const mapSystem         = new MapSystem();
   const renderSystem      = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
   const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
@@ -258,17 +237,7 @@ async function init(): Promise<void> {
       renderer.clear('#00000f');
 
       renderer.drawText('STAR MAP', width / 2, 55, '28px monospace', '#aaccff', 'center');
-      renderer.drawText('Click a star to engage', width / 2, 85, '14px monospace', '#556677', 'center');
-
-      for (const star of stars) {
-        const isStore    = star.nodeType === 'STORE';
-        const nodeColor  = isStore ? '#ffdd44' : '#aaddff';
-        const ringColor  = isStore ? '#665500' : '#223355';
-        const labelColor = isStore ? '#ffee88' : '#88aacc';
-        renderer.drawCircle(star.x, star.y, STAR_RADIUS,     nodeColor, true);
-        renderer.drawCircle(star.x, star.y, STAR_RADIUS + 5, ringColor, false, 1);
-        renderer.drawText(star.name, star.x, star.y + STAR_RADIUS + 18, '13px monospace', labelColor, 'center');
-      }
+      renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
 
       // "UPGRADE SHIP" button in the top-left corner.
       const UPG_W = 160;
@@ -279,45 +248,50 @@ async function init(): Promise<void> {
       renderer.drawRect(UPG_X, UPG_Y, UPG_W, UPG_H, '#4455cc', false);
       renderer.drawText('UPGRADE SHIP', UPG_X + UPG_W / 2, UPG_Y + UPG_H / 2 + 5, '13px monospace', '#8899ff', 'center');
 
+      // "STORE" button next to upgrade button.
+      const STORE_W = 100;
+      const STORE_X = UPG_X + UPG_W + 8;
+      renderer.drawRect(STORE_X, UPG_Y, STORE_W, UPG_H, '#0a0a1e', true);
+      renderer.drawRect(STORE_X, UPG_Y, STORE_W, UPG_H, '#557733', false);
+      renderer.drawText('STORE', STORE_X + STORE_W / 2, UPG_Y + UPG_H / 2 + 5, '13px monospace', '#99cc55', 'center');
+
+      // Handle upgrade/store button clicks before passing input to MapSystem.
       if (input.isMouseJustPressed(0)) {
         const mouse = input.getMousePosition();
-
-        // Check UPGRADE SHIP button first.
         if (
           mouse.x >= UPG_X && mouse.x <= UPG_X + UPG_W &&
           mouse.y >= UPG_Y && mouse.y <= UPG_Y + UPG_H
         ) {
           currentState = 'UPGRADE';
-        } else {
-          // Check star nodes.
-          for (const star of stars) {
-            const dx = mouse.x - star.x;
-            const dy = mouse.y - star.y;
-            if (dx * dx + dy * dy <= STAR_RADIUS * STAR_RADIUS) {
-              if (star.nodeType === 'STORE') {
-                currentState = 'STORE';
-              } else {
-                // Route through a random narrative event instead of direct combat.
-                eventSystem.loadRandomEvent();
-                currentState = 'EVENT';
-              }
-              break;
-            }
-          }
+        } else if (
+          mouse.x >= STORE_X && mouse.x <= STORE_X + STORE_W &&
+          mouse.y >= UPG_Y && mouse.y <= UPG_Y + UPG_H
+        ) {
+          currentState = 'STORE';
         }
       }
+
+      // Map graph — handles node click detection internally.
+      mapSystem.drawStarMap(renderer, input, world, {
+        onCombat: (shipId) => { enterCombat(shipId); },
+        onEvent:  (eventId) => {
+          if (eventId !== undefined) {
+            eventSystem.loadEvent(eventId);
+          } else {
+            eventSystem.loadRandomEvent();
+          }
+          currentState = 'EVENT';
+        },
+        onExit: () => {
+          // New sector: regenerate the map.
+          const { width: w, height: h } = renderer.getCanvasSize();
+          mapSystem.nextSector(w, h);
+        },
+      });
 
     } else if (currentState === 'COMBAT') {
       // ── Combat ───────────────────────────────────────────────────────────────
       renderer.clear('#000000');
-
-      // Sync cursor sprite to mouse position (centred on hotspot).
-      const mouse     = input.getMousePosition();
-      const entityPos = world.getComponent<PositionComponent>(cursorEntity, 'Position');
-      if (entityPos !== undefined) {
-        entityPos.x = mouse.x - SPRITE_SIZE / 2;
-        entityPos.y = mouse.y - SPRITE_SIZE / 2;
-      }
 
       // Logic systems.
       doorSystem.update(world);       // toggle doors (left-click)

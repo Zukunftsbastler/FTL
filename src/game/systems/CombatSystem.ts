@@ -52,19 +52,40 @@ export class CombatSystem {
     isEnemy: boolean,
   ): void {
     const allWeapons = this.getShipWeapons(world, shipEntity);
-    let powerBudget = this.getWeaponSystemPower(world, shipEntity);
+    const pool = this.getWeaponSystemPower(world, shipEntity);
 
-    // ── 1. Determine which weapons are powered (in entity-ID order) ──────────
-    for (const [, weapon] of allWeapons) {
-      if (powerBudget >= weapon.powerRequired) {
-        weapon.isPowered = true;
-        powerBudget -= weapon.powerRequired;
-      } else {
-        weapon.isPowered = false;
+    if (isEnemy) {
+      // ── Enemy: auto-power in entity-ID order ────────────────────────────────
+      let powerBudget = pool;
+      for (const [, weapon] of allWeapons) {
+        if (powerBudget >= weapon.powerRequired) {
+          weapon.isPowered = true;
+          powerBudget -= weapon.powerRequired;
+        } else {
+          weapon.isPowered = false;
+        }
+      }
+    } else {
+      // ── Player: respect userPowered; auto-disable rightmost if pool exceeded ─
+      let totalCost = 0;
+      for (const [, weapon] of allWeapons) {
+        if (weapon.userPowered) totalCost += weapon.powerRequired;
+      }
+      // Disable from right (highest entity-id = end of sorted array) until within budget.
+      for (let i = allWeapons.length - 1; i >= 0 && totalCost > pool; i--) {
+        const [, weapon] = allWeapons[i];
+        if (weapon.userPowered) {
+          weapon.userPowered = false;
+          totalCost -= weapon.powerRequired;
+        }
+      }
+      // isPowered mirrors userPowered for player weapons.
+      for (const [, weapon] of allWeapons) {
+        weapon.isPowered = weapon.userPowered;
       }
     }
 
-    // ── 2. Charge and fire ───────────────────────────────────────────────────
+    // ── Charge and fire ─────────────────────────────────────────────────────
     for (const [, weapon] of allWeapons) {
       weapon.charge = calculateWeaponCharge(
         weapon.charge,

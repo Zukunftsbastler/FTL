@@ -18,7 +18,14 @@ export interface WeaponComponent extends Component {
   readonly powerRequired: number;
 
   /**
-   * Computed each frame by CombatSystem based on the WEAPONS system's allocated power.
+   * Set by the player via right-click on the weapon UI strip.
+   * CombatSystem validates this against the WEAPONS system power pool each frame,
+   * and may force-disable rightmost weapons if the pool is exceeded.
+   */
+  userPowered: boolean;
+
+  /**
+   * Computed each frame by CombatSystem from userPowered + power pool validation.
    * True → charge advances; false → charge frozen.
    */
   isPowered: boolean;
