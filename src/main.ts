@@ -160,11 +160,11 @@ async function init(): Promise<void> {
       if (faction?.id !== 'PLAYER') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
       if (ship === undefined) break;
-      if (reward.scrap      !== undefined) ship.scrap      += reward.scrap;
+      if (reward.scrap      !== undefined) ship.scrap = Math.max(0, ship.scrap + reward.scrap);
       if (reward.fuel       !== undefined) ship.fuel       += reward.fuel;
       if (reward.missiles   !== undefined) ship.missiles   += reward.missiles;
       if (reward.hullRepair !== undefined) {
-        ship.currentHull = Math.min(ship.maxHull, ship.currentHull + reward.hullRepair);
+        ship.currentHull = Math.min(ship.maxHull, Math.max(0, ship.currentHull + reward.hullRepair));
       }
       if (reward.weaponId !== undefined) {
         ship.cargoWeapons.push(reward.weaponId);
@@ -180,6 +180,11 @@ async function init(): Promise<void> {
           skills:    { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
           roomId:    0,
         }, entity);
+      }
+      // Hull damage from events can cause game over.
+      if (ship.currentHull <= 0) {
+        currentState = 'GAME_OVER';
+        return;
       }
       break;
     }
@@ -356,7 +361,7 @@ async function init(): Promise<void> {
     } else if (currentState === 'EVENT') {
       // ── Narrative Event screen ─────────────────────────────────────────────
       renderer.clear('#020810');
-      eventSystem.drawEventScreen(renderer, input, {
+      eventSystem.drawEventScreen(renderer, input, world, {
         onCombat:    (shipId) => { enterCombat(shipId); },
         onReward:    (reward) => { applyEventReward(reward); },
         onNextEvent: (id)     => { eventSystem.loadEvent(id); },

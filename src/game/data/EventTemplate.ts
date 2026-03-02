@@ -13,8 +13,13 @@ export interface EventReward {
 export interface EventChoice {
   /** Button label shown to the player. */
   text: string;
-  /** Optional requirement ID — choice is only shown if the player has this (future use). */
+  /** Optional requirement ID — choice is only shown if the player has this resource/crew/system. */
   requirementId?: string;
+  /**
+   * When present, choosing this option selects a random next event.
+   * Chance values should sum to 1.0. Mutually exclusive with nextEventId.
+   */
+  randomOutcomes?: { chance: number; nextEventId: string }[];
   /** Chain to another event by ID when this choice is selected. */
   nextEventId?: string;
   /** Resources granted immediately on selection. */
