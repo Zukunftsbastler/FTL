@@ -1,6 +1,7 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { AssetLoader } from '../../utils/AssetLoader';
+import { xpThresholdFor } from '../logic/CrewXP';
 import {
   TargetingSystem,
   WEAPON_BOX_W,
@@ -72,7 +73,7 @@ const CREW_CLASS_ICON: Record<string, string> = {
 
 // ── Crew skill-sheet panel constants ─────────────────────────────────────────
 const PANEL_X        = 12;
-const PANEL_Y        = 90;
+const PANEL_Y        = 130;  // moved down to clear 5-line player dashboard
 const PANEL_W        = 196;
 const PANEL_H        = 170;
 const PANEL_BG       = 'rgba(8,14,28,0.92)';
@@ -466,18 +467,25 @@ export class RenderSystem {
       this.renderer.drawLine(x + 4, y + 70, x + w - 4, y + 70, PANEL_BORDER, 1);
 
       // Skills.
-      const skills: Array<[string, number]> = [
-        ['Piloting',    crew.skills.piloting],
-        ['Engineering', crew.skills.engineering],
-        ['Gunnery',     crew.skills.gunnery],
-        ['Repair',      crew.skills.repair],
-        ['Combat',      crew.skills.combat],
+      const skills: Array<[string, keyof typeof crew.skills]> = [
+        ['Piloting',    'piloting'],
+        ['Engineering', 'engineering'],
+        ['Gunnery',     'gunnery'],
+        ['Repair',      'repair'],
+        ['Combat',      'combat'],
       ];
 
       let sy = y + 85;
-      for (const [label, level] of skills) {
-        const dots = SKILL_BAR_FULL.repeat(level) + SKILL_BAR_EMPTY.repeat(2 - level);
-        this.renderer.drawText(`${label.padEnd(11)} ${dots}`, px, sy, PANEL_TEXT_F, PANEL_TEXT_COL, 'left');
+      for (const [label, key] of skills) {
+        const level     = crew.skills[key];
+        const xp        = crew.xp[key];
+        const threshold = xpThresholdFor(level);
+        const dots      = SKILL_BAR_FULL.repeat(level) + SKILL_BAR_EMPTY.repeat(2 - level);
+        const xpSuffix  = threshold > 0 ? ` (${xp}/${threshold})` : '';
+        this.renderer.drawText(
+          `${label.padEnd(11)} ${dots}${xpSuffix}`,
+          px, sy, PANEL_TEXT_F, PANEL_TEXT_COL, 'left',
+        );
         sy += 15;
       }
 
@@ -575,6 +583,14 @@ export class RenderSystem {
       this.renderer.drawText(
         `FUEL:    ${ship.fuel}`,
         DASH_X, DASH_Y0 + DASH_LINE_H * 2, DASH_FONT, '#ffaa44', 'left',
+      );
+      this.renderer.drawText(
+        `SCRAP:   ${ship.scrap}`,
+        DASH_X, DASH_Y0 + DASH_LINE_H * 3, DASH_FONT, '#ddbb44', 'left',
+      );
+      this.renderer.drawText(
+        `MISSILES:${ship.missiles}`,
+        DASH_X, DASH_Y0 + DASH_LINE_H * 4, DASH_FONT, '#ff8844', 'left',
       );
       return;
     }

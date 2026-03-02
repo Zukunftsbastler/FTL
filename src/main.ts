@@ -12,18 +12,20 @@ import { OxygenSystem } from './game/systems/OxygenSystem';
 import { CrewSystem } from './game/systems/CrewSystem';
 import { TargetingSystem } from './game/systems/TargetingSystem';
 import { CombatSystem } from './game/systems/CombatSystem';
-import { JumpSystem } from './game/systems/JumpSystem';
 import { ProjectileSystem } from './game/systems/ProjectileSystem';
 import { ManningSystem } from './game/systems/ManningSystem';
 import { RepairSystem } from './game/systems/RepairSystem';
 import { ShieldSystem } from './game/systems/ShieldSystem';
 import { EnemyAISystem } from './game/systems/EnemyAISystem';
+import { VictorySystem } from './game/systems/VictorySystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
 import type { GameState } from './engine/GameState';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { WeaponTemplate } from './game/data/WeaponTemplate';
+import type { FactionComponent } from './game/components/FactionComponent';
+import type { ShipComponent } from './game/components/ShipComponent';
 import type { WeaponComponent } from './game/components/WeaponComponent';
 import type { PositionComponent } from './game/components/PositionComponent';
 import type { SpriteComponent } from './game/components/SpriteComponent';
@@ -131,6 +133,7 @@ async function init(): Promise<void> {
   let currentState: GameState = 'STAR_MAP';
 
   function enterCombat(): void {
+    victorySystem.reset();
     ShipFactory.spawnShip(world, 'rebel_a', enemyShipX, enemyShipY, 'ENEMY');
     // Clear any stale weapon targets left over from a previous combat session.
     for (const entity of world.query(['Weapon'])) {
@@ -140,7 +143,36 @@ async function init(): Promise<void> {
     currentState = 'COMBAT';
   }
 
-  function enterStarMap(): void {
+  /**
+   * Applies the combat reward to the player ship, optionally spawns a new crew member,
+   * destroys the enemy ship, and transitions to the Star Map.
+   */
+  function applyRewardAndJump(): void {
+    const reward = victorySystem.getReward();
+    if (reward === null) return;
+
+    // Apply resources to player ship.
+    const playerShipEntities = world.query(['Ship', 'Faction']);
+    for (const entity of playerShipEntities) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship === undefined) break;
+      ship.scrap      += reward.scrap;
+      ship.fuel       += reward.fuel;
+      ship.missiles   += reward.missiles;
+      ship.droneParts += reward.droneParts;
+      if (reward.weaponId !== undefined) {
+        ship.cargoWeapons.push(reward.weaponId);
+      }
+      // Spawn new crew if the reward includes one.
+      if (reward.newCrew !== undefined) {
+        ShipFactory.spawnCrewMember(world, reward.newCrew, entity);
+      }
+      break;
+    }
+
+    victorySystem.destroyEnemyShip(world);
     currentState = 'STAR_MAP';
   }
 
@@ -149,7 +181,7 @@ async function init(): Promise<void> {
   const targetingSystem   = new TargetingSystem(input, renderer);
   const combatSystem      = new CombatSystem();
   const projectileSystem  = new ProjectileSystem();
-  const jumpSystem        = new JumpSystem(input, renderer, enterStarMap);
+  const victorySystem     = new VictorySystem();
   const renderSystem      = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
   const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
@@ -196,7 +228,7 @@ async function init(): Promise<void> {
         }
       }
 
-    } else {
+    } else if (currentState === 'COMBAT') {
       // ── Combat ───────────────────────────────────────────────────────────────
       renderer.clear('#000000');
 
@@ -222,10 +254,30 @@ async function init(): Promise<void> {
       oxygenSystem.update(world);     // O2 regen / decay / equalization
       crewSystem.update(world);       // suffocation damage
       repairSystem.update(world);     // system repair + medbay healing
-      jumpSystem.update(world);       // FTL button: draw + detect victory jump
 
       // Render all layers.
       renderSystem.update(world);
+
+      // Check for end-of-combat conditions (runs after render so the last frame is shown).
+      const combatResult = victorySystem.checkCombatEnd(world);
+      if (combatResult === 'VICTORY') {
+        currentState = 'VICTORY';
+      } else if (combatResult === 'GAME_OVER') {
+        currentState = 'GAME_OVER';
+      }
+
+    } else if (currentState === 'VICTORY') {
+      // ── Victory overlay on top of frozen combat scene ─────────────────────
+      renderer.clear('#000000');
+      renderSystem.update(world);
+      victorySystem.drawVictory(renderer, input, applyRewardAndJump);
+
+    } else if (currentState === 'GAME_OVER') {
+      // ── Game Over screen ──────────────────────────────────────────────────
+      const restart = victorySystem.drawGameOver(renderer, input);
+      if (restart) {
+        window.location.reload();
+      }
     }
 
     // Flush "just pressed" — last, so every system above can read this frame's events.

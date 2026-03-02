@@ -11,6 +11,14 @@ export interface ShipComponent extends Component {
   currentHull: number;
   /** Fuel units remaining — consumed when jumping between sectors. */
   fuel: number;
+  /** Scrap currency — primary upgrade resource collected from defeated enemies. */
+  scrap: number;
+  /** Missile ammunition — consumed by missile weapons. */
+  missiles: number;
+  /** Drone part supply — consumed by drone weapons (future feature). */
+  droneParts: number;
+  /** Weapon IDs collected as loot but not yet equipped (cargo hold). */
+  cargoWeapons: string[];
   /**
    * Current evasion stat (0.0 – 0.5).
    * Reset to 0 each frame by ManningSystem, then rebuilt from crewed stations.

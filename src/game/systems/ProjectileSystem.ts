@@ -1,6 +1,9 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { awardXP } from '../logic/CrewXP';
 import type { IWorld } from '../../engine/IWorld';
+import type { CrewComponent } from '../components/CrewComponent';
+import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ProjectileComponent } from '../components/ProjectileComponent';
@@ -112,6 +115,10 @@ export class ProjectileSystem {
           } else {
             this.applyImpact(world, proj);
             this.impactedRooms.add(proj.targetRoomEntity);
+            // Award gunnery XP to the player crew member manning the WEAPONS room.
+            if (!proj.isEnemyOrigin) {
+              this.awardGunneryXP(world);
+            }
           }
         }
 
@@ -234,6 +241,53 @@ export class ProjectileSystem {
     const ship = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
     if (ship !== undefined && ship.currentHull > 0) {
       ship.currentHull -= 1;
+    }
+  }
+
+  /**
+   * Finds the PLAYER ship entity, then finds any crew member currently occupying the
+   * WEAPONS room, and awards them +1 gunnery XP.
+   * Called once per confirmed player-projectile hit (not shielded, not a miss).
+   */
+  private awardGunneryXP(world: IWorld): void {
+    // Locate the player ship entity.
+    let playerShipEntity: number | undefined;
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id === 'PLAYER') { playerShipEntity = entity; break; }
+    }
+    if (playerShipEntity === undefined) return;
+
+    // Find the WEAPONS room entity owned by the player ship.
+    let weaponsRoomEntity: number | undefined;
+    for (const entity of world.query(['Room', 'System', 'Owner'])) {
+      const owner  = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (owner?.shipEntity !== playerShipEntity) continue;
+      const system = world.getComponent<SystemComponent>(entity, 'System');
+      if (system?.type === 'WEAPONS') { weaponsRoomEntity = entity; break; }
+    }
+    if (weaponsRoomEntity === undefined) return;
+
+    // Get the room bounds so we can check if a crew member is inside.
+    const roomPos  = world.getComponent<PositionComponent>(weaponsRoomEntity, 'Position');
+    const roomComp = world.getComponent<RoomComponent>(weaponsRoomEntity, 'Room');
+    if (roomPos === undefined || roomComp === undefined) return;
+
+    const left   = roomPos.x;
+    const top    = roomPos.y;
+    const right  = roomPos.x + roomComp.width  * TILE_SIZE;
+    const bottom = roomPos.y + roomComp.height * TILE_SIZE;
+
+    // Award XP to any player crew member currently inside the WEAPONS room.
+    for (const entity of world.query(['Crew', 'Position', 'Owner'])) {
+      const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (owner?.shipEntity !== playerShipEntity) continue;
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      if (pos === undefined) continue;
+      if (pos.x >= left && pos.x < right && pos.y >= top && pos.y < bottom) {
+        const crew = world.getComponent<CrewComponent>(entity, 'Crew');
+        if (crew !== undefined) awardXP(crew, 'gunnery', 1);
+      }
     }
   }
 }

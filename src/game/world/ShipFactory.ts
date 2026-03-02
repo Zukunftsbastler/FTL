@@ -4,6 +4,7 @@ import { allocatePower } from '../logic/PowerMath';
 import type { IWorld } from '../../engine/IWorld';
 import type { ShipTemplate } from '../data/ShipTemplate';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
+import type { CrewTemplate } from '../data/CrewTemplate';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
@@ -81,6 +82,10 @@ export class ShipFactory {
       maxHull: template.maxHull,
       currentHull: template.maxHull,
       fuel: template.startingResources.fuel,
+      scrap: template.startingResources.scrap,
+      missiles: template.startingResources.missiles,
+      droneParts: template.startingResources.droneParts,
+      cargoWeapons: [],
       evasion: 0,
     };
     const factionComp: FactionComponent = {
@@ -269,5 +274,70 @@ export class ShipFactory {
       world.addComponent(weaponEntity, weaponComp);
       world.addComponent(weaponEntity, owner(shipEntity));
     }
+  }
+
+  /**
+   * Spawns a single crew member entity onto an existing ship at runtime (e.g. from a loot reward).
+   * The crew is placed at the centre of the first room found owned by `shipEntity`.
+   */
+  static spawnCrewMember(
+    world: IWorld,
+    crewData: CrewTemplate,
+    shipEntity: number,
+  ): void {
+    // Find the first room owned by this ship to determine spawn position.
+    let spawnX = 0;
+    let spawnY = 0;
+    let found  = false;
+    for (const re of world.query(['Room', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(re, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const pos  = world.getComponent<PositionComponent>(re, 'Position');
+      const room = world.getComponent<RoomComponent>(re, 'Room');
+      if (pos === undefined || room === undefined) continue;
+      spawnX = pos.x + (room.width  * TILE_SIZE) / 2;
+      spawnY = pos.y + (room.height * TILE_SIZE) / 2;
+      found  = true;
+      break;
+    }
+    if (!found) return;
+
+    const crewEntity = world.createEntity();
+
+    const crewComp: CrewComponent = {
+      _type: 'Crew',
+      name: crewData.name,
+      race: crewData.race,
+      crewClass: crewData.crewClass,
+      health: 100,
+      maxHealth: 100,
+      skills: { ...crewData.skills },
+      xp: { piloting: 0, engineering: 0, gunnery: 0, repair: 0, combat: 0 },
+    };
+    const selectableComp: SelectableComponent = {
+      _type: 'Selectable',
+      isSelected: false,
+    };
+    const pathComp: PathfindingComponent = {
+      _type: 'Pathfinding',
+      targetX: 0,
+      targetY: 0,
+      path: [],
+    };
+    const posComp: PositionComponent = {
+      _type: 'Position',
+      x: spawnX,
+      y: spawnY,
+    };
+    const ownerComp: OwnerComponent = {
+      _type: 'Owner',
+      shipEntity,
+    };
+
+    world.addComponent(crewEntity, crewComp);
+    world.addComponent(crewEntity, selectableComp);
+    world.addComponent(crewEntity, pathComp);
+    world.addComponent(crewEntity, posComp);
+    world.addComponent(crewEntity, ownerComp);
   }
 }

@@ -1,5 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { awardXP } from '../logic/CrewXP';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
@@ -26,6 +27,12 @@ const ENGI_REPAIR_MULTIPLIER = 2.0;
  *   3. If that room is a MEDBAY with currentPower > 0, heal the crew member.
  */
 export class RepairSystem {
+  /**
+   * Tracks fractional repair progress per crew entity.
+   * When the accumulator crosses a whole number (+1.0), that many repair XP points are awarded.
+   */
+  private readonly repairProgress = new Map<number, number>();
+
   update(world: IWorld): void {
     const dt = Time.deltaTime;
 
@@ -45,8 +52,19 @@ export class RepairSystem {
       // ── System repair ──────────────────────────────────────────────────────
       if (room.system !== undefined && room.system.damageAmount > 0) {
         const raceMultiplier = crew.race === 'ENGI' ? ENGI_REPAIR_MULTIPLIER : 1.0;
-        const repairRate = BASE_REPAIR_RATE * (1 + crew.skills.repair * 0.5) * raceMultiplier;
-        room.system.damageAmount = Math.max(0, room.system.damageAmount - repairRate * dt);
+        const repairRate     = BASE_REPAIR_RATE * (1 + crew.skills.repair * 0.5) * raceMultiplier;
+        const repaired       = Math.min(room.system.damageAmount, repairRate * dt);
+        room.system.damageAmount = Math.max(0, room.system.damageAmount - repaired);
+
+        // Accumulate repair progress; award +1 XP per full point of damage repaired.
+        const prev     = this.repairProgress.get(entity) ?? 0;
+        const next     = prev + repaired;
+        const wholeXP  = Math.floor(next);
+        this.repairProgress.set(entity, next - wholeXP);
+        if (wholeXP > 0) awardXP(crew, 'repair', wholeXP);
+      } else {
+        // Clear accumulator when crew is not repairing (prevents phantom XP on next damage event).
+        this.repairProgress.delete(entity);
       }
 
       // ── Medbay healing ─────────────────────────────────────────────────────
