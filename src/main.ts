@@ -7,6 +7,7 @@ import { RenderSystem } from './game/systems/RenderSystem';
 import { SelectionSystem } from './game/systems/SelectionSystem';
 import { MovementSystem } from './game/systems/MovementSystem';
 import { ShipFactory } from './game/world/ShipFactory';
+import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { PositionComponent } from './game/components/PositionComponent';
@@ -85,11 +86,19 @@ async function init(): Promise<void> {
   const shipY = Math.round((canvas.height - SHIP_GRID_H * TILE_SIZE) / 2);
   ShipFactory.spawnShip(world, 'kestrel_a', shipX, shipY);
 
+  // ── Pathfinder ───────────────────────────────────────────────────────────────
+  // Build the navigation graph from the same template used to spawn the ship.
+  const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
+  if (allShips === undefined) throw new Error('main: ships JSON missing after load.');
+  const template = allShips.find((s) => s.id === 'kestrel_a');
+  if (template === undefined) throw new Error('main: kestrel_a template not found.');
+  const pathfinder = new Pathfinder(template.rooms, template.doors);
+
   // ── Systems ─────────────────────────────────────────────────────────────────
 
   const renderSystem    = new RenderSystem(renderer);
   const selectionSystem = new SelectionSystem(input, shipX, shipY);
-  const movementSystem  = new MovementSystem(input, shipX, shipY);
+  const movementSystem  = new MovementSystem(input, shipX, shipY, pathfinder);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 

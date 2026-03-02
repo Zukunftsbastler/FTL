@@ -1,29 +1,37 @@
 import { TILE_SIZE } from '../constants';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
+import type { DoorComponent } from '../components/DoorComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 import type { SpriteComponent } from '../components/SpriteComponent';
 
 // ── Visual constants ──────────────────────────────────────────────────────────
-const ROOM_FILL        = '#1a2033';  // dark navy — room interior
-const ROOM_BORDER      = '#4a6fa5';  // muted blue — room walls
-const LABEL_COLOR      = '#88aadd';  // soft blue-white — system label
+const ROOM_FILL        = '#1a2033';
+const ROOM_BORDER      = '#4a6fa5';
+const LABEL_COLOR      = '#88aadd';
 const LABEL_FONT       = '11px monospace';
 
-const CREW_RADIUS      = 10;         // pixels
-const CREW_FILL        = '#44cc44';  // green — human crew body
-const CREW_SELECT_RING = '#00ff66';  // bright green — selection outline
-const CREW_SELECT_LW   = 2;         // selection ring line-width (px)
+/** Thickness of the door marker rectangle drawn over room borders. */
+const DOOR_THICK       = 5;
+/** How many pixels of door extend to each side of the wall centre. */
+const DOOR_HALF        = Math.floor(DOOR_THICK / 2);
+const DOOR_COLOR       = '#aaaaaa';  // light grey — distinguishable from room borders
+
+const CREW_RADIUS      = 10;
+const CREW_FILL        = '#44cc44';
+const CREW_SELECT_RING = '#00ff66';
+const CREW_SELECT_LW   = 2;
 
 /**
- * ECS render system. Draws all visible entities onto the canvas in strict layer order:
- *   Layer 1 — Ship rooms  (filled rectangles + borders + system labels)
- *   Layer 2 — Crew        (coloured circles; selection ring if selected)
- *   Layer 3 — Sprites     (cursor and future projectiles/icons — topmost)
+ * ECS render system. Strict layer order:
+ *   Layer 1 — Rooms   (fill + border + system label)
+ *   Layer 2 — Doors   (thin rect on shared wall; SPACE-vent doors omitted)
+ *   Layer 3 — Crew    (coloured circle + selection ring)
+ *   Layer 4 — Sprites (cursor — topmost)
  *
- * Strictly read-only: never mutates any component data.
+ * Read-only: never mutates component data.
  */
 export class RenderSystem {
   private readonly renderer: IRenderer;
@@ -34,6 +42,7 @@ export class RenderSystem {
 
   update(world: IWorld): void {
     this.drawRooms(world);
+    this.drawDoors(world);
     this.drawCrew(world);
     this.drawSprites(world);
   }
@@ -42,7 +51,6 @@ export class RenderSystem {
 
   private drawRooms(world: IWorld): void {
     const entities = world.query(['Room', 'Position']);
-
     for (const entity of entities) {
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
       const room = world.getComponent<RoomComponent>(entity, 'Room');
@@ -55,24 +63,65 @@ export class RenderSystem {
       this.renderer.drawRect(pos.x, pos.y, pw, ph, ROOM_BORDER, false);
 
       if (room.system !== undefined) {
-        const cx = pos.x + pw / 2;
-        const cy = pos.y + ph / 2 + 4;
-        this.renderer.drawText(room.system, cx, cy, LABEL_FONT, LABEL_COLOR, 'center');
+        this.renderer.drawText(
+          room.system,
+          pos.x + pw / 2,
+          pos.y + ph / 2 + 4,
+          LABEL_FONT,
+          LABEL_COLOR,
+          'center',
+        );
       }
     }
   }
 
-  // ── Layer 2: crew ───────────────────────────────────────────────────────────
+  // ── Layer 2: doors ──────────────────────────────────────────────────────────
+
+  private drawDoors(world: IWorld): void {
+    const entities = world.query(['Door', 'Position']);
+    for (const entity of entities) {
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const door = world.getComponent<DoorComponent>(entity, 'Door');
+      if (pos === undefined || door === undefined) continue;
+
+      // Skip airlock / space-vent doors — they sit outside the ship boundary.
+      if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
+
+      if (door.isVertical) {
+        // Door is on a vertical wall (separating left/right rooms).
+        // pos.x = pixel column boundary; span one tile downward.
+        this.renderer.drawRect(
+          pos.x - DOOR_HALF,
+          pos.y,
+          DOOR_THICK,
+          TILE_SIZE,
+          DOOR_COLOR,
+          true,
+        );
+      } else {
+        // Door is on a horizontal wall (separating top/bottom rooms).
+        // pos.y = pixel row boundary; span one tile rightward.
+        this.renderer.drawRect(
+          pos.x,
+          pos.y - DOOR_HALF,
+          TILE_SIZE,
+          DOOR_THICK,
+          DOOR_COLOR,
+          true,
+        );
+      }
+    }
+  }
+
+  // ── Layer 3: crew ───────────────────────────────────────────────────────────
 
   private drawCrew(world: IWorld): void {
     const entities = world.query(['Crew', 'Selectable', 'Position']);
-
     for (const entity of entities) {
       const pos        = world.getComponent<PositionComponent>(entity, 'Position');
       const selectable = world.getComponent<SelectableComponent>(entity, 'Selectable');
       if (pos === undefined || selectable === undefined) continue;
 
-      // Selection ring drawn first so the crew body renders on top of it.
       if (selectable.isSelected) {
         this.renderer.drawCircle(
           pos.x, pos.y,
@@ -82,16 +131,14 @@ export class RenderSystem {
           CREW_SELECT_LW,
         );
       }
-
       this.renderer.drawCircle(pos.x, pos.y, CREW_RADIUS, CREW_FILL, true);
     }
   }
 
-  // ── Layer 3: sprites ────────────────────────────────────────────────────────
+  // ── Layer 4: sprites ────────────────────────────────────────────────────────
 
   private drawSprites(world: IWorld): void {
     const entities = world.query(['Position', 'Sprite']);
-
     for (const entity of entities) {
       const pos    = world.getComponent<PositionComponent>(entity, 'Position');
       const sprite = world.getComponent<SpriteComponent>(entity, 'Sprite');
