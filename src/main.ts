@@ -7,6 +7,9 @@ import { RenderSystem } from './game/systems/RenderSystem';
 import { SelectionSystem } from './game/systems/SelectionSystem';
 import { MovementSystem } from './game/systems/MovementSystem';
 import { PowerSystem } from './game/systems/PowerSystem';
+import { DoorSystem } from './game/systems/DoorSystem';
+import { OxygenSystem } from './game/systems/OxygenSystem';
+import { CrewSystem } from './game/systems/CrewSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -101,6 +104,9 @@ async function init(): Promise<void> {
   const selectionSystem = new SelectionSystem(input, shipX, shipY);
   const movementSystem  = new MovementSystem(input, shipX, shipY, pathfinder);
   const powerSystem     = new PowerSystem(input);
+  const doorSystem      = new DoorSystem(input);
+  const oxygenSystem    = new OxygenSystem();
+  const crewSystem      = new CrewSystem();
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -121,11 +127,13 @@ async function init(): Promise<void> {
       entityPos.y = mouse.y - SPRITE_SIZE / 2;
     }
 
-    // 3. Logic systems — order matters: selection before movement so a
-    //    right-click on the same frame as a selection still moves the crew.
-    selectionSystem.update(world);
-    movementSystem.update(world);
-    powerSystem.update(world);
+    // 3. Logic systems.
+    doorSystem.update(world);       // toggle doors (left-click)
+    selectionSystem.update(world);  // crew selection (left-click)
+    movementSystem.update(world);   // crew movement (right-click + A*)
+    powerSystem.update(world);      // power routing (hover + arrow keys)
+    oxygenSystem.update(world);     // O2 regen / decay / equalization
+    crewSystem.update(world);       // suffocation damage
 
     // 4. Render all layers.
     renderSystem.update(world);

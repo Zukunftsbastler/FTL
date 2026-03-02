@@ -2,6 +2,7 @@ import { TILE_SIZE } from '../constants';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { DoorComponent } from '../components/DoorComponent';
+import type { OxygenComponent } from '../components/OxygenComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
@@ -15,15 +16,21 @@ const ROOM_BORDER      = '#4a6fa5';
 const LABEL_COLOR      = '#88aadd';
 const LABEL_FONT       = '11px monospace';
 const POWER_FONT       = '10px monospace';
-const POWER_COLOR      = '#ffdd44';  // yellow pips
-const REACTOR_HUD_FONT = '13px monospace';
+const POWER_COLOR      = '#ffdd44';   // yellow pips
+const REACTOR_HUD_FONT  = '13px monospace';
 const REACTOR_HUD_COLOR = '#66eecc';
 
+/** Maximum red-overlay opacity at 0% O2. */
+const O2_OVERLAY_MAX_ALPHA = 0.75;
+
 /** Thickness of the door marker rectangle drawn over room borders. */
-const DOOR_THICK       = 5;
+const DOOR_THICK             = 5;
 /** How many pixels of door extend to each side of the wall centre. */
-const DOOR_HALF        = Math.floor(DOOR_THICK / 2);
-const DOOR_COLOR       = '#aaaaaa';  // light grey — distinguishable from room borders
+const DOOR_HALF              = Math.floor(DOOR_THICK / 2);
+const DOOR_OPEN_COLOR        = '#aaaaaa';  // light grey  — interior door, passable
+const DOOR_CLOSED_COLOR      = '#dd5500';  // orange      — interior door, sealed
+const AIRLOCK_OPEN_COLOR     = '#ff3333';  // bright red  — venting to space!
+const AIRLOCK_CLOSED_COLOR   = '#778899';  // steel grey  — sealed airlock
 
 const CREW_RADIUS      = 10;
 const CREW_FILL        = '#44cc44';
@@ -32,8 +39,8 @@ const CREW_SELECT_LW   = 2;
 
 /**
  * ECS render system. Strict layer order:
- *   Layer 1 — Rooms   (fill + border + system label + power bar)
- *   Layer 2 — Doors   (thin rect on shared wall; SPACE-vent doors omitted)
+ *   Layer 1 — Rooms   (fill + border + O2 overlay + system label + power bar)
+ *   Layer 2 — Doors   (thin rect on shared wall; colour indicates open/closed/airlock)
  *   Layer 3 — Crew    (coloured circle + selection ring)
  *   Layer 4 — Sprites (cursor — topmost)
  *   HUD     — Reactor power display (bottom-left corner)
@@ -69,6 +76,13 @@ export class RenderSystem {
 
       this.renderer.drawRect(pos.x, pos.y, pw, ph, ROOM_FILL, true);
       this.renderer.drawRect(pos.x, pos.y, pw, ph, ROOM_BORDER, false);
+
+      // O2 overlay — semi-transparent red tint proportional to O2 depletion.
+      const oxygen = world.getComponent<OxygenComponent>(entity, 'Oxygen');
+      if (oxygen !== undefined && oxygen.level < 100) {
+        const alpha = ((100 - oxygen.level) / 100) * O2_OVERLAY_MAX_ALPHA;
+        this.renderer.drawRect(pos.x, pos.y, pw, ph, `rgba(200,30,30,${alpha.toFixed(3)})`, true);
+      }
 
       if (room.system !== undefined) {
         this.renderer.drawText(
@@ -113,31 +127,17 @@ export class RenderSystem {
       const door = world.getComponent<DoorComponent>(entity, 'Door');
       if (pos === undefined || door === undefined) continue;
 
-      // Skip airlock / space-vent doors — they sit outside the ship boundary.
-      if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
+      const isAirlock = door.roomA === 'SPACE' || door.roomB === 'SPACE';
+      const color = isAirlock
+        ? (door.isOpen ? AIRLOCK_OPEN_COLOR : AIRLOCK_CLOSED_COLOR)
+        : (door.isOpen ? DOOR_OPEN_COLOR    : DOOR_CLOSED_COLOR);
 
       if (door.isVertical) {
-        // Door is on a vertical wall (separating left/right rooms).
-        // pos.x = pixel column boundary; span one tile downward.
-        this.renderer.drawRect(
-          pos.x - DOOR_HALF,
-          pos.y,
-          DOOR_THICK,
-          TILE_SIZE,
-          DOOR_COLOR,
-          true,
-        );
+        // Vertical wall (separates left/right rooms): pos.x = column boundary.
+        this.renderer.drawRect(pos.x - DOOR_HALF, pos.y,  DOOR_THICK, TILE_SIZE, color, true);
       } else {
-        // Door is on a horizontal wall (separating top/bottom rooms).
-        // pos.y = pixel row boundary; span one tile rightward.
-        this.renderer.drawRect(
-          pos.x,
-          pos.y - DOOR_HALF,
-          TILE_SIZE,
-          DOOR_THICK,
-          DOOR_COLOR,
-          true,
-        );
+        // Horizontal wall (separates top/bottom rooms): pos.y = row boundary.
+        this.renderer.drawRect(pos.x, pos.y - DOOR_HALF, TILE_SIZE, DOOR_THICK, color, true);
       }
     }
   }

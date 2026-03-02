@@ -6,6 +6,7 @@ import type { ShipComponent } from '../components/ShipComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
+import type { OxygenComponent } from '../components/OxygenComponent';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
@@ -86,8 +87,11 @@ export class ShipFactory {
         y: startY + roomData.y * TILE_SIZE,
       };
 
+      const oxygenComp: OxygenComponent = { _type: 'Oxygen', level: 100 };
+
       world.addComponent(roomEntity, roomComp);
       world.addComponent(roomEntity, posComp);
+      world.addComponent(roomEntity, oxygenComp);
 
       // If this room hosts a system, attach a SystemComponent with its capacity.
       if (roomData.system !== undefined) {
