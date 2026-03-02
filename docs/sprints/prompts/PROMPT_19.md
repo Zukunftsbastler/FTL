@@ -1,0 +1,3 @@
+Time for Sprint 19. Right now, our combat is just trading laser hits. We need to implement the real FTL tactical mechanics: Shields, Evasion, Cloaking, Teleporters, and Beam weapons.
+
+Please read docs/sprints/SPRINT_19_ADVANCED_SHIP_SYSTEMS.md (which was previously SPRINT 06). Go ahead and build the new ECS systems for Shields (blocking lasers but not missiles), Evasion (chance to miss based on engines/piloting), and Cloaking. Also, update the targeting logic so we can draw Beam lines and teleport crew across ships. Make sure it hooks into the existing CombatSystem and ProjectileSystem gracefully. Do the magic!

@@ -1,0 +1,3 @@
+We are kicking off Sprint 18. Our goal is to bring the FTL event system to life. I've updated data/events.json with a bunch of complex encounters (requirements like specific crew/systems, and rewards like losing crew, taking system damage, or opening a store). I also need the Rebel Fleet to chase the player on the map.
+
+Please read docs/sprints/SPRINT_18_ADVANCED_EVENTS_AND_STORE.md (which was previously SPRINT 05) and execute the tasks. Update the TypeScript interfaces, make the EventSystem parse the new logic safely, and wire up the GameState to track the Rebel Fleet. Feel free to refactor as needed to make the code robust. Let's get the story elements working!

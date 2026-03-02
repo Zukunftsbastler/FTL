@@ -1,0 +1,3 @@
+We are starting Sprint 20. This is a massive one that ties all the remaining missing FTL mechanics together. I have created documentation for what is missing in the docs/MISSING_*.md files.
+
+Please read docs/sprints/SPRINT_20_DRONES_AUGMENTS_RACES_SECTORS.md and execute it. We need procedural sector map generation with environmental hazards. We need alien crew members (Zoltans giving power, Lanius draining oxygen). We need an autonomous Drone AI system, and we need passive Augmentations altering the game's math. Read the data schemas I provided in the JSONs, build the necessary ECS components and systems, and integrate them. Think holistically about the architecture!
