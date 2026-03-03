@@ -410,6 +410,7 @@ async function init(): Promise<void> {
           }
           currentState = 'EVENT';
         },
+        onStore: () => { currentState = 'STORE'; },
         onExit: () => {
           // New sector: regenerate the map.
           const { width: w, height: h } = renderer.getCanvasSize();
