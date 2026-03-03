@@ -762,16 +762,19 @@ export class RenderSystem {
         SYSPANEL_X + 3, rowY + 14, '11px monospace', nameColor, 'left',
       );
 
-      // Power pips.
-      const pipStartX = SYSPANEL_X + SYSPANEL_LABEL_W;
+      // Power pips — green=powered, yellow=zoltan, red=damaged, dark=empty.
+      const pipStartX    = SYSPANEL_X + SYSPANEL_LABEL_W;
+      const damagedSlots = Math.min(Math.round(sys.damageAmount), sys.maxCapacity);
       for (let p = 0; p < sys.maxCapacity; p++) {
-        const px     = pipStartX + p * (SYSPANEL_PIP_W + SYSPANEL_PIP_GAP);
-        const py     = rowY + (SYSPANEL_ROW_H - SYSPANEL_PIP_H) / 2;
-        const filled = p < sys.currentPower;
-        const zoltan = !filled && p < sys.currentPower + sys.zoltanBonus;
-        const color  = filled ? '#33aaff' : zoltan ? '#eecc00' : '#1a2e44';
-        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, color, true);
-        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, '#334455', false);
+        const px      = pipStartX + p * (SYSPANEL_PIP_W + SYSPANEL_PIP_GAP);
+        const py      = rowY + (SYSPANEL_ROW_H - SYSPANEL_PIP_H) / 2;
+        const filled  = p < sys.currentPower;
+        const zoltan  = !filled && p < sys.currentPower + sys.zoltanBonus;
+        const damaged = !filled && !zoltan && p >= sys.maxCapacity - damagedSlots;
+        const bgColor     = filled ? '#44ee44' : zoltan ? '#eecc00' : damaged ? '#ee3333' : '#0d1a22';
+        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff7777' : '#334455';
+        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, bgColor, true);
+        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, borderColor, false);
       }
     }
   }
@@ -848,7 +851,7 @@ export class RenderSystem {
     const mouse = this.input.getMousePosition();
     const { height } = this.renderer.getCanvasSize();
 
-    // 1. Weapon UI boxes (bottom strip) — most specific.
+    // 1. Weapon UI boxes (bottom strip) — rich weapon card.
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
     const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
     for (let i = 0; i < playerWeapons.length; i++) {
@@ -857,31 +860,141 @@ export class RenderSystem {
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
       ) {
-        this.renderer.drawTooltip(mouse.x, mouse.y, 'Left-click to target | Right-click to toggle power');
+        const [, weapon] = playerWeapons[i];
+        const card = this.buildWeaponCard(weapon);
+        if (card !== null) {
+          this.renderer.drawTooltipCard(mouse.x, mouse.y, card.title, card.lines);
+        }
         return;
       }
     }
 
-    // 2. Player system rooms.
-    const playerShipEntity = this.findPlayerShipEntity(world);
-    if (playerShipEntity === null) return;
+    // 2. System power panel rows — rich system card.
+    if (this.powerSystem !== null) {
+      const playerShipEntity = this.findPlayerShipEntity(world);
+      if (playerShipEntity !== null) {
+        const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
+        for (let i = 0; i < systems.length; i++) {
+          const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+          if (
+            mouse.x >= SYSPANEL_X && mouse.x <= SYSPANEL_X + SYSPANEL_W &&
+            mouse.y >= rowY && mouse.y < rowY + SYSPANEL_ROW_H
+          ) {
+            const sys = systems[i];
+            this.renderer.drawTooltipCard(
+              mouse.x, mouse.y,
+              sys.type,
+              this.buildSystemLines(sys),
+            );
+            return;
+          }
+        }
+      }
+    }
 
+    // 3. Crew hover — rich crew card (pixel-distance detection).
+    for (const entity of world.query(['Crew', 'Position'])) {
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const crew = world.getComponent<CrewComponent>(entity, 'Crew');
+      if (pos === undefined || crew === undefined) continue;
+      const dx = mouse.x - pos.x;
+      const dy = mouse.y - pos.y;
+      if (dx * dx + dy * dy <= 14 * 14) {
+        const hpPct = Math.round(crew.health / crew.maxHealth * 100);
+        this.renderer.drawTooltipCard(
+          mouse.x, mouse.y,
+          `${crew.name}  [${crew.crewClass}]`,
+          [
+            `Race:        ${crew.race}`,
+            `HP:          ${Math.round(crew.health)}/${crew.maxHealth} (${hpPct}%)`,
+            `Piloting:    ${crew.skills.piloting}`,
+            `Engineering: ${crew.skills.engineering}`,
+            `Gunnery:     ${crew.skills.gunnery}`,
+            `Repair:      ${crew.skills.repair}`,
+            `Combat:      ${crew.skills.combat}`,
+          ],
+        );
+        return;
+      }
+    }
+
+    // 4. Player system rooms (on-ship hover) — system card.
+    const playerShipEntity2 = this.findPlayerShipEntity(world);
+    if (playerShipEntity2 === null) return;
     const entities = world.query(['Room', 'System', 'Position', 'Owner']);
     for (const entity of entities) {
       const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
-      if (ownerComp?.shipEntity !== playerShipEntity) continue;
-
+      if (ownerComp?.shipEntity !== playerShipEntity2) continue;
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
       const room = world.getComponent<RoomComponent>(entity, 'Room');
-      if (pos === undefined || room === undefined) continue;
-
+      const sys  = world.getComponent<SystemComponent>(entity, 'System');
+      if (pos === undefined || room === undefined || sys === undefined) continue;
       const right  = pos.x + room.width  * TILE_SIZE;
       const bottom = pos.y + room.height * TILE_SIZE;
       if (mouse.x >= pos.x && mouse.x < right && mouse.y >= pos.y && mouse.y < bottom) {
-        this.renderer.drawTooltip(mouse.x, mouse.y, 'UP / DOWN to route power');
+        this.renderer.drawTooltipCard(
+          mouse.x, mouse.y,
+          sys.type,
+          this.buildSystemLines(sys),
+        );
         return;
       }
     }
+  }
+
+  /** Builds lines for a weapon tooltip card from its template. Returns null if template not found. */
+  private buildWeaponCard(weapon: WeaponComponent): { title: string; lines: string[] } | null {
+    const templates = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
+    const tpl       = templates?.find((t) => t.id === weapon.templateId);
+    if (tpl === undefined) return null;
+
+    const lines: string[] = [
+      `Power Required: ${tpl.powerCost}`,
+      `Charge Time:    ${tpl.cooldown.toFixed(1)}s`,
+      `Damage (Hull):  ${tpl.damage.hull}`,
+      `Damage (Sys):   ${tpl.damage.system}`,
+    ];
+    if (tpl.damage.ion > 0)    lines.push(`Ion Damage:     ${tpl.damage.ion}`);
+    if (tpl.damage.crew > 0)   lines.push(`Crew Damage:    ${tpl.damage.crew}`);
+    if (tpl.neverMisses) {
+      lines.push('Accuracy:       Never Misses');
+    } else {
+      lines.push(`Accuracy:       ${Math.round(tpl.accuracy * 100)}%`);
+    }
+    if (tpl.missileCost > 0)   lines.push(`Missile Cost:   ${tpl.missileCost}`);
+    if (tpl.fireChance > 0)    lines.push(`Fire Chance:    ${Math.round(tpl.fireChance * 100)}%`);
+    if (tpl.breachChance > 0)  lines.push(`Breach Chance:  ${Math.round(tpl.breachChance * 100)}%`);
+    const status = weapon.userPowered
+      ? (weapon.isPowered ? `Charged: ${Math.round(weapon.charge / weapon.maxCharge * 100)}%` : 'Charging...')
+      : 'UNPOWERED';
+    lines.push(`Status:         ${status}`);
+    return { title: tpl.name, lines };
+  }
+
+  /** Builds detail lines for a system tooltip card. */
+  private buildSystemLines(sys: SystemComponent): string[] {
+    const lines: string[] = [
+      `Power:  ${sys.currentPower} / ${sys.maxCapacity}`,
+    ];
+    if (sys.damageAmount > 0) {
+      lines.push(`Damage: ${sys.damageAmount.toFixed(0)} (needs repair)`);
+    }
+    switch (sys.type) {
+      case 'SHIELDS':      lines.push('Generates shield layers that absorb shots.'); break;
+      case 'ENGINES':      lines.push('Provides evasion to dodge enemy fire.'); break;
+      case 'WEAPONS':      lines.push('Powers weapons for targeting and firing.'); break;
+      case 'OXYGEN':       lines.push('Replenishes ship atmosphere per second.'); break;
+      case 'MEDBAY':       lines.push('Heals crew inside at 5 HP/s while powered.'); break;
+      case 'PILOTING':     lines.push('Baseline evasion. Manning grants a bonus.'); break;
+      case 'SENSORS':      lines.push('Reveals crew and system status on enemy.'); break;
+      case 'DOORS':        lines.push('Remote door control for breach management.'); break;
+      case 'CLOAKING':     lines.push('Cloaks ship, greatly boosting evasion.'); break;
+      case 'TELEPORTER':   lines.push('Teleports crew to the enemy ship.'); break;
+      case 'DRONE_CONTROL':lines.push('Deploys combat and repair drones [D].'); break;
+      case 'HACKING':      lines.push('Hacks enemy systems to disrupt them.'); break;
+      default: break;
+    }
+    return lines;
   }
 
   private findPlayerShipEntity(world: IWorld): number | null {

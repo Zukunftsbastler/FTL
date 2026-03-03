@@ -63,6 +63,12 @@ export interface IRenderer {
   drawTooltip(x: number, y: number, text: string): void;
 
   /**
+   * Draws a rich "Card" tooltip with a bold title and multiple detail lines.
+   * Automatically repositions to stay within canvas bounds.
+   */
+  drawTooltipCard(x: number, y: number, title: string, lines: readonly string[]): void;
+
+  /**
    * Draws multi-line text, automatically wrapping at word boundaries within `maxWidth`.
    *
    * @param text       The string to render (spaces are used as word boundaries).

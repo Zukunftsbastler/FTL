@@ -14,4 +14,7 @@ export interface IInput {
 
   /** Returns true ONLY on the single frame the mouse button was first pressed. */
   isMouseJustPressed(button: number): boolean;
+
+  /** Sets the CSS cursor on the game canvas. Call every frame from systems; reset to 'default' at frame start. */
+  setCursor(type: string): void;
 }

@@ -10,6 +10,7 @@ import type { IInput } from './IInput';
  *     justPressed sets so they are empty for the next frame.
  */
 export class Input implements IInput {
+  private readonly canvas: HTMLCanvasElement;
   private readonly keysDown = new Set<string>();
   private readonly keysJustPressed = new Set<string>();
 
@@ -20,6 +21,7 @@ export class Input implements IInput {
   private mouseY: number = 0;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       // Prevent space from scrolling the page while the game is running.
       if (e.code === 'Space') e.preventDefault();
@@ -75,6 +77,10 @@ export class Input implements IInput {
 
   isMouseJustPressed(button: number): boolean {
     return this.buttonsJustPressed.has(button);
+  }
+
+  setCursor(type: string): void {
+    this.canvas.style.cursor = type;
   }
 
   /**

@@ -52,6 +52,9 @@ export class TargetingSystem {
     const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
     const playerWeapons = this.getPlayerWeapons(world);
 
+    // ── Cursor (runs every frame before any click guard) ─────────────────────
+    this.updateCursor(world, playerWeapons, boxBaseY, mouse);
+
     // ── Right-click on weapon box: power it OFF ───────────────────────────────
     if (rightClick) {
       for (let i = 0; i < playerWeapons.length; i++) {
@@ -114,6 +117,44 @@ export class TargetingSystem {
       }
       // Regardless of hit or miss, exit targeting mode after the click.
       this.selectedWeaponEntity = null;
+    }
+  }
+
+  // ── Cursor management ─────────────────────────────────────────────────────
+
+  private updateCursor(
+    world: IWorld,
+    playerWeapons: Array<[Entity, WeaponComponent]>,
+    boxBaseY: number,
+    mouse: { x: number; y: number },
+  ): void {
+    // In targeting mode the entire canvas becomes a crosshair.
+    if (this.selectedWeaponEntity !== null) {
+      this.input.setCursor('crosshair');
+      return;
+    }
+
+    // Hovering a weapon box?
+    for (let i = 0; i < playerWeapons.length; i++) {
+      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      if (
+        mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
+        mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
+      ) {
+        const [, weapon] = playerWeapons[i];
+        if (weapon.userPowered) {
+          // Powered → left-click will enter targeting mode.
+          this.input.setCursor('pointer');
+        } else {
+          // Can we afford to power this weapon on?
+          const pool = this.getWeaponSystemPower(world);
+          const used = playerWeapons.reduce(
+            (s, [, w]) => s + (w.userPowered ? w.powerRequired : 0), 0,
+          );
+          this.input.setCursor(weapon.powerRequired <= pool - used ? 'pointer' : 'not-allowed');
+        }
+        return;
+      }
     }
   }
 

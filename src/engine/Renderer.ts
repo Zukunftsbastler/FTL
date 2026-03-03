@@ -199,6 +199,65 @@ export class Renderer implements IRenderer {
     return currentY;
   }
 
+  drawTooltipCard(x: number, y: number, title: string, lines: readonly string[]): void {
+    const TITLE_FONT = 'bold 12px monospace';
+    const LINE_FONT  = '11px monospace';
+    const PAD_X   = 10;
+    const PAD_TOP = 8;
+    const PAD_BOT = 8;
+    const TITLE_H = 16;
+    const SEP_GAP = 4;
+    const LINE_H  = 15;
+
+    const boxH = PAD_TOP + TITLE_H + SEP_GAP + lines.length * LINE_H + PAD_BOT;
+
+    // Measure widest text to set box width.
+    this.ctx.font = TITLE_FONT;
+    let maxW = this.ctx.measureText(title).width;
+    this.ctx.font = LINE_FONT;
+    for (const line of lines) {
+      const w = this.ctx.measureText(line).width;
+      if (w > maxW) maxW = w;
+    }
+    const boxW = maxW + PAD_X * 2;
+
+    // Horizontal: right of cursor; flip left if overflow.
+    let bx = x + 14;
+    if (bx + boxW > this.ctx.canvas.width - 4) bx = x - boxW - 8;
+    // Vertical: above cursor; flip below if overflow.
+    let by = y - boxH - 4;
+    if (by < 4) by = y + 14;
+
+    // Background.
+    this.ctx.fillStyle = 'rgba(6,10,20,0.94)';
+    this.ctx.fillRect(bx, by, boxW, boxH);
+    // Border.
+    this.ctx.strokeStyle = '#334466';
+    this.ctx.lineWidth   = 1;
+    this.ctx.strokeRect(bx, by, boxW, boxH);
+
+    // Title.
+    this.ctx.font      = TITLE_FONT;
+    this.ctx.fillStyle = '#eef6ff';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(title, bx + PAD_X, by + PAD_TOP + TITLE_H - 3);
+
+    // Separator.
+    const sepY = by + PAD_TOP + TITLE_H + 2;
+    this.ctx.beginPath();
+    this.ctx.strokeStyle = '#2a3a55';
+    this.ctx.moveTo(bx + 4, sepY);
+    this.ctx.lineTo(bx + boxW - 4, sepY);
+    this.ctx.stroke();
+
+    // Detail lines.
+    this.ctx.font      = LINE_FONT;
+    this.ctx.fillStyle = '#99aabb';
+    for (let i = 0; i < lines.length; i++) {
+      this.ctx.fillText(lines[i], bx + PAD_X, sepY + SEP_GAP + LINE_H * (i + 1) - 2);
+    }
+  }
+
   drawTooltip(x: number, y: number, text: string): void {
     const FONT   = '12px monospace';
     const PAD_X  = 8;

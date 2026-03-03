@@ -419,6 +419,8 @@ async function init(): Promise<void> {
 
     } else if (currentState === 'COMBAT') {
       // ── Combat ───────────────────────────────────────────────────────────────
+      // Reset cursor to default; systems will override it based on hover context.
+      input.setCursor('default');
       renderer.clear('#000000');
 
       // Logic systems.

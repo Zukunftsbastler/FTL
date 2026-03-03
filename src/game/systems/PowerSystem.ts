@@ -70,16 +70,31 @@ export class PowerSystem {
   update(world: IWorld): void {
     const leftClick  = this.input.isMouseJustPressed(0);
     const rightClick = this.input.isMouseJustPressed(2);
-    if (!leftClick && !rightClick) return;
 
     const playerShipEntity = this.findPlayerShipEntity(world);
     if (playerShipEntity === null) return;
 
-    const reactor = world.getComponent<ReactorComponent>(playerShipEntity, 'Reactor');
-    if (reactor === undefined) return;
-
     const mouse   = this.input.getMousePosition();
     const systems = this.getPlayerSystems(world, playerShipEntity);
+
+    // ── Cursor: pointer when hovering a system row ────────────────────────────
+    for (let i = 0; i < systems.length; i++) {
+      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      if (
+        mouse.x >= SYSPANEL_X &&
+        mouse.x <= SYSPANEL_X + SYSPANEL_W &&
+        mouse.y >= rowY &&
+        mouse.y < rowY + SYSPANEL_ROW_H
+      ) {
+        this.input.setCursor('pointer');
+        break;
+      }
+    }
+
+    if (!leftClick && !rightClick) return;
+
+    const reactor = world.getComponent<ReactorComponent>(playerShipEntity, 'Reactor');
+    if (reactor === undefined) return;
 
     for (let i = 0; i < systems.length; i++) {
       const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;

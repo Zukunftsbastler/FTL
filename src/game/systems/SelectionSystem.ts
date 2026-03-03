@@ -29,9 +29,21 @@ export class SelectionSystem {
   }
 
   update(world: IWorld): void {
-    if (!this.input.isMouseJustPressed(0)) return;
-
     const mouse = this.input.getMousePosition();
+
+    // ── Cursor: pointer when hovering a crew member ───────────────────────────
+    for (const entity of world.query(['Crew', 'Selectable', 'Position'])) {
+      const pos = world.getComponent<PositionComponent>(entity, 'Position');
+      if (pos === undefined) continue;
+      const dx = mouse.x - pos.x;
+      const dy = mouse.y - pos.y;
+      if (dx * dx + dy * dy <= 14 * 14) {
+        this.input.setCursor('pointer');
+        break;
+      }
+    }
+
+    if (!this.input.isMouseJustPressed(0)) return;
 
     // Convert click pixel → grid tile.
     const clickGridX = Math.floor((mouse.x - this.shipX) / TILE_SIZE);
