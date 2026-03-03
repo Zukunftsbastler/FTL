@@ -1,8 +1,10 @@
+import { AssetLoader } from '../../utils/AssetLoader';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { ShipComponent } from '../components/ShipComponent';
+import type { SectorTemplate } from '../data/SectorTemplate';
 
 // ── Layout / style constants ──────────────────────────────────────────────────
 const NODE_RADIUS       = 18;
@@ -34,6 +36,18 @@ const MARGIN_X    = 90;  // left / right margin for START and EXIT nodes
 const MARGIN_TOP  = 130; // top margin for intermediate nodes
 const MARGIN_BOT  = 80;  // bottom margin for intermediate nodes
 
+/** Possible environmental hazard types assignable to a node. */
+const HAZARD_TYPES = ['ASTEROIDS', 'SOLAR_FLARE', 'ION_STORM', 'NEBULA'] as const;
+type HazardType = typeof HAZARD_TYPES[number];
+
+/** Hazard label colours shown on the map. */
+const HAZARD_COLORS: Record<HazardType, string> = {
+  ASTEROIDS:   '#cc8844',
+  SOLAR_FLARE: '#ffaa22',
+  ION_STORM:   '#44aaff',
+  NEBULA:      '#9966cc',
+};
+
 interface MapNode {
   id:      number;
   x:       number;
@@ -41,6 +55,8 @@ interface MapNode {
   label:   string;
   visited: boolean;
   isExit:  boolean;
+  /** Environmental hazard active during combat at this node, or null. */
+  hazard:  HazardType | null;
 }
 
 /**
@@ -60,6 +76,8 @@ export class MapSystem {
   private currentNodeId:   number = 0;
   private rebelFleetX:     number = -REBEL_ADVANCE; // starts off the left edge
   private generated:       boolean = false;
+  /** The sector template active for this map (picked randomly on generation). */
+  private sectorTemplate:  SectorTemplate | null = null;
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -137,6 +155,21 @@ export class MapSystem {
       // Label below node.
       const labelColor = node.isExit ? EXIT_LABEL_COLOR : LABEL_COLOR;
       renderer.drawText(node.label, node.x, node.y + NODE_RADIUS + 16, LABEL_FONT, labelColor, 'center');
+
+      // Hazard indicator below the label.
+      if (node.hazard !== null) {
+        const hazardColor = HAZARD_COLORS[node.hazard];
+        renderer.drawText(`⚡${node.hazard}`, node.x, node.y + NODE_RADIUS + 28, '9px monospace', hazardColor, 'center');
+      }
+    }
+
+    // ── Sector name HUD ────────────────────────────────────────────────────────
+    if (this.sectorTemplate !== null) {
+      renderer.drawText(
+        this.sectorTemplate.name.toUpperCase(),
+        width / 2, HUD_MARGIN_Y + 20,
+        '11px monospace', '#556677', 'center',
+      );
     }
 
     // ── Layer 3: HUD — fuel + fleet distance ──────────────────────────────────
@@ -179,6 +212,19 @@ export class MapSystem {
     this.rebelFleetX += REBEL_ADVANCE * steps;
   }
 
+  /**
+   * Returns the environmental hazard type of the current node, or null if none.
+   * HazardSystem reads this each frame during COMBAT to apply hazard effects.
+   */
+  getCurrentNodeHazard(): string | null {
+    return this.nodes[this.currentNodeId]?.hazard ?? null;
+  }
+
+  /** Returns the ID of the active sector template (e.g. 'civilian_sector'). */
+  getCurrentSectorId(): string {
+    return this.sectorTemplate?.id ?? 'civilian_sector';
+  }
+
   /** Resets the map and regenerates it (call when entering a new sector). */
   nextSector(canvasW: number, canvasH: number): void {
     this.generated = false;
@@ -191,13 +237,22 @@ export class MapSystem {
   // ── Graph generation ──────────────────────────────────────────────────────
 
   private generate(canvasW: number, canvasH: number): void {
+    // ── Pick a random sector type from sectors.json ───────────────────────────
+    const sectors = AssetLoader.getJSON<SectorTemplate[]>('sectors');
+    if (sectors !== undefined && sectors.length > 0) {
+      this.sectorTemplate = sectors[Math.floor(Math.random() * sectors.length)];
+    } else {
+      this.sectorTemplate = null;
+    }
+    const hazardChance = this.sectorTemplate?.hazardChance ?? 0.15;
+
     const N = 16; // total node count including START and EXIT
     const nodes: MapNode[] = [];
 
     // START node — far left, vertically centred.
     nodes.push({
       id: 0, x: MARGIN_X, y: Math.round(canvasH / 2),
-      label: 'START', visited: true, isExit: false,
+      label: 'START', visited: true, isExit: false, hazard: null,
     });
 
     // Intermediate nodes — spread across the canvas with gentle randomness.
@@ -212,13 +267,17 @@ export class MapSystem {
         MARGIN_X + baseFrac * usableW + jitter,
       )));
       const y        = Math.round(MARGIN_TOP + Math.random() * usableH);
-      nodes.push({ id: i, x, y, label: `Sector ${i}`, visited: false, isExit: false });
+      // Randomly assign a hazard based on the sector's hazardChance.
+      const hazard: HazardType | null = Math.random() < hazardChance
+        ? HAZARD_TYPES[Math.floor(Math.random() * HAZARD_TYPES.length)]
+        : null;
+      nodes.push({ id: i, x, y, label: `Beacon ${i}`, visited: false, isExit: false, hazard });
     }
 
     // EXIT node — far right, vertically centred.
     nodes.push({
       id: N - 1, x: canvasW - MARGIN_X, y: Math.round(canvasH / 2),
-      label: 'EXIT', visited: false, isExit: true,
+      label: 'EXIT', visited: false, isExit: true, hazard: null,
     });
 
     // Sort by x so ids increase left→right.

@@ -25,4 +25,9 @@ export interface ShipComponent extends Component {
    * Reduces incoming hit chance: actualHit = clamp(accuracy - evasion, 0.05, 1.0).
    */
   evasion: number;
+  /**
+   * IDs of active augmentations installed on this ship (e.g. 'weapon_pre_igniter').
+   * AugmentSystem reads this each frame and applies passive effects.
+   */
+  augments: string[];
 }

@@ -17,4 +17,10 @@ export interface SystemComponent extends Component {
    * Crew standing in this room will reduce this over time via RepairSystem.
    */
   damageAmount: number;
+  /**
+   * Free power contributed by Zoltan crew occupying this room.
+   * Reset to 0 each frame by ZoltanPowerSystem, then rebuilt from crew positions.
+   * Added on top of currentPower for effective-power calculations in shield/evasion/weapons.
+   */
+  zoltanBonus: number;
 }

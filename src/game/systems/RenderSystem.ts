@@ -16,6 +16,7 @@ import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { CloakComponent } from '../components/CloakComponent';
 import type { DoorComponent } from '../components/DoorComponent';
+import type { DroneComponent } from '../components/DroneComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
@@ -188,6 +189,7 @@ export class RenderSystem {
     this.drawRooms(world);
     this.drawDoors(world);
     this.drawCrew(world);
+    this.drawDrones(world);
     this.drawProjectiles(world);
     this.drawBeams();
     this.drawMissIndicators();
@@ -556,6 +558,39 @@ export class RenderSystem {
       }
 
       return; // only draw for the first (should be only) selected crew
+    }
+  }
+
+  // ── Layer 3.5: drones ──────────────────────────────────────────────────────
+
+  private drawDrones(world: IWorld): void {
+    const entities = world.query(['Drone', 'Position']);
+    for (const entity of entities) {
+      const drone = world.getComponent<DroneComponent>(entity, 'Drone');
+      const pos   = world.getComponent<PositionComponent>(entity, 'Position');
+      if (drone === undefined || pos === undefined) continue;
+
+      // Color: player drones = cyan, enemy drones = orange.
+      const color = drone.ownerFaction === 'PLAYER' ? '#00ffee' : '#ff8800';
+
+      // Shape: diamond (rotated square) drawn as a 4-point polygon.
+      const S = 8; // half-size
+      const pts = [
+        { x: pos.x,     y: pos.y - S },
+        { x: pos.x + S, y: pos.y     },
+        { x: pos.x,     y: pos.y + S },
+        { x: pos.x - S, y: pos.y     },
+      ];
+      this.renderer.drawPolygon(pts, color, true);
+      this.renderer.drawPolygon(pts, '#ffffff', false, 1);
+
+      // Type initial in centre.
+      const icon = drone.droneType === 'EXTERNAL_COMBAT'  ? 'C'
+                 : drone.droneType === 'EXTERNAL_DEFENSE' ? 'D'
+                 : drone.droneType === 'INTERNAL_SUPPORT' ? 'R'  // Repair
+                 : drone.droneType === 'INTERNAL_COMBAT'  ? 'A'  // Anti-personnel
+                 : 'B'; // Boarding
+      this.renderer.drawText(icon, pos.x, pos.y + 4, '9px monospace', '#000000', 'center');
     }
   }
 

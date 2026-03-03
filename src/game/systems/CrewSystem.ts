@@ -1,5 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { getRaceStats } from '../logic/CrewStats';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
@@ -33,7 +34,9 @@ export class CrewSystem {
 
       const o2 = this.getO2AtPosition(pos.x, pos.y, roomData);
       if (o2 !== null && o2 < SUFFOCATION_THRESHOLD) {
-        crew.health -= SUFFOCATION_RATE * dt;
+        // Racial suffocationMultiplier: 0.0 = immune (Lanius), 0.5 = reduced (Crystal).
+        const suffMult = getRaceStats(crew.race).suffocationMultiplier;
+        crew.health -= SUFFOCATION_RATE * suffMult * dt;
         if (crew.health <= 0) {
           world.destroyEntity(entity);
         }

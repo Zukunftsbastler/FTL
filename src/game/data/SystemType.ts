@@ -9,4 +9,6 @@ export type SystemType =
   | 'SENSORS'
   | 'DOORS'
   | 'CLOAKING'
-  | 'TELEPORTER';
+  | 'TELEPORTER'
+  | 'DRONE_CONTROL'
+  | 'HACKING';

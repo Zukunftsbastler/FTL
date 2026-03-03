@@ -43,14 +43,14 @@ export class ShieldSystem {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /** Returns current power allocated to the SHIELDS system on a given ship. */
+  /** Returns effective power for the SHIELDS system (currentPower + zoltanBonus). */
   private getShieldSystemPower(world: IWorld, shipEntity: number): number {
     const entities = world.query(['System', 'Owner']);
     for (const entity of entities) {
       const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
       if (ownerComp?.shipEntity !== shipEntity) continue;
       const sys = world.getComponent<SystemComponent>(entity, 'System');
-      if (sys?.type === 'SHIELDS') return sys.currentPower;
+      if (sys?.type === 'SHIELDS') return sys.currentPower + sys.zoltanBonus;
     }
     return 0;
   }

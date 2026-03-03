@@ -154,10 +154,10 @@ export class CombatSystem {
     weapon.charge = 0;
     if (weapon.targetRoomEntity === undefined) return;
 
-    // Firing while cloaked terminates the cloak.
+    // Firing while cloaked terminates the cloak (unless stealth_weapons augment).
     if (!isEnemy) {
       const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
-      if (cloak?.isActive === true) {
+      if (cloak?.isActive === true && !this.hasAugment(world, shipEntity, 'stealth_weapons')) {
         cloak.isActive      = false;
         cloak.durationTimer = 0;
         cloak.cooldownTimer = cloak.maxCooldown;
@@ -219,10 +219,10 @@ export class CombatSystem {
     weapon.charge = 0;
     if (weapon.targetRoomEntity === undefined) return;
 
-    // Firing while cloaked terminates the cloak.
+    // Firing while cloaked terminates the cloak (unless stealth_weapons augment).
     if (!isEnemy) {
       const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
-      if (cloak?.isActive === true) {
+      if (cloak?.isActive === true && !this.hasAugment(world, shipEntity, 'stealth_weapons')) {
         cloak.isActive      = false;
         cloak.durationTimer = 0;
         cloak.cooldownTimer = cloak.maxCooldown;
@@ -337,8 +337,7 @@ export class CombatSystem {
   }
 
   /**
-   * Returns the current power allocated to the WEAPONS system on the given ship,
-   * or 0 if no such system exists.
+   * Returns effective power for the WEAPONS system (currentPower + zoltanBonus).
    */
   private getWeaponSystemPower(world: IWorld, shipEntity: Entity): number {
     const entities = world.query(['System', 'Owner']);
@@ -346,9 +345,15 @@ export class CombatSystem {
       const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
       if (ownerComp?.shipEntity !== shipEntity) continue;
       const sys = world.getComponent<SystemComponent>(entity, 'System');
-      if (sys?.type === 'WEAPONS') return sys.currentPower;
+      if (sys?.type === 'WEAPONS') return sys.currentPower + sys.zoltanBonus;
     }
     return 0;
+  }
+
+  /** Returns true if the given ship has the named augment installed. */
+  private hasAugment(world: IWorld, shipEntity: Entity, augmentId: string): boolean {
+    const ship = world.getComponent<ShipComponent>(shipEntity, 'Ship');
+    return ship?.augments.includes(augmentId) ?? false;
   }
 
   /** Returns [entity, WeaponComponent] pairs for a given ship, sorted by entity ID. */

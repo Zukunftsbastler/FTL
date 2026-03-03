@@ -88,6 +88,7 @@ export class ShipFactory {
       droneParts: template.startingResources.droneParts,
       cargoWeapons: [],
       evasion: 0,
+      augments: [],
     };
     const factionComp: FactionComponent = {
       _type: 'Faction',
@@ -147,6 +148,7 @@ export class ShipFactory {
             currentPower: 0,
             roomId: roomData.roomId,
             damageAmount: 0,
+            zoltanBonus: 0,
           };
           world.addComponent(roomEntity, systemComp);
           spawnedSystems.push(systemComp);

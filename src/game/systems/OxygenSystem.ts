@@ -1,15 +1,21 @@
 import { Time } from '../../engine/Time';
+import { TILE_SIZE } from '../constants';
 import { calculateO2Change, equalizeO2, SPACE_EQ_RATE } from '../logic/OxygenMath';
 import type { Entity } from '../../engine/Entity';
 import type { IWorld } from '../../engine/IWorld';
+import type { CrewComponent } from '../components/CrewComponent';
 import type { DoorComponent } from '../components/DoorComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
+import type { PositionComponent } from '../components/PositionComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 
 /** Cap dt to prevent huge simulation jumps if the tab was backgrounded. */
 const MAX_DT = 0.1;
+
+/** Oxygen drained per second by a Lanius crew member in a room (% of room capacity). */
+const LANIUS_DRAIN_RATE = 15;
 
 /**
  * Per-frame O2 simulation. Multi-ship aware.
@@ -45,6 +51,9 @@ export class OxygenSystem {
         if (oxygen === undefined) continue;
         oxygen.level = calculateO2Change(oxygen.level, isPowered, false, dt);
       }
+
+      // ── Lanius O2 drain: each Lanius in a room reduces that room's O2 ────────
+      this.applyLaniusDrain(world, shipEntity, oxygenMap, dt);
 
       // Equalize O2 through open doors owned by this ship.
       const doorEntities = world.query(['Door', 'Owner']);
@@ -127,5 +136,58 @@ export class OxygenSystem {
       }
     }
     return false;
+  }
+
+  /**
+   * Lanius crew drain oxygen from the room they occupy.
+   * The Lanius themselves are immune to suffocation (handled in CrewSystem).
+   */
+  private applyLaniusDrain(
+    world: IWorld,
+    shipEntity: Entity,
+    oxygenMap: Map<string, OxygenComponent>,
+    dt: number,
+  ): void {
+    // Build a quick room-bounds lookup for this ship.
+    const roomBounds: Array<{
+      roomId: number;
+      left: number; top: number; right: number; bottom: number;
+    }> = [];
+
+    for (const entity of world.query(['Room', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos === undefined || room === undefined) continue;
+      roomBounds.push({
+        roomId: room.roomId,
+        left:   pos.x,
+        top:    pos.y,
+        right:  pos.x + room.width  * TILE_SIZE,
+        bottom: pos.y + room.height * TILE_SIZE,
+      });
+    }
+
+    // For each Lanius crew on this ship, drain the room they occupy.
+    for (const entity of world.query(['Crew', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const crew = world.getComponent<CrewComponent>(entity, 'Crew');
+      if (crew?.race !== 'LANIUS') continue;
+      const pos = world.getComponent<PositionComponent>(entity, 'Position');
+      if (pos === undefined) continue;
+
+      for (const rb of roomBounds) {
+        if (pos.x >= rb.left && pos.x < rb.right && pos.y >= rb.top && pos.y < rb.bottom) {
+          const key   = `${shipEntity}:${rb.roomId}`;
+          const oxygen = oxygenMap.get(key);
+          if (oxygen !== undefined) {
+            oxygen.level = Math.max(0, oxygen.level - LANIUS_DRAIN_RATE * dt);
+          }
+          break;
+        }
+      }
+    }
   }
 }

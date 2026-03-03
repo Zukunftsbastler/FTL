@@ -34,9 +34,11 @@ export class EvasionSystem {
 
       const ship = world.getComponent<ShipComponent>(owner.shipEntity, 'Ship');
       if (ship !== undefined) {
+        // Include Zoltan bonus power in effective ENGINES power.
+        const effectivePower = sys.currentPower + sys.zoltanBonus;
         ship.evasion = Math.min(
           MAX_EVASION,
-          ship.evasion + sys.currentPower * ENGINES_EVASION_PER_POWER,
+          ship.evasion + effectivePower * ENGINES_EVASION_PER_POWER,
         );
       }
     }

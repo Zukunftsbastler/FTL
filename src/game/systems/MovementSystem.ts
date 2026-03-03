@@ -1,13 +1,15 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { getRaceStats } from '../logic/CrewStats';
 import { Pathfinder } from '../../utils/Pathfinder';
 import type { IInput } from '../../engine/IInput';
 import type { IWorld } from '../../engine/IWorld';
+import type { CrewComponent } from '../components/CrewComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 
-/** Linear movement speed in pixels per second (~2.3 tiles/s at TILE_SIZE=35). */
+/** Base linear movement speed in pixels per second (~2.3 tiles/s at TILE_SIZE=35). */
 const CREW_SPEED = 80;
 
 /**
@@ -83,10 +85,14 @@ export class MovementSystem {
     const entities = world.query(['Crew', 'Pathfinding', 'Position']);
 
     for (const entity of entities) {
+      const crew        = world.getComponent<CrewComponent>(entity, 'Crew');
       const pos         = world.getComponent<PositionComponent>(entity, 'Position');
       const pathfinding = world.getComponent<PathfindingComponent>(entity, 'Pathfinding');
       if (pos === undefined || pathfinding === undefined) continue;
       if (pathfinding.path.length === 0) continue; // nothing to do
+
+      // Apply racial movement speed multiplier from crew_stats.json.
+      const speedMult = crew !== undefined ? getRaceStats(crew.race).movementSpeed : 1.0;
 
       // Lerp toward the FIRST remaining waypoint.
       const waypoint = pathfinding.path[0];
@@ -105,7 +111,7 @@ export class MovementSystem {
         continue;
       }
 
-      const step = CREW_SPEED * dt;
+      const step = CREW_SPEED * speedMult * dt;
       if (step >= dist) {
         pos.x = targetPx;
         pos.y = targetPy;

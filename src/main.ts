@@ -24,6 +24,10 @@ import { VictorySystem } from './game/systems/VictorySystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
 import { EventSystem } from './game/systems/EventSystem';
 import { MapSystem } from './game/systems/MapSystem';
+import { ZoltanPowerSystem } from './game/systems/ZoltanPowerSystem';
+import { AugmentSystem } from './game/systems/AugmentSystem';
+import { HazardSystem } from './game/systems/HazardSystem';
+import { DroneControlSystem } from './game/systems/DroneControlSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -31,6 +35,10 @@ import type { GameState } from './engine/GameState';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { WeaponTemplate } from './game/data/WeaponTemplate';
 import type { EventTemplate } from './game/data/EventTemplate';
+import type { AugmentTemplate } from './game/data/AugmentTemplate';
+import type { CrewRaceStats } from './game/data/CrewRaceStats';
+import type { DroneTemplate } from './game/data/DroneTemplate';
+import type { SectorTemplate } from './game/data/SectorTemplate';
 import type { EventReward } from './game/data/EventTemplate';
 import type { CrewRace } from './game/data/CrewRace';
 import type { CrewClass } from './game/data/CrewClass';
@@ -91,9 +99,13 @@ async function init(): Promise<void> {
   // ── Pre-load phase ──────────────────────────────────────────────────────────
   await Promise.all([
     generatePlaceholderAssets(),
-    AssetLoader.loadJSON<ShipTemplate[]>('ships', '/data/ships.json'),
-    AssetLoader.loadJSON<WeaponTemplate[]>('weapons', '/data/weapons.json'),
-    AssetLoader.loadJSON<EventTemplate[]>('events', '/data/events.json'),
+    AssetLoader.loadJSON<ShipTemplate[]>('ships',       '/data/ships.json'),
+    AssetLoader.loadJSON<WeaponTemplate[]>('weapons',   '/data/weapons.json'),
+    AssetLoader.loadJSON<EventTemplate[]>('events',     '/data/events.json'),
+    AssetLoader.loadJSON<CrewRaceStats[]>('crew_stats', '/data/crew_stats.json'),
+    AssetLoader.loadJSON<AugmentTemplate[]>('augments', '/data/augments.json'),
+    AssetLoader.loadJSON<DroneTemplate[]>('drones',     '/data/drones.json'),
+    AssetLoader.loadJSON<SectorTemplate[]>('sectors',   '/data/sectors.json'),
   ]);
 
   // ── Ship layout ─────────────────────────────────────────────────────────────
@@ -131,6 +143,22 @@ async function init(): Promise<void> {
       const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
       if (weapon !== undefined) weapon.targetRoomEntity = undefined;
     }
+
+    // weapon_pre_igniter: player weapons start fully charged.
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship?.augments.includes('weapon_pre_igniter') !== true) break;
+      for (const wEntity of world.query(['Weapon', 'Owner'])) {
+        const ownerComp = world.getComponent<OwnerComponent>(wEntity, 'Owner');
+        if (ownerComp?.shipEntity !== entity) continue;
+        const weapon = world.getComponent<WeaponComponent>(wEntity, 'Weapon');
+        if (weapon !== undefined) weapon.charge = weapon.maxCharge;
+      }
+      break;
+    }
+
     currentState = 'COMBAT';
   }
 
@@ -152,7 +180,12 @@ async function init(): Promise<void> {
     if (ship === undefined || playerShipEntity === undefined) return;
 
     // ── Ship resources ─────────────────────────────────────────────────────
-    if (reward.scrap      !== undefined) ship.scrap = Math.max(0, ship.scrap + reward.scrap);
+    if (reward.scrap !== undefined) {
+      // scrap_recovery_arm: 10% more scrap per stack.
+      const armCount = ship.augments.filter((a) => a === 'scrap_recovery_arm').length;
+      const scrapMult = 1.0 + armCount * 0.1;
+      ship.scrap = Math.max(0, ship.scrap + Math.round(reward.scrap * scrapMult));
+    }
     if (reward.fuel       !== undefined) ship.fuel       += reward.fuel;
     if (reward.missiles   !== undefined) ship.missiles   += reward.missiles;
     if (reward.hullRepair !== undefined) {
@@ -276,27 +309,31 @@ async function init(): Promise<void> {
 
   // ── Systems ─────────────────────────────────────────────────────────────────
 
-  const targetingSystem   = new TargetingSystem(input, renderer);
-  const combatSystem      = new CombatSystem();
-  const projectileSystem  = new ProjectileSystem();
-  const victorySystem     = new VictorySystem();
-  const upgradeSystem     = new UpgradeSystem();
-  const eventSystem       = new EventSystem();
-  const mapSystem         = new MapSystem();
-  const renderSystem      = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
-  const selectionSystem = new SelectionSystem(input, playerShipX, playerShipY);
-  const movementSystem  = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
-  const powerSystem     = new PowerSystem(input);
-  const doorSystem      = new DoorSystem(input);
-  const oxygenSystem    = new OxygenSystem();
-  const crewSystem      = new CrewSystem();
-  const manningSystem   = new ManningSystem();
-  const repairSystem    = new RepairSystem();
-  const shieldSystem    = new ShieldSystem();
-  const evasionSystem   = new EvasionSystem();
-  const cloakingSystem  = new CloakingSystem(input);
-  const teleportSystem  = new TeleportSystem(input);
-  const enemyAISystem   = new EnemyAISystem();
+  const targetingSystem    = new TargetingSystem(input, renderer);
+  const combatSystem       = new CombatSystem();
+  const projectileSystem   = new ProjectileSystem();
+  const victorySystem      = new VictorySystem();
+  const upgradeSystem      = new UpgradeSystem();
+  const eventSystem        = new EventSystem();
+  const mapSystem          = new MapSystem();
+  const renderSystem       = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
+  const selectionSystem    = new SelectionSystem(input, playerShipX, playerShipY);
+  const movementSystem     = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
+  const powerSystem        = new PowerSystem(input);
+  const doorSystem         = new DoorSystem(input);
+  const oxygenSystem       = new OxygenSystem();
+  const crewSystem         = new CrewSystem();
+  const manningSystem      = new ManningSystem();
+  const repairSystem       = new RepairSystem();
+  const shieldSystem       = new ShieldSystem();
+  const evasionSystem      = new EvasionSystem();
+  const cloakingSystem     = new CloakingSystem(input);
+  const teleportSystem     = new TeleportSystem(input);
+  const enemyAISystem      = new EnemyAISystem();
+  const zoltanPowerSystem  = new ZoltanPowerSystem();
+  const augmentSystem      = new AugmentSystem();
+  const hazardSystem       = new HazardSystem(mapSystem);
+  const droneControlSystem = new DroneControlSystem(input);
 
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
@@ -372,22 +409,26 @@ async function init(): Promise<void> {
       renderer.clear('#000000');
 
       // Logic systems.
-      doorSystem.update(world);       // toggle doors (left-click)
-      targetingSystem.update(world);  // weapon selection + targeting (left-click)
-      selectionSystem.update(world);  // crew selection (left-click)
-      movementSystem.update(world);   // crew movement (right-click + A*)
-      teleportSystem.update(world);   // crew teleportation 'T' key
-      powerSystem.update(world);      // power routing (hover + arrow keys)
-      evasionSystem.update(world);    // reset evasion + ENGINES power baseline
-      manningSystem.update(world);    // manning buffs (charge rate, crew evasion bonus)
-      cloakingSystem.update(world);   // cloak activation + evasion bonus + freeze enemy charges
-      shieldSystem.update(world);     // shield recharge + max-layer updates
-      enemyAISystem.update(world);    // assign targets to charged enemy weapons
-      combatSystem.update(world);     // weapon charging + projectile spawning + beam fire
-      projectileSystem.update(world); // advance projectiles, shield check, damage
-      oxygenSystem.update(world);     // O2 regen / decay / equalization
-      crewSystem.update(world);       // suffocation damage
-      repairSystem.update(world);     // system repair + medbay healing
+      doorSystem.update(world);         // toggle doors (left-click)
+      targetingSystem.update(world);    // weapon selection + targeting (left-click)
+      selectionSystem.update(world);    // crew selection (left-click)
+      movementSystem.update(world);     // crew movement (right-click + A*)
+      teleportSystem.update(world);     // crew teleportation 'T' key
+      droneControlSystem.update(world); // drone activation ('D') + drone AI
+      powerSystem.update(world);        // power routing (hover + arrow keys)
+      zoltanPowerSystem.update(world);  // Zoltan +1 free power to occupied room system
+      evasionSystem.update(world);      // reset evasion + ENGINES power baseline (incl. Zoltan)
+      manningSystem.update(world);      // manning buffs (charge rate, crew evasion bonus)
+      augmentSystem.update(world);      // passive augment effects (automated_reloader, medbots)
+      cloakingSystem.update(world);     // cloak activation + evasion bonus + freeze enemy charges
+      hazardSystem.update(world);       // environmental hazards (asteroids, flares, ion, nebula)
+      shieldSystem.update(world);       // shield recharge + max-layer updates (incl. Zoltan)
+      enemyAISystem.update(world);      // assign targets to charged enemy weapons
+      combatSystem.update(world);       // weapon charging + projectile spawning + beam fire
+      projectileSystem.update(world);   // advance projectiles, shield check, damage
+      oxygenSystem.update(world);       // O2 regen / decay / equalization + Lanius drain
+      crewSystem.update(world);         // suffocation damage (racial multipliers)
+      repairSystem.update(world);       // system repair + medbay healing (racial repair speed)
 
       // Render all layers.
       renderSystem.update(world);

@@ -1,6 +1,7 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { awardXP } from '../logic/CrewXP';
+import { getRaceStats } from '../logic/CrewStats';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
@@ -13,9 +14,6 @@ const BASE_REPAIR_RATE = 1.0;
 
 /** HP regained per second while resting in a powered Medbay. */
 const BASE_HEAL_RATE = 5.0;
-
-/** Engi crew repair twice as fast as other races. */
-const ENGI_REPAIR_MULTIPLIER = 2.0;
 
 /**
  * Handles crew-driven system repair and Medbay healing.
@@ -51,7 +49,7 @@ export class RepairSystem {
 
       // ── System repair ──────────────────────────────────────────────────────
       if (room.system !== undefined && room.system.damageAmount > 0) {
-        const raceMultiplier = crew.race === 'ENGI' ? ENGI_REPAIR_MULTIPLIER : 1.0;
+        const raceMultiplier = getRaceStats(crew.race).repairSpeed;
         const repairRate     = BASE_REPAIR_RATE * (1 + crew.skills.repair * 0.5) * raceMultiplier;
         const repaired       = Math.min(room.system.damageAmount, repairRate * dt);
         room.system.damageAmount = Math.max(0, room.system.damageAmount - repaired);
