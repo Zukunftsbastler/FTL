@@ -21,6 +21,8 @@ export class Input implements IInput {
 
   constructor(canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      // Prevent space from scrolling the page while the game is running.
+      if (e.code === 'Space') e.preventDefault();
       // e.repeat is true when the OS is auto-repeating a held key — ignore those.
       if (!e.repeat) {
         this.keysJustPressed.add(e.code);
@@ -46,6 +48,13 @@ export class Input implements IInput {
     canvas.addEventListener('mouseup', (e: MouseEvent) => {
       this.buttonsDown.delete(e.button);
     });
+
+    // Prevent the browser's native right-click context menu over the canvas.
+    // Without this, right-clicking during gameplay would surface the browser menu.
+    canvas.addEventListener('contextmenu', (e: MouseEvent) => {
+      e.preventDefault();
+    });
+
   }
 
   isKeyDown(keyCode: string): boolean {

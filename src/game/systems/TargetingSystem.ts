@@ -52,7 +52,7 @@ export class TargetingSystem {
     const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
     const playerWeapons = this.getPlayerWeapons(world);
 
-    // ── Right-click on weapon box: toggle power ──────────────────────────────
+    // ── Right-click on weapon box: power it OFF ───────────────────────────────
     if (rightClick) {
       for (let i = 0; i < playerWeapons.length; i++) {
         const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
@@ -60,45 +60,45 @@ export class TargetingSystem {
           mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
           mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
         ) {
-          const [, weapon] = playerWeapons[i];
-          if (weapon.userPowered) {
-            // Turn off — always allowed.
-            weapon.userPowered = false;
-            if (this.selectedWeaponEntity === playerWeapons[i][0]) {
-              this.selectedWeaponEntity = null;
-            }
-          } else {
-            // Turn on — validate against available power pool.
-            const pool = this.getWeaponSystemPower(world);
-            const usedByOthers = playerWeapons.reduce(
-              (sum, [, w]) => sum + (w.userPowered ? w.powerRequired : 0), 0,
-            );
-            if (weapon.powerRequired <= pool - usedByOthers) {
-              weapon.userPowered = true;
-            }
+          const [entity, weapon] = playerWeapons[i];
+          // Right-click always powers OFF and cancels targeting for this weapon.
+          weapon.userPowered = false;
+          if (this.selectedWeaponEntity === entity) {
+            this.selectedWeaponEntity = null;
           }
           return;
         }
       }
-      // Right-click elsewhere: cancel targeting.
+      // Right-click elsewhere: cancel active targeting mode.
       this.selectedWeaponEntity = null;
       return;
     }
 
     if (!leftClick) return;
 
-    // ── Left-click on a weapon UI box: select for targeting (if powered) ─────
+    // ── Left-click on a weapon UI box ─────────────────────────────────────────
     for (let i = 0; i < playerWeapons.length; i++) {
       const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
-      const by = boxBaseY;
       if (
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
-        mouse.y >= by && mouse.y <= by + WEAPON_BOX_H
+        mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
       ) {
         const [entity, weapon] = playerWeapons[i];
-        if (!weapon.userPowered) return; // unpowered weapons cannot be targeted
-        // Toggle: clicking the already-selected weapon deselects it.
-        this.selectedWeaponEntity = this.selectedWeaponEntity === entity ? null : entity;
+
+        if (!weapon.userPowered) {
+          // Unpowered: attempt to power ON by drawing from the WEAPONS pool.
+          const pool = this.getWeaponSystemPower(world);
+          const usedByOthers = playerWeapons.reduce(
+            (sum, [, w]) => sum + (w.userPowered ? w.powerRequired : 0), 0,
+          );
+          if (weapon.powerRequired <= pool - usedByOthers) {
+            weapon.userPowered = true;
+          }
+          // Do not enter targeting mode on the power-on click.
+        } else {
+          // Already powered: Left-click enters / toggles targeting mode.
+          this.selectedWeaponEntity = this.selectedWeaponEntity === entity ? null : entity;
+        }
         return;
       }
     }

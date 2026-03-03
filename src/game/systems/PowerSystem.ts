@@ -1,25 +1,64 @@
-import { TILE_SIZE } from '../constants';
 import { allocatePower, deallocatePower } from '../logic/PowerMath';
 import type { Entity } from '../../engine/Entity';
 import type { IInput } from '../../engine/IInput';
 import type { IWorld } from '../../engine/IWorld';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
-import type { PositionComponent } from '../components/PositionComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
-import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
+import type { SystemType } from '../data/SystemType';
+
+// ── System power panel layout ─────────────────────────────────────────────────
+// Exported so RenderSystem can draw matching hitboxes without duplicating geometry.
+
+/** Left edge of the system power panel in the player dashboard. */
+export const SYSPANEL_X = 12;
+
+/** Top of the first system row (px). Sits below the 5 resource-stat lines. */
+export const SYSPANEL_Y0 = 152;
+
+/** Height of each system row (px). */
+export const SYSPANEL_ROW_H = 22;
+
+/** Total clickable width of each row (px). */
+export const SYSPANEL_W = 185;
+
+/** Pixel offset from the left edge where the name label ends and pips begin. */
+export const SYSPANEL_LABEL_W = 86;
+
+/** Width of each power pip square. */
+export const SYSPANEL_PIP_W = 9;
+
+/** Height of each power pip square. */
+export const SYSPANEL_PIP_H = 9;
+
+/** Gap between consecutive pip squares. */
+export const SYSPANEL_PIP_GAP = 2;
 
 /**
- * Handles keyboard-driven power allocation for ship systems.
+ * System types that do NOT draw from the reactor power pool (sub-systems).
+ * These are omitted from the clickable power panel.
+ */
+export const SUBSYSTEM_TYPES = new Set<SystemType>(['PILOTING', 'SENSORS', 'DOORS']);
+
+/**
+ * Preferred display order for systems in the power panel.
+ * Systems not in this list are appended at the end in query order.
+ */
+const PANEL_ORDER: SystemType[] = [
+  'OXYGEN', 'SHIELDS', 'ENGINES', 'WEAPONS', 'MEDBAY',
+  'CLOAKING', 'TELEPORTER', 'DRONE_CONTROL', 'HACKING',
+];
+
+/**
+ * Click-driven power allocation for the player's ship systems.
  *
- * Interaction model:
- *   - Hover the mouse over a room on the PLAYER ship that contains a System.
- *   - Press ArrowUp   → allocate 1 power from the reactor to that system.
- *   - Press ArrowDown → deallocate 1 power from that system back to the reactor.
+ * New interaction model (replaces ArrowUp / ArrowDown hover):
+ *   Left-Click  on a system row in the dashboard → allocate 1 power unit.
+ *   Right-Click on a system row in the dashboard → deallocate 1 power unit.
  *
- * With multiple ships in the world, only the PLAYER faction's reactor and rooms
- * are affected.
+ * Sub-systems (PILOTING, SENSORS, DOORS) are excluded from the panel and
+ * cannot be modified here.
  */
 export class PowerSystem {
   private readonly input: IInput;
@@ -29,9 +68,9 @@ export class PowerSystem {
   }
 
   update(world: IWorld): void {
-    const up   = this.input.isKeyJustPressed('ArrowUp');
-    const down = this.input.isKeyJustPressed('ArrowDown');
-    if (!up && !down) return;
+    const leftClick  = this.input.isMouseJustPressed(0);
+    const rightClick = this.input.isMouseJustPressed(2);
+    if (!leftClick && !rightClick) return;
 
     const playerShipEntity = this.findPlayerShipEntity(world);
     if (playerShipEntity === null) return;
@@ -39,11 +78,22 @@ export class PowerSystem {
     const reactor = world.getComponent<ReactorComponent>(playerShipEntity, 'Reactor');
     if (reactor === undefined) return;
 
-    const hoveredSystem = this.getHoveredPlayerSystem(world, playerShipEntity);
-    if (hoveredSystem === null) return;
+    const mouse   = this.input.getMousePosition();
+    const systems = this.getPlayerSystems(world, playerShipEntity);
 
-    if (up)   allocatePower(reactor, hoveredSystem);
-    if (down) deallocatePower(reactor, hoveredSystem);
+    for (let i = 0; i < systems.length; i++) {
+      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      if (
+        mouse.x >= SYSPANEL_X &&
+        mouse.x <= SYSPANEL_X + SYSPANEL_W &&
+        mouse.y >= rowY &&
+        mouse.y < rowY + SYSPANEL_ROW_H
+      ) {
+        if (leftClick)  allocatePower(reactor, systems[i]);
+        if (rightClick) deallocatePower(reactor, systems[i]);
+        return; // handled
+      }
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -58,33 +108,27 @@ export class PowerSystem {
   }
 
   /**
-   * Returns the SystemComponent of the player-owned room currently under the mouse,
-   * or null if the mouse is not hovering over any player system room.
+   * Returns the player's power-consuming SystemComponents in panel display order,
+   * excluding sub-systems (PILOTING, SENSORS, DOORS).
    */
-  private getHoveredPlayerSystem(
-    world: IWorld,
-    playerShipEntity: Entity,
-  ): SystemComponent | null {
-    const mouse = this.input.getMousePosition();
-    const entities = world.query(['Room', 'System', 'Position', 'Owner']);
+  getPlayerSystems(world: IWorld, playerShipEntity: Entity): SystemComponent[] {
+    const all: SystemComponent[] = [];
 
-    for (const entity of entities) {
+    for (const entity of world.query(['System', 'Owner'])) {
       const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
       if (ownerComp?.shipEntity !== playerShipEntity) continue;
-
-      const pos    = world.getComponent<PositionComponent>(entity, 'Position');
-      const room   = world.getComponent<RoomComponent>(entity, 'Room');
-      const system = world.getComponent<SystemComponent>(entity, 'System');
-      if (pos === undefined || room === undefined || system === undefined) continue;
-
-      const right  = pos.x + room.width  * TILE_SIZE;
-      const bottom = pos.y + room.height * TILE_SIZE;
-
-      if (mouse.x >= pos.x && mouse.x < right && mouse.y >= pos.y && mouse.y < bottom) {
-        return system;
-      }
+      const sys = world.getComponent<SystemComponent>(entity, 'System');
+      if (sys === undefined || SUBSYSTEM_TYPES.has(sys.type)) continue;
+      all.push(sys);
     }
 
-    return null;
+    // Sort by PANEL_ORDER priority; unlisted types go to the end.
+    all.sort((a, b) => {
+      const pa = PANEL_ORDER.indexOf(a.type);
+      const pb = PANEL_ORDER.indexOf(b.type);
+      return (pa === -1 ? PANEL_ORDER.length : pa) - (pb === -1 ? PANEL_ORDER.length : pb);
+    });
+
+    return all;
   }
 }

@@ -9,6 +9,17 @@ import {
   WEAPON_BOX_MARGIN,
   WEAPON_BOX_BOTTOM,
 } from './TargetingSystem';
+import {
+  PowerSystem,
+  SYSPANEL_X,
+  SYSPANEL_Y0,
+  SYSPANEL_ROW_H,
+  SYSPANEL_W,
+  SYSPANEL_LABEL_W,
+  SYSPANEL_PIP_W,
+  SYSPANEL_PIP_H,
+  SYSPANEL_PIP_GAP,
+} from './PowerSystem';
 import { ProjectileSystem } from './ProjectileSystem';
 import { CombatSystem } from './CombatSystem';
 import type { IInput } from '../../engine/IInput';
@@ -162,6 +173,8 @@ export class RenderSystem {
   private readonly projectileSystem: ProjectileSystem;
   /** Injected after construction so there is no circular dependency at init time. */
   private combatSystem: CombatSystem | null = null;
+  /** Injected after construction for system panel drawing. */
+  private powerSystem: PowerSystem | null = null;
 
   /** Maps ship entity → remaining flash timer (seconds) for shield-hit flashes. */
   private readonly shieldFlashTimers = new Map<number, number>();
@@ -183,6 +196,11 @@ export class RenderSystem {
     this.combatSystem = cs;
   }
 
+  /** Provides access to PowerSystem for system panel rendering. Call once after construction. */
+  setPowerSystem(ps: PowerSystem): void {
+    this.powerSystem = ps;
+  }
+
   update(world: IWorld): void {
     this.updateShieldFlashTimers(world);
     this.drawCenterDivider();
@@ -197,6 +215,7 @@ export class RenderSystem {
     this.drawShields(world);
     this.drawSprites(world);
     this.drawPlayerDashboard(world);
+    this.drawSystemPanel(world);
     this.drawEnemyDashboard(world);
     this.drawCloakHUD(world);
     this.drawCrewSkillSheet(world);
@@ -694,6 +713,66 @@ export class RenderSystem {
         DASH_X, DASH_Y0 + DASH_LINE_H * 4, DASH_FONT, '#ff8844', 'left',
       );
       return;
+    }
+  }
+
+  // ── HUD: system power panel (below resource stats) ──────────────────────
+
+  private drawSystemPanel(world: IWorld): void {
+    if (this.powerSystem === null) return;
+
+    // Find the player ship entity.
+    let playerShipEntity: number | undefined;
+    let reactor: ReactorComponent | undefined;
+    for (const entity of world.query(['Ship', 'Faction', 'Reactor'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      playerShipEntity = entity;
+      reactor = world.getComponent<ReactorComponent>(entity, 'Reactor');
+      break;
+    }
+    if (playerShipEntity === undefined || reactor === undefined) return;
+
+    const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
+    const mouse   = this.input.getMousePosition();
+
+    // Panel header.
+    this.renderer.drawText(
+      'SYSTEMS  [LMB +] [RMB -]',
+      SYSPANEL_X, SYSPANEL_Y0 - 6, '10px monospace', '#445566', 'left',
+    );
+
+    for (let i = 0; i < systems.length; i++) {
+      const sys  = systems[i];
+      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      const rowBottom = rowY + SYSPANEL_ROW_H;
+
+      // Hover highlight.
+      const hovered =
+        mouse.x >= SYSPANEL_X && mouse.x <= SYSPANEL_X + SYSPANEL_W &&
+        mouse.y >= rowY && mouse.y < rowBottom;
+      if (hovered) {
+        this.renderer.drawRect(SYSPANEL_X, rowY, SYSPANEL_W, SYSPANEL_ROW_H - 1, 'rgba(80,120,200,0.18)', true);
+      }
+
+      // System name.
+      const nameColor = sys.currentPower > 0 ? '#aaccff' : '#446688';
+      this.renderer.drawText(
+        sys.type.slice(0, 9), // truncate to fit
+        SYSPANEL_X + 3, rowY + 14, '11px monospace', nameColor, 'left',
+      );
+
+      // Power pips.
+      const pipStartX = SYSPANEL_X + SYSPANEL_LABEL_W;
+      for (let p = 0; p < sys.maxCapacity; p++) {
+        const px     = pipStartX + p * (SYSPANEL_PIP_W + SYSPANEL_PIP_GAP);
+        const py     = rowY + (SYSPANEL_ROW_H - SYSPANEL_PIP_H) / 2;
+        const filled = p < sys.currentPower;
+        const zoltan = !filled && p < sys.currentPower + sys.zoltanBonus;
+        const color  = filled ? '#33aaff' : zoltan ? '#eecc00' : '#1a2e44';
+        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, color, true);
+        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, '#334455', false);
+      }
     }
   }
 

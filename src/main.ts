@@ -337,13 +337,26 @@ async function init(): Promise<void> {
 
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
+  // Inject PowerSystem into RenderSystem so the system power panel can be drawn.
+  renderSystem.setPowerSystem(powerSystem);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
   let lastTimestamp: number = performance.now();
+  let isPaused = false;
 
   function gameLoop(timestamp: number): void {
-    Time.tick(timestamp, lastTimestamp);
+    // Space toggles tactical pause — only meaningful during combat.
+    if (currentState === 'COMBAT' && input.isKeyJustPressed('Space')) {
+      isPaused = !isPaused;
+    }
+    // Produce dt=0 while paused so all timer-driven logic naturally freezes.
+    // Always advance lastTimestamp to prevent a large spike when unpausing.
+    if (isPaused) {
+      Time.tick(lastTimestamp, lastTimestamp);
+    } else {
+      Time.tick(timestamp, lastTimestamp);
+    }
     lastTimestamp = timestamp;
 
     if (currentState === 'STAR_MAP') {
@@ -423,7 +436,7 @@ async function init(): Promise<void> {
       cloakingSystem.update(world);     // cloak activation + evasion bonus + freeze enemy charges
       hazardSystem.update(world);       // environmental hazards (asteroids, flares, ion, nebula)
       shieldSystem.update(world);       // shield recharge + max-layer updates (incl. Zoltan)
-      enemyAISystem.update(world);      // assign targets to charged enemy weapons
+      if (!isPaused) enemyAISystem.update(world); // assign targets to charged enemy weapons
       combatSystem.update(world);       // weapon charging + projectile spawning + beam fire
       projectileSystem.update(world);   // advance projectiles, shield check, damage
       oxygenSystem.update(world);       // O2 regen / decay / equalization + Lanius drain
@@ -432,6 +445,14 @@ async function init(): Promise<void> {
 
       // Render all layers.
       renderSystem.update(world);
+
+      // Draw pause overlay on top of the scene when paused.
+      if (isPaused) {
+        const { width: cw, height: ch } = renderer.getCanvasSize();
+        renderer.drawRect(0, 0, cw, ch, 'rgba(0,0,0,0.45)', true);
+        renderer.drawText('PAUSED', cw / 2, ch / 2, '48px monospace', '#ffffff', 'center');
+        renderer.drawText('SPACE to resume', cw / 2, ch / 2 + 44, '16px monospace', '#aaaaaa', 'center');
+      }
 
       // Check for end-of-combat conditions (runs after render so the last frame is shown).
       const combatResult = victorySystem.checkCombatEnd(world);
