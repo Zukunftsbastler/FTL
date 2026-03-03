@@ -377,6 +377,16 @@ export class RenderSystem {
       if (roomOwner !== undefined && cloakedShips.has(roomOwner.shipEntity)) {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, CLOAK_OVERLAY, true);
       }
+
+      // Fire overlay — pulsing orange-red tint when room is on fire.
+      if (room.hasFire) {
+        this.renderer.drawRect(pos.x, pos.y, pw, ph, 'rgba(255,80,0,0.40)', true);
+      }
+
+      // Breach overlay — cyan tint when room has a hull breach.
+      if (room.hasBreach) {
+        this.renderer.drawRect(pos.x, pos.y, pw, ph, 'rgba(0,200,255,0.30)', true);
+      }
     }
   }
 

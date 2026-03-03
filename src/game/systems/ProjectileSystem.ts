@@ -262,6 +262,7 @@ export class ProjectileSystem {
   private applyImpact(world: IWorld, proj: ProjectileComponent): void {
     if (proj.targetRoomEntity === undefined) return;
 
+    const room   = world.getComponent<RoomComponent>(proj.targetRoomEntity, 'Room');
     const system = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
 
     // Physical damage: reduce system capacity and hull.
@@ -286,6 +287,12 @@ export class ProjectileSystem {
         ship.currentHull -= proj.damage;
         if (ship.currentHull < 0) ship.currentHull = 0;
       }
+    }
+
+    // Secondary hazard effects: fire and breach.
+    if (room !== undefined) {
+      if (proj.fireChance > 0 && Math.random() < proj.fireChance)   room.hasFire   = true;
+      if (proj.breachChance > 0 && Math.random() < proj.breachChance) room.hasBreach = true;
     }
   }
 

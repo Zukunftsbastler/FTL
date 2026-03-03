@@ -161,6 +161,64 @@
     "doors": []
   },
   {
+    "id": "rebel_fighter",
+    "name": "Rebel Fighter",
+    "playable": false,
+    "maxHull": 16,
+    "startingReactorPower": 5,
+    "startingResources": {
+      "scrap": 0,
+      "fuel": 0,
+      "missiles": 0,
+      "droneParts": 0
+    },
+    "rooms": [
+      { "roomId": 0, "x": 0, "y": 0, "width": 1, "height": 2, "system": "SHIELDS"  },
+      { "roomId": 1, "x": 1, "y": 0, "width": 1, "height": 2, "system": "WEAPONS"  },
+      { "roomId": 2, "x": 2, "y": 0, "width": 1, "height": 2, "system": "ENGINES"  }
+    ],
+    "doors": [
+      { "roomA": 0, "roomB": 1, "x": 1, "y": 0, "vertical": true },
+      { "roomA": 1, "roomB": 2, "x": 2, "y": 0, "vertical": true }
+    ],
+    "systems": [
+      { "type": "SHIELDS", "level": 1 },
+      { "type": "WEAPONS", "level": 1 },
+      { "type": "ENGINES", "level": 1 }
+    ],
+    "startingWeapons": ["burst_laser_1"],
+    "startingCrew": []
+  },
+  {
+    "id": "slug_cruiser",
+    "name": "Slug Cruiser",
+    "playable": false,
+    "maxHull": 18,
+    "startingReactorPower": 6,
+    "startingResources": {
+      "scrap": 0,
+      "fuel": 0,
+      "missiles": 4,
+      "droneParts": 0
+    },
+    "rooms": [
+      { "roomId": 0, "x": 0, "y": 0, "width": 1, "height": 2, "system": "SHIELDS"  },
+      { "roomId": 1, "x": 1, "y": 0, "width": 1, "height": 2, "system": "WEAPONS"  },
+      { "roomId": 2, "x": 2, "y": 0, "width": 1, "height": 2, "system": "ENGINES"  }
+    ],
+    "doors": [
+      { "roomA": 0, "roomB": 1, "x": 1, "y": 0, "vertical": true },
+      { "roomA": 1, "roomB": 2, "x": 2, "y": 0, "vertical": true }
+    ],
+    "systems": [
+      { "type": "SHIELDS", "level": 2 },
+      { "type": "WEAPONS", "level": 2 },
+      { "type": "ENGINES", "level": 1 }
+    ],
+    "startingWeapons": ["burst_laser_1"],
+    "startingCrew": []
+  },
+  {
     "id": "rebel_flagship_phase_1",
     "name": "The Rebel Flagship",
     "layout": "Boss",

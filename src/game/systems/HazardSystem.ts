@@ -104,6 +104,8 @@ export class HazardSystem {
       neverMisses:      true,
       weaponType:       'LASER',
       ionDamage:        0,
+      fireChance:       0,
+      breachChance:     0,
     };
     const posComp: PositionComponent = {
       _type: 'Position',

@@ -45,4 +45,8 @@ export interface ProjectileComponent extends Component {
    * Non-zero only for ION weapon projectiles.
    */
   readonly ionDamage: number;
+  /** Probability (0–1) of starting a fire in the target room on impact. */
+  readonly fireChance: number;
+  /** Probability (0–1) of creating a hull breach in the target room on impact. */
+  readonly breachChance: number;
 }

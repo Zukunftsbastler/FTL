@@ -20,4 +20,8 @@ export interface RoomComponent extends Component {
   readonly height: number;
   /** The system housed in this room, or undefined for a corridor/empty room. */
   readonly system: SystemType | undefined;
+  /** True when the room is on fire; causes periodic crew and system damage. */
+  hasFire: boolean;
+  /** True when the room has a hull breach; oxygen vents continuously. */
+  hasBreach: boolean;
 }

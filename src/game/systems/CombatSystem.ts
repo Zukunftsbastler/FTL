@@ -154,6 +154,17 @@ export class CombatSystem {
     weapon.charge = 0;
     if (weapon.targetRoomEntity === undefined) return;
 
+    // Missile ammo check: consume 1 missile per shot; block if none remain.
+    const missileCost = tpl?.missileCost ?? 0;
+    if (missileCost > 0) {
+      const ship = world.getComponent<ShipComponent>(shipEntity, 'Ship');
+      if (ship === undefined || ship.missiles < missileCost) {
+        // No ammo — abort fire without clearing the target so the player can replenish.
+        return;
+      }
+      ship.missiles -= missileCost;
+    }
+
     // Firing while cloaked terminates the cloak (unless stealth_weapons augment).
     if (!isEnemy) {
       const cloak = world.getComponent<CloakComponent>(shipEntity, 'Cloak');
@@ -186,10 +197,12 @@ export class CombatSystem {
       damage:           tpl?.damage.hull ?? 1,
       targetRoomEntity: weapon.targetRoomEntity,
       isEnemyOrigin:    isEnemy,
-      accuracy:         tpl?.accuracy    ?? 1.0,
-      neverMisses:      tpl?.neverMisses ?? false,
-      weaponType:       tpl?.type        ?? 'LASER',
-      ionDamage:        tpl?.damage.ion  ?? 0,
+      accuracy:         tpl?.accuracy     ?? 1.0,
+      neverMisses:      tpl?.neverMisses  ?? false,
+      weaponType:       tpl?.type         ?? 'LASER',
+      ionDamage:        tpl?.damage.ion   ?? 0,
+      fireChance:       tpl?.fireChance   ?? 0,
+      breachChance:     tpl?.breachChance ?? 0,
     };
     const posComp: PositionComponent = { _type: 'Position', x: ox, y: oy };
 

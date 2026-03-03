@@ -124,6 +124,8 @@ export class ShipFactory {
         width: roomData.width,
         height: roomData.height,
         system: roomData.system,
+        hasFire: false,
+        hasBreach: false,
       };
       const posComp: PositionComponent = {
         _type: 'Position',
