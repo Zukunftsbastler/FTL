@@ -67,12 +67,14 @@ export class ShipFactory {
       );
     }
 
-    const template = allShips.find((s) => s.id === templateId);
-    if (template === undefined) {
+    const rawTemplate = allShips.find((s) => s.id === templateId);
+    if (rawTemplate === undefined) {
       throw new Error(
         `ShipFactory.spawnShip: no ship template found with id '${templateId}'.`,
       );
     }
+    // Deep copy so that modifying spawned ECS components never mutates the cached JSON.
+    const template = JSON.parse(JSON.stringify(rawTemplate)) as ShipTemplate;
 
     // ── Ship root entity ──────────────────────────────────────────────────────
     const shipEntity = world.createEntity();
@@ -271,11 +273,13 @@ export class ShipFactory {
     }
 
     for (const weaponId of template.startingWeapons) {
-      const weaponTemplate = allWeapons.find((w) => w.id === weaponId);
-      if (weaponTemplate === undefined) {
+      const rawWeapon = allWeapons.find((w) => w.id === weaponId);
+      if (rawWeapon === undefined) {
         console.warn(`ShipFactory: weapon '${weaponId}' not found in weapons registry — skipped.`);
         continue;
       }
+      // Deep copy to prevent any future accidental mutation of the shared template cache.
+      const weaponTemplate = JSON.parse(JSON.stringify(rawWeapon)) as WeaponTemplate;
 
       const weaponEntity = world.createEntity();
 

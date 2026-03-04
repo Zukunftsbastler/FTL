@@ -76,6 +76,10 @@ function edgesIntersect(
 // ── Layout / style constants ──────────────────────────────────────────────────
 
 const NODE_RADIUS          = 18;
+/** Radius of the dim "unknown star" dot rendered for HIDDEN nodes. */
+const NODE_HIDDEN_RADIUS   = 4;
+const NODE_HIDDEN_FILL     = '#1a2030';
+const NODE_HIDDEN_BORDER   = '#2a3348';
 const NODE_CURRENT_RING    = '#ffffff';
 const NODE_REACHABLE_RING  = '#44aaff';
 
@@ -110,6 +114,13 @@ const HUD_MARGIN_Y         = 24;
 
 /** How many pixels the rebel fleet advances per jump. */
 const REBEL_ADVANCE        = 70;
+
+/**
+ * Starting X offset for the rebel fleet (negative = off the left edge).
+ * A value of -250 means the fleet needs ~3–4 jumps before the red zone appears
+ * on screen, giving the player breathing room to experience narrative events.
+ */
+const REBEL_START_X        = -250;
 
 /** Left / right margin for START and EXIT node placement. */
 const MARGIN_X             = 90;
@@ -174,7 +185,7 @@ export class MapSystem {
   private nodes:          MapNode[] = [];
   private edges:          Array<[number, number]> = [];
   private currentNodeId:  number = 0;
-  private rebelFleetX:    number = -REBEL_ADVANCE;
+  private rebelFleetX:    number = REBEL_START_X;
   private generated:      boolean = false;
   private sectorTemplate: SectorTemplate | null = null;
 
@@ -243,12 +254,17 @@ export class MapSystem {
 
     // ── Layer 2: Nodes ────────────────────────────────────────────────────────
     for (const node of this.nodes) {
-      if (node.visibility === 'HIDDEN') continue;
-
       const isCurrent  = node.id === this.currentNodeId;
       const isJumpable = jumpableIds.has(node.id);
 
-      // Outer rings.
+      // HIDDEN nodes: render as a tiny dim star dot — no labels, no rings, no tags.
+      if (node.visibility === 'HIDDEN') {
+        renderer.drawCircle(node.x, node.y, NODE_HIDDEN_RADIUS, NODE_HIDDEN_FILL,   true);
+        renderer.drawCircle(node.x, node.y, NODE_HIDDEN_RADIUS, NODE_HIDDEN_BORDER, false, 1);
+        continue;
+      }
+
+      // Outer rings (only for non-hidden nodes).
       if (isCurrent) {
         renderer.drawCircle(node.x, node.y, NODE_RADIUS + 6, NODE_CURRENT_RING, false, 2);
       } else if (isJumpable) {
@@ -369,7 +385,7 @@ export class MapSystem {
    * (minimum: off the left edge so it never goes behind the start).
    */
   delayRebels(steps: number): void {
-    this.rebelFleetX = Math.max(-REBEL_ADVANCE, this.rebelFleetX - REBEL_ADVANCE * steps);
+    this.rebelFleetX = Math.max(REBEL_START_X, this.rebelFleetX - REBEL_ADVANCE * steps);
   }
 
   /** Advances the rebel fleet forward by `steps` extra advance-steps. */
@@ -484,7 +500,7 @@ export class MapSystem {
 
     this.nodes         = nodes;
     this.currentNodeId = 0;
-    this.rebelFleetX   = -REBEL_ADVANCE;
+    this.rebelFleetX   = REBEL_START_X;
 
     // ── Build planar edge set ─────────────────────────────────────────────────
     const edgeSet = new Set<string>();
@@ -514,6 +530,36 @@ export class MapSystem {
         // Reject if the candidate edge crosses any existing edge.
         const crosses = edges.some(([c, d]) => edgesIntersect(i, j, c, d, nodes));
         if (!crosses) addEdge(i, j);
+      }
+    }
+
+    // ── Guarantee START has at least 2 outgoing connections ──────────────────
+    // Count current edges from node 0.
+    const startEdgeCount = edges.filter(([a, b]) => a === 0 || b === 0).length;
+    if (startEdgeCount < 2) {
+      // Sort all non-adjacent nodes by distance from START and try to add edges
+      // until START has at least 2 connections (relaxing the intersection check
+      // for the second guaranteed connection if nothing planar is available).
+      const candidates = nodes
+        .slice(2) // skip node 1 (already spine-connected) and node 0 itself
+        .map((n) => ({
+          id: n.id,
+          dist2: (n.x - nodes[0].x) ** 2 + (n.y - nodes[0].y) ** 2,
+        }))
+        .sort((a, b) => a.dist2 - b.dist2);
+
+      for (const cand of candidates) {
+        const current = edges.filter(([a, b]) => a === 0 || b === 0).length;
+        if (current >= 2) break;
+
+        // First attempt: planar (no intersection).
+        const crosses = edges.some(([c, d]) => edgesIntersect(0, cand.id, c, d, nodes));
+        if (!crosses) {
+          addEdge(0, cand.id);
+        } else if (current < 1) {
+          // If we still have zero extra edges, force-add the closest even if it crosses.
+          addEdge(0, cand.id);
+        }
       }
     }
 
