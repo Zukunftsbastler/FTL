@@ -4,7 +4,7 @@
     "name": "Kestrel Cruiser (Type A)",
     "playable": true,
     "maxHull": 30,
-    "startingReactorPower": 9,
+    "startingReactorPower": 8,
     "startingResources": {
       "scrap": 0,
       "fuel": 16,
@@ -89,11 +89,19 @@
     ],
     "systems": [
       { "type": "SHIELDS", "level": 2 },
-      { "type": "WEAPONS", "level": 1 },
+      { "type": "WEAPONS", "level": 2 },
       { "type": "ENGINES", "level": 1 }
     ],
     "startingWeapons": ["burst_laser_1"],
-    "startingCrew": []
+    "startingCrew": [
+      {
+        "name": "Guard",
+        "race": "HUMAN",
+        "crewClass": "ENGINEER",
+        "skills": { "piloting": 0, "engineering": 0, "gunnery": 0, "repair": 1, "combat": 0 },
+        "roomId": 0
+      }
+    ]
   },
   {
     "id": "engi_cruiser_a",
@@ -182,12 +190,20 @@
       { "roomA": 1, "roomB": 2, "x": 2, "y": 0, "vertical": true }
     ],
     "systems": [
-      { "type": "SHIELDS", "level": 1 },
-      { "type": "WEAPONS", "level": 1 },
+      { "type": "SHIELDS", "level": 2 },
+      { "type": "WEAPONS", "level": 2 },
       { "type": "ENGINES", "level": 1 }
     ],
     "startingWeapons": ["burst_laser_1"],
-    "startingCrew": []
+    "startingCrew": [
+      {
+        "name": "Guard",
+        "race": "HUMAN",
+        "crewClass": "ENGINEER",
+        "skills": { "piloting": 0, "engineering": 0, "gunnery": 0, "repair": 1, "combat": 0 },
+        "roomId": 0
+      }
+    ]
   },
   {
     "id": "slug_cruiser",
@@ -216,7 +232,15 @@
       { "type": "ENGINES", "level": 1 }
     ],
     "startingWeapons": ["burst_laser_1"],
-    "startingCrew": []
+    "startingCrew": [
+      {
+        "name": "Guard",
+        "race": "HUMAN",
+        "crewClass": "ENGINEER",
+        "skills": { "piloting": 0, "engineering": 0, "gunnery": 0, "repair": 1, "combat": 0 },
+        "roomId": 0
+      }
+    ]
   },
   {
     "id": "rebel_flagship_phase_1",

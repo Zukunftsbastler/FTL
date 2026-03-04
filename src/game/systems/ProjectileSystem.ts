@@ -265,10 +265,11 @@ export class ProjectileSystem {
     const room   = world.getComponent<RoomComponent>(proj.targetRoomEntity, 'Room');
     const system = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
 
-    // Physical damage: reduce system capacity and hull.
+    // Physical damage: reduce system capacity by actual weapon damage (clamped to remaining capacity).
     if (proj.damage > 0 && system !== undefined && system.maxCapacity > 0) {
-      system.maxCapacity  -= 1;
-      system.damageAmount += 1;
+      const sysDmg = Math.min(system.maxCapacity, proj.damage);
+      system.maxCapacity  -= sysDmg;
+      system.damageAmount += proj.damage;
       if (system.currentPower > system.maxCapacity) {
         system.currentPower = system.maxCapacity;
       }
