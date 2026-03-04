@@ -25,7 +25,7 @@ import type { ShieldComponent } from '../components/ShieldComponent';
  * System types in the order they should receive auto-power on spawn.
  * OXYGEN first prevents immediate crew suffocation.
  */
-const POWER_PRIORITY: string[] = ['OXYGEN', 'SHIELDS', 'PILOTING', 'ENGINES', 'WEAPONS'];
+const POWER_PRIORITY: string[] = ['OXYGEN', 'SHIELDS', 'WEAPONS', 'ENGINES', 'PILOTING'];
 
 /**
  * Translates a raw ShipTemplate (loaded from JSON) into ECS entities.

@@ -76,10 +76,10 @@ function edgesIntersect(
 // ── Layout / style constants ──────────────────────────────────────────────────
 
 const NODE_RADIUS          = 18;
-/** Radius of the dim "unknown star" dot rendered for HIDDEN nodes. */
-const NODE_HIDDEN_RADIUS   = 4;
-const NODE_HIDDEN_FILL     = '#1a2030';
-const NODE_HIDDEN_BORDER   = '#2a3348';
+/** Radius of the "unknown star" dot rendered for HIDDEN nodes. */
+const NODE_HIDDEN_RADIUS   = 10;
+const NODE_HIDDEN_FILL     = '#556677';
+const NODE_HIDDEN_BORDER   = '#778899';
 const NODE_CURRENT_RING    = '#ffffff';
 const NODE_REACHABLE_RING  = '#44aaff';
 
@@ -629,8 +629,21 @@ export class MapSystem {
     }
 
     // Dispatch based on pre-assigned node type.
+    // COMBAT nodes route through the Event System so the player sees the
+    // narrative modal (encounter text + choices) before combat begins.
+    const COMBAT_EVENTS = [
+      'rebel_patrol',
+      'pirate_ambush',
+      'automated_rebel_scout',
+      'slug_surrender_trick',
+    ] as const;
+
     switch (node.nodeType) {
-      case 'COMBAT':            callbacks.onCombat('rebel_a'); break;
+      case 'COMBAT': {
+        const eventId = COMBAT_EVENTS[Math.floor(Math.random() * COMBAT_EVENTS.length)];
+        callbacks.onEvent(eventId);
+        break;
+      }
       case 'STORE':             callbacks.onStore(); break;
       case 'DISTRESS':
       case 'EVENT':   default:  callbacks.onEvent(undefined); break;
