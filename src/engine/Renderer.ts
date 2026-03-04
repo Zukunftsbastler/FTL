@@ -258,6 +258,10 @@ export class Renderer implements IRenderer {
     }
   }
 
+  getContext(): CanvasRenderingContext2D {
+    return this.ctx;
+  }
+
   drawTooltip(x: number, y: number, text: string): void {
     const FONT   = '12px monospace';
     const PAD_X  = 8;

@@ -1,4 +1,5 @@
 import { AssetLoader } from '../../utils/AssetLoader';
+import { UIRenderer } from '../../engine/ui/UIRenderer';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -25,7 +26,6 @@ function systemUpgradeCost(currentLevel: number): number {
 
 // ── Shared style constants ────────────────────────────────────────────────────
 const BG_COLOR       = '#020810';
-const PANEL_BG       = 'rgba(8,14,28,0.96)';
 const PANEL_BORDER   = '#334466';
 const TITLE_F        = '20px monospace';
 const HEADER_F       = '13px monospace';
@@ -98,6 +98,13 @@ export class UpgradeSystem {
   ): void {
     const { width, height } = renderer.getCanvasSize();
     renderer.clear(BG_COLOR);
+
+    // Sci-fi background panel for the full upgrade screen.
+    UIRenderer.drawSciFiPanel(renderer.getContext(), 30, 30, width - 60, height - 60, {
+      chamfer:     20,
+      borderColor: PANEL_BORDER,
+      alpha:       0.95,
+    });
 
     const hitboxes: Hitbox[] = [];
 
@@ -334,8 +341,11 @@ export class UpgradeSystem {
     const PX = (width  - PW) / 2;
     const PY = (height - PH) / 2;
 
-    renderer.drawRect(PX, PY, PW, PH, PANEL_BG, true);
-    renderer.drawRect(PX, PY, PW, PH, PANEL_BORDER, false);
+    UIRenderer.drawSciFiPanel(renderer.getContext(), PX, PY, PW, PH, {
+      chamfer:     12,
+      borderColor: PANEL_BORDER,
+      alpha:       0.96,
+    });
 
     // Title.
     renderer.drawText('STORE', width / 2, PY + 36, TITLE_F, TITLE_COLOR, 'center');

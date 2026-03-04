@@ -108,17 +108,33 @@ async function init(): Promise<void> {
     AssetLoader.loadJSON<SectorTemplate[]>('sectors',   '/data/sectors.json'),
   ]);
 
+  // ── UI safe-zone layout ──────────────────────────────────────────────────────
+  // These must match the panel constants in RenderSystem.ts.
+  const LEFT_UI_W   = 250;   // left pillar panel width
+  const TOP_UI_H    = 50;    // top bar height
+  const BOTTOM_UI_H = 120;   // bottom weapon-strip height
+
+  // The "safe zone" is the canvas area not covered by any HUD panel.
+  const safeX = LEFT_UI_W;
+  const safeY = TOP_UI_H;
+  const safeW = canvas.width  - LEFT_UI_W;
+  const safeH = canvas.height - TOP_UI_H - BOTTOM_UI_H;
+
   // ── Ship layout ─────────────────────────────────────────────────────────────
-  // Player ship: kestrel_a = 5×3 tile bounding box — anchored on the left.
-  // Enemy ship:  rebel_a   = 3×2 tile bounding box — anchored on the right.
+  // kestrel_a bounding box: 7 tiles wide (rooms span x=0..6), 3 tiles tall.
+  // rebel_a   bounding box: 3 tiles wide, 2 tiles tall.
+  const PLAYER_GRID_W = 7;
   const PLAYER_GRID_H = 3;
   const ENEMY_GRID_W  = 3;
   const ENEMY_GRID_H  = 2;
 
-  const playerShipX = 50;
-  const playerShipY = Math.round((canvas.height - PLAYER_GRID_H * TILE_SIZE) / 2);
-  const enemyShipX  = canvas.width  - 50 - ENEMY_GRID_W * TILE_SIZE;
-  const enemyShipY  = Math.round((canvas.height - ENEMY_GRID_H  * TILE_SIZE) / 2);
+  // Player ship centre at 25% of safe zone width, vertically centred.
+  const playerShipX = Math.round(safeX + safeW * 0.25 - (PLAYER_GRID_W * TILE_SIZE) / 2);
+  const playerShipY = Math.round(safeY + safeH * 0.5  - (PLAYER_GRID_H * TILE_SIZE) / 2);
+
+  // Enemy ship centre at 75% of safe zone width, vertically centred.
+  const enemyShipX  = Math.round(safeX + safeW * 0.75 - (ENEMY_GRID_W  * TILE_SIZE) / 2);
+  const enemyShipY  = Math.round(safeY + safeH * 0.5  - (ENEMY_GRID_H  * TILE_SIZE) / 2);
 
   // ── Entity setup ────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 import { AssetLoader } from '../../utils/AssetLoader';
+import { UIRenderer } from '../../engine/ui/UIRenderer';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -11,7 +12,6 @@ import type { FactionComponent } from '../components/FactionComponent';
 // ── Layout constants ──────────────────────────────────────────────────────────
 const MODAL_W       = 660;
 const MODAL_PAD     = 30;
-const MODAL_BG      = 'rgba(4,10,20,0.97)';
 const MODAL_BORDER  = '#44aaff';
 
 const TITLE_FONT    = '18px monospace';
@@ -125,8 +125,11 @@ export class EventSystem {
     const my = Math.round((height - MODAL_H) / 2);
 
     // ── Modal background ────────────────────────────────────────────────────
-    renderer.drawRect(mx, my, MODAL_W, MODAL_H, MODAL_BG, true);
-    renderer.drawRect(mx, my, MODAL_W, MODAL_H, MODAL_BORDER, false);
+    UIRenderer.drawSciFiPanel(renderer.getContext(), mx, my, MODAL_W, MODAL_H, {
+      chamfer:     12,
+      borderColor: MODAL_BORDER,
+      alpha:       0.97,
+    });
 
     // ── Title / hazard ────────────────────────────────────────────────────
     let oy = my + MODAL_PAD;

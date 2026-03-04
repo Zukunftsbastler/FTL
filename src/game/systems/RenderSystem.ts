@@ -1,5 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { UIRenderer } from '../../engine/ui/UIRenderer';
 import { AssetLoader } from '../../utils/AssetLoader';
 import { xpThresholdFor } from '../logic/CrewXP';
 import {
@@ -55,7 +56,7 @@ const POWER_COLOR      = '#ffdd44';
 /** Maximum red-overlay opacity at 0% O2. */
 const O2_OVERLAY_MAX_ALPHA = 0.75;
 
-const DOOR_THICK           = 5;
+const DOOR_THICK           = 8;   // proportional to TILE_SIZE=55 (was 5 at TILE_SIZE=35)
 const DOOR_HALF            = Math.floor(DOOR_THICK / 2);
 const DOOR_OPEN_COLOR      = '#aaaaaa';
 const DOOR_CLOSED_COLOR    = '#dd5500';
@@ -63,7 +64,7 @@ const AIRLOCK_OPEN_COLOR   = '#ff3333';
 const AIRLOCK_CLOSED_COLOR = '#778899';
 
 // ── Crew constants ────────────────────────────────────────────────────────────
-const CREW_RADIUS      = 10;
+const CREW_RADIUS      = 16;   // proportional to TILE_SIZE=55 (was 10 at TILE_SIZE=35)
 const CREW_SELECT_RING = '#ffffff';
 const CREW_SELECT_LW   = 2;
 
@@ -137,23 +138,21 @@ const BEAM_LW        = 3;
 
 // ── UI panel layout constants ─────────────────────────────────────────────────
 /** Height of the top resource bar spanning the full canvas width. */
-const TOP_BAR_H       = 40;
-/** Semi-transparent dark background used by all anchored UI panels. */
-const UI_PANEL_BG     = 'rgba(20, 25, 35, 0.85)';
-/** 1-px border color for all anchored UI panels. */
+const TOP_BAR_H       = 50;
+/** Border colour shared by all anchored UI panels (passed to UIRenderer). */
 const UI_PANEL_BORDER = '#334455';
 /** Width of the left pillar panel (crew roster + system power). */
-const LEFT_PANEL_W    = 200;
+const LEFT_PANEL_W    = 250;
 /** Baseline Y for the "CREW" section header inside the left pillar. */
 const ROSTER_HEADER_Y = TOP_BAR_H + 10;
 /** Baseline Y for the first crew name row inside the left pillar. */
 const ROSTER_Y0       = TOP_BAR_H + 22;
 /** Vertical spacing (px) between consecutive crew rows in the roster. */
-const ROSTER_ROW_H    = 18;
+const ROSTER_ROW_H    = 14;
 /** Height (px) of each HP bar in the crew roster. */
 const ROSTER_BAR_H    = 5;
 /** Width (px) of each HP bar in the crew roster. */
-const ROSTER_BAR_W    = 175;
+const ROSTER_BAR_W    = 220;
 
 // ── Procedural hull constants ─────────────────────────────────────────────────
 /** Padding (px) added around the room bounding box for the ship hull rect. */
@@ -388,11 +387,14 @@ export class RenderSystem {
   private drawTopBar(world: IWorld): void {
     const { width } = this.renderer.getCanvasSize();
 
-    // Background panel.
-    this.renderer.drawRect(0, 0, width, TOP_BAR_H, UI_PANEL_BG, true);
-    this.renderer.drawLine(0, TOP_BAR_H, width, TOP_BAR_H, UI_PANEL_BORDER, 1);
+    // Sci-fi panel background.
+    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, 0, width, TOP_BAR_H, {
+      chamfer:     8,
+      borderColor: UI_PANEL_BORDER,
+      alpha:       0.92,
+    });
 
-    const y = 26; // text baseline centered in the 40px bar
+    const y = Math.round(TOP_BAR_H / 2) + 6; // text baseline centred in bar
 
     // Player stats (left side).
     for (const entity of world.query(['Ship', 'Faction'])) {
@@ -632,9 +634,9 @@ export class RenderSystem {
         color = '#88bbcc';
       }
 
-      // Draw cloak status centered in the top bar.
+      // Draw cloak status centred in the top bar.
       const { width: cw } = this.renderer.getCanvasSize();
-      this.renderer.drawText(label, cw / 2, 26, DASH_FONT, color, 'center');
+      this.renderer.drawText(label, cw / 2, Math.round(TOP_BAR_H / 2) + 6, DASH_FONT, color, 'center');
       return;
     }
   }
@@ -823,10 +825,13 @@ export class RenderSystem {
   private drawSystemPanel(world: IWorld): void {
     if (this.powerSystem === null) return;
 
-    // Left pillar panel background.
+    // Left pillar sci-fi panel background.
     const { height } = this.renderer.getCanvasSize();
-    this.renderer.drawRect(0, TOP_BAR_H, LEFT_PANEL_W, height - TOP_BAR_H, UI_PANEL_BG, true);
-    this.renderer.drawLine(LEFT_PANEL_W, TOP_BAR_H, LEFT_PANEL_W, height, UI_PANEL_BORDER, 1);
+    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, TOP_BAR_H, LEFT_PANEL_W, height - TOP_BAR_H, {
+      chamfer:     10,
+      borderColor: UI_PANEL_BORDER,
+      alpha:       0.92,
+    });
 
     // Find the player ship entity.
     let playerShipEntity: number | undefined;
@@ -928,10 +933,13 @@ export class RenderSystem {
     const { width, height } = this.renderer.getCanvasSize();
     const boxBaseY          = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
 
-    // Bottom panel background.
+    // Bottom sci-fi panel background.
     const panelY = boxBaseY - 10;
-    this.renderer.drawRect(0, panelY, width, height - panelY, UI_PANEL_BG, true);
-    this.renderer.drawLine(0, panelY, width, panelY, UI_PANEL_BORDER, 1);
+    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, panelY, width, height - panelY, {
+      chamfer:     8,
+      borderColor: UI_PANEL_BORDER,
+      alpha:       0.92,
+    });
     const selectedEntity = this.targetingSystem.getSelectedWeaponEntity();
     const chargeBarY     = boxBaseY + WEAPON_BOX_H - WEAPON_UI_PAD - WEAPON_CHARGE_H;
     const chargeBarW     = WEAPON_BOX_W - WEAPON_UI_PAD * 2;

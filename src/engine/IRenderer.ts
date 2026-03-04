@@ -126,4 +126,11 @@ export interface IRenderer {
     filled?: boolean,
     lineWidth?: number,
   ): void;
+
+  /**
+   * Returns the underlying raw Canvas 2D context.
+   * Required by UIRenderer for gradient fills and custom clipped paths.
+   * Must only be passed to trusted rendering utilities — never to game logic.
+   */
+  getContext(): CanvasRenderingContext2D;
 }
