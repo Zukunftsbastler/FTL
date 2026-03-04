@@ -3,7 +3,7 @@ import { TILE_SIZE } from '../constants';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
 import { LayoutEngine } from '../../engine/ui/LayoutEngine';
 import { findComputedNodeById } from '../../engine/ui/UITypes';
-import type { UINode, ComputedBounds } from '../../engine/ui/UITypes';
+import type { UINode, ComputedBounds, ComputedNode } from '../../engine/ui/UITypes';
 import { AssetLoader } from '../../utils/AssetLoader';
 import { xpThresholdFor } from '../logic/CrewXP';
 import {
@@ -176,10 +176,27 @@ const COMBAT_HUD: UINode = {
   height: '100%',
   children: [
     {
-      type: 'Panel',
-      id:   'top-bar',
+      type:   'Row',
+      id:     'top-bar',
       height: TOP_BAR_H,
-      content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+      children: [
+        {
+          type:    'Panel',
+          id:      'player-panel',
+          width:   400,
+          content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+        },
+        {
+          type:     'Spacer',
+          flexGrow: 1,
+        },
+        {
+          type:    'Panel',
+          id:      'enemy-panel',
+          width:   300,
+          content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+        },
+      ],
     },
     {
       type:     'Row',
@@ -208,8 +225,6 @@ const COMBAT_HUD: UINode = {
 };
 
 // ── Procedural hull constants ─────────────────────────────────────────────────
-/** Padding (px) added around the room bounding box for the ship hull rect. */
-const HULL_PAD         = 16;
 const HULL_FILL        = '#2c303a';
 const HULL_BORDER      = '#4a5060';
 
@@ -263,6 +278,12 @@ export class RenderSystem {
    */
   private safeZoneBounds: ComputedBounds | null = null;
 
+  /** Full layout solve result — stored so content methods can look up panel bounds. */
+  private layoutResult: ComputedNode | null = null;
+
+  /** Procedural background planet — drifts leftward at a very slow parallax rate. */
+  private readonly planet: { x: number; y: number; radius: number; speed: number };
+
   constructor(
     renderer: IRenderer,
     targetingSystem: TargetingSystem,
@@ -282,6 +303,14 @@ export class RenderSystem {
       size:    Math.random() * 1.5 + 0.5,
       opacity: Math.random() * 0.6 + 0.2,
     }));
+
+    // Seed the background planet — starts on the right side of the screen.
+    this.planet = {
+      x:      width  * (0.65 + Math.random() * 0.25),
+      y:      height * (0.10 + Math.random() * 0.80),
+      radius: 300 + Math.random() * 200,
+      speed:  1.5,   // much slower than stars (STAR_SPEED = 10)
+    };
   }
 
   /** Provides access to CombatSystem beam displays. Call once after construction. */
@@ -307,13 +336,14 @@ export class RenderSystem {
 
     // ── Layout engine — solve the CombatHUD tree for this frame ─────────────
     const { width, height } = this.renderer.getCanvasSize();
-    const layoutResult = LayoutEngine.computeLayout(
+    this.layoutResult = LayoutEngine.computeLayout(
       COMBAT_HUD,
       { x: 0, y: 0, w: width, h: height },
     );
-    this.safeZoneBounds = findComputedNodeById(layoutResult, 'safe-zone')?.bounds ?? null;
+    this.safeZoneBounds = findComputedNodeById(this.layoutResult, 'safe-zone')?.bounds ?? null;
 
     // ── Background layers (drawn behind everything) ──────────────────────────
+    this.drawPlanet();
     this.drawStarfield();
     this.drawHulls(world);
     // ── Ship interior ────────────────────────────────────────────────────────
@@ -329,7 +359,7 @@ export class RenderSystem {
     this.drawShields(world);
     this.drawSprites(world);
     // ── HUD panel backgrounds (rendered declaratively from the layout tree) ──
-    UIRenderer.renderTree(this.renderer.getContext(), layoutResult);
+    UIRenderer.renderTree(this.renderer.getContext(), this.layoutResult);
     // ── HUD content (rendered on top of the panel backgrounds) ───────────────
     this.drawTopBar(world);
     this.drawSystemPanel(world);
@@ -407,6 +437,36 @@ export class RenderSystem {
     }
   }
 
+  // ── Procedural planet (deep background — drawn before the starfield) ────────
+
+  private drawPlanet(): void {
+    const dt = Time.deltaTime;
+    const { width, height } = this.renderer.getCanvasSize();
+    const ctx = this.renderer.getContext();
+
+    // Drift the planet slowly left; wrap it back when fully off-screen.
+    this.planet.x -= this.planet.speed * dt;
+    if (this.planet.x + this.planet.radius < 0) {
+      this.planet.x = width + this.planet.radius;
+      this.planet.y = height * 0.10 + Math.random() * height * 0.80;
+    }
+
+    const { x, y, radius } = this.planet;
+
+    // Radial gradient: bright rusty-orange highlight off-centre → transparent edge.
+    const grad = ctx.createRadialGradient(
+      x - radius * 0.30, y - radius * 0.30, radius * 0.05,
+      x, y, radius,
+    );
+    grad.addColorStop(0, 'rgba(200,80,40,0.8)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
   // ── Starfield (background layer) ────────────────────────────────────────────
 
   private drawStarfield(): void {
@@ -430,10 +490,12 @@ export class RenderSystem {
     }
   }
 
-  // ── Procedural ship hulls ────────────────────────────────────────────────────
+  // ── Procedural ship hulls (delta-wing style) ─────────────────────────────────
 
   private drawHulls(world: IWorld): void {
-    for (const shipEntity of world.query(['Ship'])) {
+    const ctx = this.renderer.getContext();
+
+    for (const shipEntity of world.query(['Ship', 'Faction'])) {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
       for (const re of world.query(['Room', 'Position', 'Owner'])) {
@@ -450,46 +512,77 @@ export class RenderSystem {
 
       if (!isFinite(minX)) continue;
 
-      const hx = minX - HULL_PAD;
-      const hy = minY - HULL_PAD;
-      const hw = maxX - minX + HULL_PAD * 2;
-      const hh = maxY - minY + HULL_PAD * 2;
+      const faction  = world.getComponent<FactionComponent>(shipEntity, 'Faction');
+      const isPlayer = faction?.id === 'PLAYER';
+      const midY     = (minY + maxY) / 2;
 
-      this.renderer.drawRect(hx, hy, hw, hh, HULL_FILL, true);
-      this.renderer.drawRect(hx, hy, hw, hh, HULL_BORDER, false);
+      ctx.beginPath();
+      if (isPlayer) {
+        // Player ship — nose points right.
+        ctx.moveTo(maxX + 40,      midY);        // nose tip
+        ctx.lineTo(maxX,           minY);        // top-right room corner
+        ctx.lineTo(minX - 20,      minY - 30);   // top wing tip
+        ctx.lineTo(minX,           midY);        // rear notch (centre-left)
+        ctx.lineTo(minX - 20,      maxY + 30);   // bottom wing tip
+        ctx.lineTo(maxX,           maxY);        // bottom-right room corner
+      } else {
+        // Enemy ship — nose points left.
+        ctx.moveTo(minX - 40,      midY);        // nose tip
+        ctx.lineTo(minX,           minY);        // top-left room corner
+        ctx.lineTo(maxX + 20,      minY - 30);   // top wing tip
+        ctx.lineTo(maxX,           midY);        // rear notch (centre-right)
+        ctx.lineTo(maxX + 20,      maxY + 30);   // bottom wing tip
+        ctx.lineTo(minX,           maxY);        // bottom-left room corner
+      }
+      ctx.closePath();
+
+      ctx.fillStyle   = HULL_FILL;
+      ctx.fill();
+      ctx.strokeStyle = HULL_BORDER;
+      ctx.lineWidth   = 2;
+      ctx.stroke();
     }
   }
 
-  // ── Top bar (replaces floating player + enemy dashboards) ───────────────────
+  // ── Top bar (player-panel left | spacer | enemy-panel right) ────────────────
 
   private drawTopBar(world: IWorld): void {
-    const { width } = this.renderer.getCanvasSize();
-    void width; // layout engine draws the panel background; this method draws content only.
-
     const y = Math.round(TOP_BAR_H / 2) + 6; // text baseline centred in bar
 
-    // Player stats (left side).
+    // ── Player resource stats — drawn inside the left 'player-panel' ──────
+    const playerBounds = this.layoutResult !== null
+      ? findComputedNodeById(this.layoutResult, 'player-panel')?.bounds
+      : null;
+    const px = (playerBounds?.x ?? 0) + 12;
+
     for (const entity of world.query(['Ship', 'Faction'])) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
       if (faction?.id !== 'PLAYER') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
       if (ship === undefined) break;
-      this.renderer.drawText(`HULL ${ship.currentHull}/${ship.maxHull}`, 12,  y, DASH_FONT, '#44ff44', 'left');
-      this.renderer.drawText(`FUEL ${ship.fuel}`,                        160, y, DASH_FONT, '#ffaa44', 'left');
-      this.renderer.drawText(`MISSILES ${ship.missiles}`,                260, y, DASH_FONT, '#ff8844', 'left');
-      this.renderer.drawText(`SCRAP ${ship.scrap}`,                      420, y, DASH_FONT, '#ddbb44', 'left');
+      this.renderer.drawText(`HULL ${ship.currentHull}/${ship.maxHull}`, px,       y, DASH_FONT, '#44ff44', 'left');
+      this.renderer.drawText(`FUEL ${ship.fuel}`,                        px + 148, y, DASH_FONT, '#ffaa44', 'left');
+      this.renderer.drawText(`MISSILES ${ship.missiles}`,                px + 248, y, DASH_FONT, '#ff8844', 'left');
+      this.renderer.drawText(`SCRAP ${ship.scrap}`,                      px + 355, y, DASH_FONT, '#ddbb44', 'left');
       break;
     }
 
-    // Enemy hull (right side).
+    // ── Enemy hull — drawn centred inside the right 'enemy-panel' ─────────
+    const enemyBounds = this.layoutResult !== null
+      ? findComputedNodeById(this.layoutResult, 'enemy-panel')?.bounds
+      : null;
+
     for (const entity of world.query(['Ship', 'Faction'])) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
       if (faction?.id !== 'ENEMY') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
       if (ship === undefined) break;
+      const ex = enemyBounds !== null && enemyBounds !== undefined
+        ? enemyBounds.x + enemyBounds.w / 2
+        : this.renderer.getCanvasSize().width - 150;
       this.renderer.drawText(
         `ENEMY HULL ${ship.currentHull}/${ship.maxHull}`,
-        width - 12, y, DASH_FONT, '#ff6644', 'right',
+        ex, y, DASH_FONT, '#ff6644', 'center',
       );
       break;
     }
@@ -982,8 +1075,8 @@ export class RenderSystem {
         const filled  = p < sys.currentPower;
         const zoltan  = !filled && p < sys.currentPower + sys.zoltanBonus;
         const damaged = !filled && !zoltan && p >= sys.maxCapacity - damagedSlots;
-        const bgColor     = filled ? '#44ee44' : zoltan ? '#eecc00' : damaged ? '#ee3333' : '#0d1a22';
-        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff7777' : '#334455';
+        const bgColor     = filled ? '#39ff14' : zoltan ? '#eecc00' : damaged ? '#ee3333' : '#1a1d24';
+        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff7777' : '#4c5866';
         this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, bgColor, true);
         this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, borderColor, false);
       }
