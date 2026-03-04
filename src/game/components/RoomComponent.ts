@@ -22,6 +22,16 @@ export interface RoomComponent extends Component {
   readonly system: SystemType | undefined;
   /** True when the room is on fire; causes periodic crew and system damage. */
   hasFire: boolean;
+  /**
+   * Remaining "health" of the active fire.  Crew reduce this each frame;
+   * when it reaches 0 `hasFire` is set to false.  Meaningless when hasFire === false.
+   */
+  fireHealth: number;
   /** True when the room has a hull breach; oxygen vents continuously. */
   hasBreach: boolean;
+  /**
+   * Remaining "health" of the active breach.  Crew reduce this each frame;
+   * when it reaches 0 `hasBreach` is set to false.  Meaningless when hasBreach === false.
+   */
+  breachHealth: number;
 }

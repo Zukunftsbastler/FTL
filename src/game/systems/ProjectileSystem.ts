@@ -1,6 +1,8 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { awardXP } from '../logic/CrewXP';
+import { FIRE_HEALTH_INITIAL, BREACH_HEALTH_INITIAL } from './OxygenSystem';
+import type { ParticleSystem } from './ParticleSystem';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { FactionComponent } from '../components/FactionComponent';
@@ -11,6 +13,9 @@ import type { RoomComponent } from '../components/RoomComponent';
 import type { ShieldComponent } from '../components/ShieldComponent';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
+
+/** Direct HP dealt to every crew member standing in a room hit by a projectile. */
+const CREW_HIT_DAMAGE = 15;
 
 /** Cap dt so a tab backgrounded for a long time doesn't teleport projectiles. */
 const MAX_DT = 0.1;
@@ -48,6 +53,9 @@ const NEAR_MISS_CHANCE = 0.08;
  *   • Else: damage system damageAmount, reduce hull — add room to impactedRooms for flash.
  */
 export class ProjectileSystem {
+  /** Injected after construction — used to spawn impact spark bursts. */
+  private particleSystem: ParticleSystem | null = null;
+
   /** Room entities damaged this frame — cleared at start of each update(). */
   private readonly impactedRooms = new Set<number>();
 
@@ -64,6 +72,8 @@ export class ProjectileSystem {
    * Entry removed when the projectile is destroyed.
    */
   private readonly missMap = new Map<number, { displayX: number; displayY: number }>();
+
+  setParticleSystem(ps: ParticleSystem): void { this.particleSystem = ps; }
 
   getImpactedRooms(): ReadonlySet<number> { return this.impactedRooms; }
   getShieldHitShips(): ReadonlySet<number> { return this.shieldHitShips; }
@@ -111,10 +121,17 @@ export class ProjectileSystem {
           // Check shields before applying damage.
           const shielded = this.checkAndAbsorbShield(world, proj.targetRoomEntity, proj);
           if (shielded) {
-            // Shield absorbed the hit — no hull/system damage.
+            // Shield absorbed the hit — spawn sparks at the impact point.
+            this.particleSystem?.spawnBurst(proj.targetX, proj.targetY, 10);
           } else {
             this.applyImpact(world, proj);
             this.impactedRooms.add(proj.targetRoomEntity);
+            // Spawn impact particle burst at the hit location.
+            this.particleSystem?.spawnBurst(proj.targetX, proj.targetY, 14);
+            // Deal direct hit damage to all crew in the room.
+            if (proj.damage > 0) {
+              this.damageCrew(world, proj.targetRoomEntity, CREW_HIT_DAMAGE);
+            }
             // Award gunnery XP to the player crew member manning the WEAPONS room.
             if (!proj.isEnemyOrigin) {
               this.awardGunneryXP(world);
@@ -292,8 +309,14 @@ export class ProjectileSystem {
 
     // Secondary hazard effects: fire and breach.
     if (room !== undefined) {
-      if (proj.fireChance > 0 && Math.random() < proj.fireChance)   room.hasFire   = true;
-      if (proj.breachChance > 0 && Math.random() < proj.breachChance) room.hasBreach = true;
+      if (proj.fireChance > 0 && Math.random() < proj.fireChance && !room.hasFire) {
+        room.hasFire    = true;
+        room.fireHealth = FIRE_HEALTH_INITIAL;
+      }
+      if (proj.breachChance > 0 && Math.random() < proj.breachChance && !room.hasBreach) {
+        room.hasBreach    = true;
+        room.breachHealth = BREACH_HEALTH_INITIAL;
+      }
     }
   }
 
@@ -302,6 +325,34 @@ export class ProjectileSystem {
    * WEAPONS room, and awards them +1 gunnery XP.
    * Called once per confirmed player-projectile hit (not shielded, not a miss).
    */
+  /**
+   * Deals `damage` HP to every crew member whose pixel position falls inside
+   * the hit room.  Destroys any crew whose health reaches 0.
+   */
+  private damageCrew(world: IWorld, targetRoomEntity: number, damage: number): void {
+    const roomPos  = world.getComponent<PositionComponent>(targetRoomEntity, 'Position');
+    const roomComp = world.getComponent<RoomComponent>(targetRoomEntity, 'Room');
+    if (roomPos === undefined || roomComp === undefined) return;
+
+    const left   = roomPos.x;
+    const top    = roomPos.y;
+    const right  = roomPos.x + roomComp.width  * TILE_SIZE;
+    const bottom = roomPos.y + roomComp.height * TILE_SIZE;
+
+    const toDestroy: number[] = [];
+    for (const crewEntity of world.query(['Crew', 'Position'])) {
+      const pos  = world.getComponent<PositionComponent>(crewEntity, 'Position');
+      if (pos === undefined) continue;
+      if (pos.x >= left && pos.x < right && pos.y >= top && pos.y < bottom) {
+        const crew = world.getComponent<CrewComponent>(crewEntity, 'Crew');
+        if (crew === undefined) continue;
+        crew.health -= damage;
+        if (crew.health <= 0) toDestroy.push(crewEntity);
+      }
+    }
+    for (const e of toDestroy) world.destroyEntity(e);
+  }
+
   private awardGunneryXP(world: IWorld): void {
     // Locate the player ship entity.
     let playerShipEntity: number | undefined;

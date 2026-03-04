@@ -126,8 +126,10 @@ export class ShipFactory {
         width: roomData.width,
         height: roomData.height,
         system: roomData.system,
-        hasFire: false,
-        hasBreach: false,
+        hasFire:      false,
+        fireHealth:   0,
+        hasBreach:    false,
+        breachHealth: 0,
       };
       const posComp: PositionComponent = {
         _type: 'Position',
@@ -148,6 +150,7 @@ export class ShipFactory {
           const systemComp: SystemComponent = {
             _type: 'System',
             type: systemData.type,
+            level: systemData.level,
             maxCapacity: systemData.level,
             currentPower: 0,
             roomId: roomData.roomId,

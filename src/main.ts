@@ -28,6 +28,7 @@ import { ZoltanPowerSystem } from './game/systems/ZoltanPowerSystem';
 import { AugmentSystem } from './game/systems/AugmentSystem';
 import { HazardSystem } from './game/systems/HazardSystem';
 import { DroneControlSystem } from './game/systems/DroneControlSystem';
+import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
 import { TILE_SIZE } from './game/constants';
@@ -328,6 +329,7 @@ async function init(): Promise<void> {
   const targetingSystem    = new TargetingSystem(input, renderer);
   const combatSystem       = new CombatSystem();
   const projectileSystem   = new ProjectileSystem();
+  const particleSystem     = new ParticleSystem(renderer);
   const victorySystem      = new VictorySystem();
   const upgradeSystem      = new UpgradeSystem();
   const eventSystem        = new EventSystem();
@@ -355,6 +357,8 @@ async function init(): Promise<void> {
   renderSystem.setCombatSystem(combatSystem);
   // Inject PowerSystem into RenderSystem so the system power panel can be drawn.
   renderSystem.setPowerSystem(powerSystem);
+  // Inject ParticleSystem into ProjectileSystem so impacts spawn spark bursts.
+  projectileSystem.setParticleSystem(particleSystem);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -464,6 +468,8 @@ async function init(): Promise<void> {
 
       // Render all layers.
       renderSystem.update(world);
+      // Render particle bursts on top of the world scene.
+      particleSystem.update();
 
       // Draw pause overlay on top of the scene when paused.
       if (isPaused) {

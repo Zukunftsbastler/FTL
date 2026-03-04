@@ -17,6 +17,21 @@ const MAX_DT = 0.1;
 /** Oxygen drained per second by a Lanius crew member in a room (% of room capacity). */
 const LANIUS_DRAIN_RATE = 15;
 
+/** O2 drained per second while a room is on fire. */
+const FIRE_O2_DRAIN_RATE = 10;
+
+/**
+ * Probability per second that a burning room spreads fire to a random room on the
+ * same ship that does not already have fire.
+ */
+const FIRE_SPREAD_CHANCE_PER_SEC = 0.04;
+
+/** Starting fireHealth assigned when fire first appears in a room. */
+export const FIRE_HEALTH_INITIAL   = 15;
+
+/** Starting breachHealth assigned when a breach first opens in a room. */
+export const BREACH_HEALTH_INITIAL = 20;
+
 /**
  * Per-frame O2 simulation. Multi-ship aware.
  *
@@ -41,16 +56,33 @@ export class OxygenSystem {
     for (const shipEntity of shipEntities) {
       const isPowered = this.isOxygenPoweredForShip(world, shipEntity);
 
-      // Apply regen / decay to all rooms owned by this ship.
+      // Apply regen / decay (+ breach drain) to all rooms owned by this ship.
       const entities = world.query(['Room', 'Oxygen', 'Owner']);
       for (const entity of entities) {
         const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
         if (ownerComp?.shipEntity !== shipEntity) continue;
 
         const oxygen = world.getComponent<OxygenComponent>(entity, 'Oxygen');
-        if (oxygen === undefined) continue;
-        oxygen.level = calculateO2Change(oxygen.level, isPowered, false, dt);
+        const room   = world.getComponent<RoomComponent>(entity, 'Room');
+        if (oxygen === undefined || room === undefined) continue;
+
+        // Pass the actual breach flag so O2_BREACH_RATE is applied correctly.
+        oxygen.level = calculateO2Change(oxygen.level, isPowered, room.hasBreach, dt);
+
+        // Fire drains O2 independently of breach.
+        if (room.hasFire) {
+          oxygen.level = Math.max(0, oxygen.level - FIRE_O2_DRAIN_RATE * dt);
+
+          // Fire extinguishes itself when the room runs out of oxygen.
+          if (oxygen.level <= 0) {
+            room.hasFire = false;
+          }
+        }
       }
+
+      // Fire spread: each burning room has a small per-second chance to ignite a
+      // random non-burning room on the same ship.
+      this.applyFireSpread(world, shipEntity, dt);
 
       // ── Lanius O2 drain: each Lanius in a room reduces that room's O2 ────────
       this.applyLaniusDrain(world, shipEntity, oxygenMap, dt);
@@ -136,6 +168,34 @@ export class OxygenSystem {
       }
     }
     return false;
+  }
+
+  /**
+   * For each ship, checks every burning room and gives it a small per-second
+   * chance to spread fire to a random non-burning room on the same ship.
+   */
+  private applyFireSpread(world: IWorld, shipEntity: Entity, dt: number): void {
+    // Collect all rooms for this ship.
+    const rooms: Array<{ entity: number; room: RoomComponent }> = [];
+    for (const entity of world.query(['Room', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== shipEntity) continue;
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (room !== undefined) rooms.push({ entity, room });
+    }
+
+    for (const { room: src } of rooms) {
+      if (!src.hasFire) continue;
+      if (Math.random() >= FIRE_SPREAD_CHANCE_PER_SEC * dt) continue;
+
+      // Pick a random room that is not already on fire.
+      const targets = rooms.filter((r) => !r.room.hasFire);
+      if (targets.length === 0) continue;
+
+      const target = targets[Math.floor(Math.random() * targets.length)];
+      target.room.hasFire    = true;
+      target.room.fireHealth = FIRE_HEALTH_INITIAL;
+    }
   }
 
   /**

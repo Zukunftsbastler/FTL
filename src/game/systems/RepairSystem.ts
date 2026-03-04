@@ -9,7 +9,7 @@ import type { PositionComponent } from '../components/PositionComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 
-/** Physical damage repaired per second at skill level 0. */
+/** Physical damage repaired per second at skill level 0 (also used for fire/breach). */
 const BASE_REPAIR_RATE = 1.0;
 
 /** HP regained per second while resting in a powered Medbay. */
@@ -39,33 +39,64 @@ export class RepairSystem {
 
     const crewEntities = world.query(['Crew', 'Position', 'Owner']);
     for (const entity of crewEntities) {
-      const crew     = world.getComponent<CrewComponent>(entity, 'Crew');
-      const pos      = world.getComponent<PositionComponent>(entity, 'Position');
+      const crew      = world.getComponent<CrewComponent>(entity, 'Crew');
+      const pos       = world.getComponent<PositionComponent>(entity, 'Position');
       const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
       if (crew === undefined || pos === undefined || ownerComp === undefined) continue;
 
       const room = this.getRoomAt(pos.x, pos.y, rooms);
       if (room === null) continue;
 
-      // ── System repair ──────────────────────────────────────────────────────
-      if (room.system !== undefined && room.system.damageAmount > 0) {
-        const raceMultiplier = getRaceStats(crew.race).repairSpeed;
-        const repairRate     = BASE_REPAIR_RATE * (1 + crew.skills.repair * 0.5) * raceMultiplier;
-        const repaired       = Math.min(room.system.damageAmount, repairRate * dt);
+      const raceMultiplier = getRaceStats(crew.race).repairSpeed;
+      const repairRate     = BASE_REPAIR_RATE * (1 + crew.skills.repair * 0.5) * raceMultiplier;
+      let didRepair = false;
+
+      // ── Priority 1: Extinguish fire ──────────────────────────────────────
+      if (room.roomComp.hasFire) {
+        room.roomComp.fireHealth = Math.max(0, room.roomComp.fireHealth - repairRate * dt);
+        if (room.roomComp.fireHealth <= 0) {
+          room.roomComp.hasFire = false;
+        }
+        didRepair = true;
+      }
+      // ── Priority 2: Seal hull breach ──────────────────────────────────────
+      else if (room.roomComp.hasBreach) {
+        room.roomComp.breachHealth = Math.max(0, room.roomComp.breachHealth - repairRate * dt);
+        if (room.roomComp.breachHealth <= 0) {
+          room.roomComp.hasBreach = false;
+        }
+        didRepair = true;
+      }
+      // ── Priority 3: Repair system damage ──────────────────────────────────
+      else if (room.system !== undefined && room.system.damageAmount > 0) {
+        const oldDamage = room.system.damageAmount;
+        const repaired  = Math.min(room.system.damageAmount, repairRate * dt);
         room.system.damageAmount = Math.max(0, room.system.damageAmount - repaired);
 
+        // Restore maxCapacity for each full damage point repaired.
+        const pointsRestored = Math.floor(oldDamage) - Math.floor(room.system.damageAmount);
+        if (pointsRestored > 0 && room.system.maxCapacity < room.system.level) {
+          room.system.maxCapacity = Math.min(
+            room.system.level,
+            room.system.maxCapacity + pointsRestored,
+          );
+        }
+
         // Accumulate repair progress; award +1 XP per full point of damage repaired.
-        const prev     = this.repairProgress.get(entity) ?? 0;
-        const next     = prev + repaired;
-        const wholeXP  = Math.floor(next);
+        const prev    = this.repairProgress.get(entity) ?? 0;
+        const next    = prev + repaired;
+        const wholeXP = Math.floor(next);
         this.repairProgress.set(entity, next - wholeXP);
         if (wholeXP > 0) awardXP(crew, 'repair', wholeXP);
-      } else {
-        // Clear accumulator when crew is not repairing (prevents phantom XP on next damage event).
+        didRepair = true;
+      }
+
+      if (!didRepair) {
+        // Clear accumulator when crew is not repairing.
         this.repairProgress.delete(entity);
       }
 
-      // ── Medbay healing ─────────────────────────────────────────────────────
+      // ── Medbay healing (always active, independent of repair priority) ─────
       if (
         room.system !== undefined &&
         room.system.type === 'MEDBAY' &&
@@ -83,10 +114,12 @@ export class RepairSystem {
     world: IWorld,
   ): Array<{
     left: number; top: number; right: number; bottom: number;
+    roomComp: RoomComponent;
     system: SystemComponent | undefined;
   }> {
     const result: Array<{
       left: number; top: number; right: number; bottom: number;
+      roomComp: RoomComponent;
       system: SystemComponent | undefined;
     }> = [];
 
@@ -97,11 +130,12 @@ export class RepairSystem {
       if (pos === undefined || room === undefined) continue;
 
       result.push({
-        left:   pos.x,
-        top:    pos.y,
-        right:  pos.x + room.width  * TILE_SIZE,
-        bottom: pos.y + room.height * TILE_SIZE,
-        system: world.getComponent<SystemComponent>(entity, 'System'),
+        left:     pos.x,
+        top:      pos.y,
+        right:    pos.x + room.width  * TILE_SIZE,
+        bottom:   pos.y + room.height * TILE_SIZE,
+        roomComp: room,
+        system:   world.getComponent<SystemComponent>(entity, 'System'),
       });
     }
     return result;
@@ -110,8 +144,12 @@ export class RepairSystem {
   private getRoomAt(
     x: number,
     y: number,
-    rooms: Array<{ left: number; top: number; right: number; bottom: number; system: SystemComponent | undefined }>,
-  ): { system: SystemComponent | undefined } | null {
+    rooms: Array<{
+      left: number; top: number; right: number; bottom: number;
+      roomComp: RoomComponent;
+      system: SystemComponent | undefined;
+    }>,
+  ): { roomComp: RoomComponent; system: SystemComponent | undefined } | null {
     for (const room of rooms) {
       if (x >= room.left && x < room.right && y >= room.top && y < room.bottom) {
         return room;

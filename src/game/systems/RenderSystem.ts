@@ -664,14 +664,16 @@ export class RenderSystem {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, CLOAK_OVERLAY, true);
       }
 
-      // Fire overlay — pulsing orange-red tint when room is on fire.
+      // Fire overlay — orange tint + small label.
       if (room.hasFire) {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, 'rgba(255,80,0,0.40)', true);
+        this.renderer.drawText('FIRE', pos.x + pw / 2, pos.y + ph - 6, '9px monospace', '#ff8844', 'center');
       }
 
-      // Breach overlay — cyan tint when room has a hull breach.
+      // Breach overlay — cyan tint + small label.
       if (room.hasBreach) {
         this.renderer.drawRect(pos.x, pos.y, pw, ph, 'rgba(0,200,255,0.30)', true);
+        this.renderer.drawText('BREACH', pos.x + pw / 2, pos.y + ph - 6, '9px monospace', '#44ddff', 'center');
       }
     }
   }
@@ -1066,17 +1068,18 @@ export class RenderSystem {
         SYSPANEL_X + 3, rowY + 14, '11px monospace', nameColor, 'left',
       );
 
-      // Power pips — green=powered, yellow=zoltan, red=damaged, dark=empty.
-      const pipStartX    = SYSPANEL_X + SYSPANEL_LABEL_W;
-      const damagedSlots = Math.min(Math.round(sys.damageAmount), sys.maxCapacity);
-      for (let p = 0; p < sys.maxCapacity; p++) {
+      // Power pips: total = level, green = active, grey = empty-but-working, red = damaged.
+      // Drawing `level` bars ensures the pristine slot count is always visible.
+      const pipStartX = SYSPANEL_X + SYSPANEL_LABEL_W;
+      for (let p = 0; p < sys.level; p++) {
         const px      = pipStartX + p * (SYSPANEL_PIP_W + SYSPANEL_PIP_GAP);
         const py      = rowY + (SYSPANEL_ROW_H - SYSPANEL_PIP_H) / 2;
         const filled  = p < sys.currentPower;
         const zoltan  = !filled && p < sys.currentPower + sys.zoltanBonus;
-        const damaged = !filled && !zoltan && p >= sys.maxCapacity - damagedSlots;
-        const bgColor     = filled ? '#39ff14' : zoltan ? '#eecc00' : damaged ? '#ee3333' : '#1a1d24';
-        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff7777' : '#4c5866';
+        // Damaged = slot index is beyond the current working capacity.
+        const damaged = !filled && !zoltan && p >= sys.maxCapacity;
+        const bgColor     = filled ? '#39ff14' : zoltan ? '#eecc00' : damaged ? '#ff3333' : '#1a1d24';
+        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff5555' : '#4c5866';
         this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, bgColor, true);
         this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, borderColor, false);
       }

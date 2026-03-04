@@ -11,7 +11,10 @@ import type { RoomComponent } from '../components/RoomComponent';
 const SUFFOCATION_THRESHOLD = 5;
 
 /** Health lost per second while in a room below the suffocation threshold. */
-const SUFFOCATION_RATE = 5;
+const SUFFOCATION_RATE = 1;
+
+/** Health lost per second while in a room that is on fire. */
+const FIRE_DAMAGE_RATE = 1.5;
 
 /**
  * Applies suffocation damage to crew members standing in low-oxygen rooms,
@@ -26,21 +29,35 @@ export class CrewSystem {
     const roomData = this.collectRoomData(world);
 
     const crewEntities = world.query(['Crew', 'Position']);
+    const toDestroy: number[] = [];
 
     for (const entity of crewEntities) {
       const crew = world.getComponent<CrewComponent>(entity, 'Crew');
       const pos  = world.getComponent<PositionComponent>(entity, 'Position');
       if (crew === undefined || pos === undefined) continue;
 
-      const o2 = this.getO2AtPosition(pos.x, pos.y, roomData);
-      if (o2 !== null && o2 < SUFFOCATION_THRESHOLD) {
+      const room = this.getRoomAtPosition(pos.x, pos.y, roomData);
+      if (room === null) continue;
+
+      // ── Suffocation (low O2) ──────────────────────────────────────────────
+      if (room.o2 < SUFFOCATION_THRESHOLD) {
         // Racial suffocationMultiplier: 0.0 = immune (Lanius), 0.5 = reduced (Crystal).
         const suffMult = getRaceStats(crew.race).suffocationMultiplier;
         crew.health -= SUFFOCATION_RATE * suffMult * dt;
-        if (crew.health <= 0) {
-          world.destroyEntity(entity);
-        }
       }
+
+      // ── Fire damage ───────────────────────────────────────────────────────
+      if (room.hasFire) {
+        crew.health -= FIRE_DAMAGE_RATE * dt;
+      }
+
+      if (crew.health <= 0) {
+        toDestroy.push(entity);
+      }
+    }
+
+    for (const entity of toDestroy) {
+      world.destroyEntity(entity);
     }
   }
 
@@ -48,8 +65,8 @@ export class CrewSystem {
 
   private collectRoomData(
     world: IWorld,
-  ): Array<{ left: number; top: number; right: number; bottom: number; o2: number }> {
-    const result: Array<{ left: number; top: number; right: number; bottom: number; o2: number }> = [];
+  ): Array<{ left: number; top: number; right: number; bottom: number; o2: number; hasFire: boolean }> {
+    const result: Array<{ left: number; top: number; right: number; bottom: number; o2: number; hasFire: boolean }> = [];
     const entities = world.query(['Room', 'Oxygen', 'Position']);
     for (const entity of entities) {
       const pos    = world.getComponent<PositionComponent>(entity, 'Position');
@@ -57,24 +74,25 @@ export class CrewSystem {
       const oxygen = world.getComponent<OxygenComponent>(entity, 'Oxygen');
       if (pos === undefined || room === undefined || oxygen === undefined) continue;
       result.push({
-        left:   pos.x,
-        top:    pos.y,
-        right:  pos.x + room.width  * TILE_SIZE,
-        bottom: pos.y + room.height * TILE_SIZE,
-        o2:     oxygen.level,
+        left:    pos.x,
+        top:     pos.y,
+        right:   pos.x + room.width  * TILE_SIZE,
+        bottom:  pos.y + room.height * TILE_SIZE,
+        o2:      oxygen.level,
+        hasFire: room.hasFire,
       });
     }
     return result;
   }
 
-  private getO2AtPosition(
+  private getRoomAtPosition(
     x: number,
     y: number,
-    rooms: Array<{ left: number; top: number; right: number; bottom: number; o2: number }>,
-  ): number | null {
+    rooms: Array<{ left: number; top: number; right: number; bottom: number; o2: number; hasFire: boolean }>,
+  ): { o2: number; hasFire: boolean } | null {
     for (const room of rooms) {
       if (x >= room.left && x < room.right && y >= room.top && y < room.bottom) {
-        return room.o2;
+        return room;
       }
     }
     return null; // not inside any known room

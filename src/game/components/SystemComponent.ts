@@ -6,7 +6,13 @@ export interface SystemComponent extends Component {
   readonly _type: 'System';
   /** Which ship system this room contains. */
   readonly type: SystemType;
-  /** Maximum power this system can accept. Reduced by weapon hits. */
+  /**
+   * Pristine maximum capacity set at spawn — never changes.
+   * Used for UI bar rendering: total bar count = level.
+   * Damaged bars = level − maxCapacity.
+   */
+  readonly level: number;
+  /** Maximum power this system can accept. Reduced by weapon hits; restored by repair. */
   maxCapacity: number;
   /** Currently allocated power (0 … maxCapacity). */
   currentPower: number;
