@@ -317,8 +317,8 @@ async function init(): Promise<void> {
   const eventSystem        = new EventSystem();
   const mapSystem          = new MapSystem();
   const renderSystem       = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
-  const selectionSystem    = new SelectionSystem(input, playerShipX, playerShipY);
-  const movementSystem     = new MovementSystem(input, playerShipX, playerShipY, pathfinder);
+  const selectionSystem    = new SelectionSystem(input);
+  const movementSystem     = new MovementSystem(input, pathfinder);
   const powerSystem        = new PowerSystem(input);
   const doorSystem         = new DoorSystem(input);
   const oxygenSystem       = new OxygenSystem();

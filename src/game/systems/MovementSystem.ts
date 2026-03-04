@@ -5,8 +5,11 @@ import { Pathfinder } from '../../utils/Pathfinder';
 import type { IInput } from '../../engine/IInput';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
+import type { FactionComponent } from '../components/FactionComponent';
+import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
+import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 
 /** Base linear movement speed in pixels per second (~2.3 tiles/s at TILE_SIZE=35). */
@@ -16,26 +19,22 @@ const CREW_SPEED = 80;
  * Moves crew entities along A*-computed paths, tile by tile.
  *
  * Right-click:
- *   1. Convert mouse pixel → grid coordinate.
- *   2. For each selected crew, compute their current grid tile.
- *   3. Call Pathfinder.findPath(current, target).
- *   4. Store the result in PathfindingComponent.path (empty = no path / already there).
+ *   1. Derive the player ship's pixel origin from its rooms.
+ *   2. Convert mouse pixel → grid coordinate relative to the player ship.
+ *   3. For each selected PLAYER crew, compute their current grid tile.
+ *   4. Call Pathfinder.findPath(current, target).
+ *   5. Store the result in PathfindingComponent.path.
  *
  * Per-frame lerp:
- *   - Crew lerps toward path[0] (first remaining waypoint).
- *   - On arrival (distance < 1 px), snap, call path.shift(), advance to next waypoint.
- *   - Stops automatically when path is empty.
+ *   - Each crew uses its OWN parent ship's pixel origin to convert waypoints.
+ *   - This fixes the bug where enemy crew flew to the player ship's coordinates.
  */
 export class MovementSystem {
   private readonly input: IInput;
-  private readonly shipX: number;
-  private readonly shipY: number;
   private readonly pathfinder: Pathfinder;
 
-  constructor(input: IInput, shipX: number, shipY: number, pathfinder: Pathfinder) {
+  constructor(input: IInput, pathfinder: Pathfinder) {
     this.input      = input;
-    this.shipX      = shipX;
-    this.shipY      = shipY;
     this.pathfinder = pathfinder;
   }
 
@@ -50,12 +49,31 @@ export class MovementSystem {
     if (!this.input.isMouseJustPressed(2)) return;
 
     const mouse = this.input.getMousePosition();
-    const targetGridX = Math.floor((mouse.x - this.shipX) / TILE_SIZE);
-    const targetGridY = Math.floor((mouse.y - this.shipY) / TILE_SIZE);
 
-    const entities = world.query(['Crew', 'Selectable', 'Pathfinding', 'Position']);
+    // Resolve the player ship entity and its pixel origin.
+    let playerShipEntity: number | undefined;
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id === 'PLAYER') { playerShipEntity = entity; break; }
+    }
+    if (playerShipEntity === undefined) return;
+
+    const origin = this.getShipOrigin(world, playerShipEntity);
+    if (origin === null) return;
+
+    const targetGridX = Math.floor((mouse.x - origin.x) / TILE_SIZE);
+    const targetGridY = Math.floor((mouse.y - origin.y) / TILE_SIZE);
+
+    const entities = world.query(['Crew', 'Selectable', 'Pathfinding', 'Position', 'Owner']);
 
     for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+
+      // Only allow commanding PLAYER crew.
+      const faction = world.getComponent<FactionComponent>(ownerComp.shipEntity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+
       const selectable  = world.getComponent<SelectableComponent>(entity, 'Selectable');
       const pathfinding = world.getComponent<PathfindingComponent>(entity, 'Pathfinding');
       const pos         = world.getComponent<PositionComponent>(entity, 'Position');
@@ -63,8 +81,8 @@ export class MovementSystem {
       if (!selectable.isSelected) continue;
 
       // Derive the crew's current grid tile from their pixel centre.
-      const startGridX = Math.floor((pos.x - this.shipX) / TILE_SIZE);
-      const startGridY = Math.floor((pos.y - this.shipY) / TILE_SIZE);
+      const startGridX = Math.floor((pos.x - origin.x) / TILE_SIZE);
+      const startGridY = Math.floor((pos.y - origin.y) / TILE_SIZE);
 
       const newPath = this.pathfinder.findPath(startGridX, startGridY, targetGridX, targetGridY);
 
@@ -82,22 +100,29 @@ export class MovementSystem {
 
   private advanceCrewAlongPaths(world: IWorld): void {
     const dt = Time.deltaTime;
-    const entities = world.query(['Crew', 'Pathfinding', 'Position']);
+    const entities = world.query(['Crew', 'Pathfinding', 'Position', 'Owner']);
 
     for (const entity of entities) {
+      const ownerComp   = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+
       const crew        = world.getComponent<CrewComponent>(entity, 'Crew');
       const pos         = world.getComponent<PositionComponent>(entity, 'Position');
       const pathfinding = world.getComponent<PathfindingComponent>(entity, 'Pathfinding');
       if (pos === undefined || pathfinding === undefined) continue;
       if (pathfinding.path.length === 0) continue; // nothing to do
 
+      // Derive pixel origin from the crew's actual parent ship (fixes enemy crew flying bug).
+      const origin = this.getShipOrigin(world, ownerComp.shipEntity);
+      if (origin === null) continue;
+
       // Apply racial movement speed multiplier from crew_stats.json.
       const speedMult = crew !== undefined ? getRaceStats(crew.race).movementSpeed : 1.0;
 
       // Lerp toward the FIRST remaining waypoint.
       const waypoint = pathfinding.path[0];
-      const targetPx = this.shipX + waypoint.x * TILE_SIZE + TILE_SIZE / 2;
-      const targetPy = this.shipY + waypoint.y * TILE_SIZE + TILE_SIZE / 2;
+      const targetPx = origin.x + waypoint.x * TILE_SIZE + TILE_SIZE / 2;
+      const targetPy = origin.y + waypoint.y * TILE_SIZE + TILE_SIZE / 2;
 
       const dx   = targetPx - pos.x;
       const dy   = targetPy - pos.y;
@@ -121,5 +146,26 @@ export class MovementSystem {
         pos.y += (dy / dist) * step;
       }
     }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Derives the ship's pixel origin (top-left corner) by finding any room owned
+   * by the given ship entity and back-calculating:
+   *   originX = roomPos.x - room.x * TILE_SIZE
+   *   originY = roomPos.y - room.y * TILE_SIZE
+   */
+  private getShipOrigin(world: IWorld, shipEntity: number): { x: number; y: number } | null {
+    for (const re of world.query(['Room', 'Position', 'Owner'])) {
+      const owner = world.getComponent<OwnerComponent>(re, 'Owner');
+      if (owner?.shipEntity !== shipEntity) continue;
+      const pos  = world.getComponent<PositionComponent>(re, 'Position');
+      const room = world.getComponent<RoomComponent>(re, 'Room');
+      if (pos !== undefined && room !== undefined) {
+        return { x: pos.x - room.x * TILE_SIZE, y: pos.y - room.y * TILE_SIZE };
+      }
+    }
+    return null;
   }
 }

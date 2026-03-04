@@ -129,17 +129,40 @@ const WEAPON_UI_PAD           = 8;
 
 // ── Dashboard constants ───────────────────────────────────────────────────────
 const DASH_FONT   = '13px monospace';
-const DASH_X      = 12;    // left margin for player dashboard
-const DASH_Y0     = 24;    // first line baseline
-const DASH_LINE_H = 20;    // spacing between dashboard lines
-
-const DIVIDER_COLOR = '#1c2e44';
-const DIVIDER_W     = 2;
 
 // ── Cloak constants ───────────────────────────────────────────────────────────
 const CLOAK_OVERLAY  = 'rgba(80,180,255,0.28)';
 /** Beam weapon display color constants (player / enemy). */
 const BEAM_LW        = 3;
+
+// ── UI panel layout constants ─────────────────────────────────────────────────
+/** Height of the top resource bar spanning the full canvas width. */
+const TOP_BAR_H       = 40;
+/** Semi-transparent dark background used by all anchored UI panels. */
+const UI_PANEL_BG     = 'rgba(20, 25, 35, 0.85)';
+/** 1-px border color for all anchored UI panels. */
+const UI_PANEL_BORDER = '#334455';
+/** Width of the left pillar panel (crew roster + system power). */
+const LEFT_PANEL_W    = 200;
+/** Baseline Y for the "CREW" section header inside the left pillar. */
+const ROSTER_HEADER_Y = TOP_BAR_H + 10;
+/** Baseline Y for the first crew name row inside the left pillar. */
+const ROSTER_Y0       = TOP_BAR_H + 22;
+/** Vertical spacing (px) between consecutive crew rows in the roster. */
+const ROSTER_ROW_H    = 18;
+/** Height (px) of each HP bar in the crew roster. */
+const ROSTER_BAR_H    = 5;
+/** Width (px) of each HP bar in the crew roster. */
+const ROSTER_BAR_W    = 175;
+
+// ── Procedural hull constants ─────────────────────────────────────────────────
+/** Padding (px) added around the room bounding box for the ship hull rect. */
+const HULL_PAD         = 16;
+const HULL_FILL        = '#2c303a';
+const HULL_BORDER      = '#4a5060';
+
+// ── Starfield constants ───────────────────────────────────────────────────────
+const STAR_SPEED = 10; // pixels per second scrolling left
 
 // ── Shield constants ──────────────────────────────────────────────────────────
 /** How many pixels of padding beyond the ship bounding box the shield ellipse uses. */
@@ -179,6 +202,9 @@ export class RenderSystem {
   /** Maps ship entity → remaining flash timer (seconds) for shield-hit flashes. */
   private readonly shieldFlashTimers = new Map<number, number>();
 
+  /** Parallax star field — initialized once, updated each frame. */
+  private readonly stars: Array<{ x: number; y: number; size: number; opacity: number }>;
+
   constructor(
     renderer: IRenderer,
     targetingSystem: TargetingSystem,
@@ -189,6 +215,15 @@ export class RenderSystem {
     this.targetingSystem  = targetingSystem;
     this.input            = input;
     this.projectileSystem = projectileSystem;
+
+    // Seed the star field across the canvas area (approximate at construction time).
+    const { width, height } = renderer.getCanvasSize();
+    this.stars = Array.from({ length: 150 }, () => ({
+      x:       Math.random() * width,
+      y:       Math.random() * height,
+      size:    Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.6 + 0.2,
+    }));
   }
 
   /** Provides access to CombatSystem beam displays. Call once after construction. */
@@ -203,20 +238,24 @@ export class RenderSystem {
 
   update(world: IWorld): void {
     this.updateShieldFlashTimers(world);
-    this.drawCenterDivider();
+    // ── Background layers (drawn behind everything) ──────────────────────────
+    this.drawStarfield();
+    this.drawHulls(world);
+    // ── Ship interior ────────────────────────────────────────────────────────
     this.drawRooms(world);
     this.drawDoors(world);
     this.drawCrew(world);
     this.drawDrones(world);
+    // ── Combat effects ───────────────────────────────────────────────────────
     this.drawProjectiles(world);
     this.drawBeams();
     this.drawMissIndicators();
     this.drawTargetingCrosshairs(world);
     this.drawShields(world);
     this.drawSprites(world);
-    this.drawPlayerDashboard(world);
+    // ── HUD panels (drawn on top of the world) ───────────────────────────────
+    this.drawTopBar(world);
     this.drawSystemPanel(world);
-    this.drawEnemyDashboard(world);
     this.drawCloakHUD(world);
     this.drawCrewSkillSheet(world);
     this.drawWeaponUI(world);
@@ -291,15 +330,95 @@ export class RenderSystem {
     }
   }
 
-  // ── Layer 0: center divider ──────────────────────────────────────────────
+  // ── Starfield (background layer) ────────────────────────────────────────────
 
-  private drawCenterDivider(): void {
+  private drawStarfield(): void {
+    const dt = Time.deltaTime;
     const { width, height } = this.renderer.getCanvasSize();
-    this.renderer.drawLine(
-      Math.round(width / 2), 0,
-      Math.round(width / 2), height,
-      DIVIDER_COLOR, DIVIDER_W,
-    );
+
+    for (const star of this.stars) {
+      star.x -= STAR_SPEED * dt;
+      if (star.x < -2) {
+        // Wrap star back to the right edge with a fresh random Y.
+        star.x = width + 2;
+        star.y = Math.random() * height;
+      }
+      const alpha = star.opacity.toFixed(2);
+      this.renderer.drawRect(
+        Math.round(star.x), Math.round(star.y),
+        Math.ceil(star.size), Math.ceil(star.size),
+        `rgba(200,210,255,${alpha})`,
+        true,
+      );
+    }
+  }
+
+  // ── Procedural ship hulls ────────────────────────────────────────────────────
+
+  private drawHulls(world: IWorld): void {
+    for (const shipEntity of world.query(['Ship'])) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+      for (const re of world.query(['Room', 'Position', 'Owner'])) {
+        const owner = world.getComponent<OwnerComponent>(re, 'Owner');
+        if (owner?.shipEntity !== shipEntity) continue;
+        const pos  = world.getComponent<PositionComponent>(re, 'Position');
+        const room = world.getComponent<RoomComponent>(re, 'Room');
+        if (pos === undefined || room === undefined) continue;
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + room.width  * TILE_SIZE);
+        maxY = Math.max(maxY, pos.y + room.height * TILE_SIZE);
+      }
+
+      if (!isFinite(minX)) continue;
+
+      const hx = minX - HULL_PAD;
+      const hy = minY - HULL_PAD;
+      const hw = maxX - minX + HULL_PAD * 2;
+      const hh = maxY - minY + HULL_PAD * 2;
+
+      this.renderer.drawRect(hx, hy, hw, hh, HULL_FILL, true);
+      this.renderer.drawRect(hx, hy, hw, hh, HULL_BORDER, false);
+    }
+  }
+
+  // ── Top bar (replaces floating player + enemy dashboards) ───────────────────
+
+  private drawTopBar(world: IWorld): void {
+    const { width } = this.renderer.getCanvasSize();
+
+    // Background panel.
+    this.renderer.drawRect(0, 0, width, TOP_BAR_H, UI_PANEL_BG, true);
+    this.renderer.drawLine(0, TOP_BAR_H, width, TOP_BAR_H, UI_PANEL_BORDER, 1);
+
+    const y = 26; // text baseline centered in the 40px bar
+
+    // Player stats (left side).
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship === undefined) break;
+      this.renderer.drawText(`HULL ${ship.currentHull}/${ship.maxHull}`, 12,  y, DASH_FONT, '#44ff44', 'left');
+      this.renderer.drawText(`FUEL ${ship.fuel}`,                        160, y, DASH_FONT, '#ffaa44', 'left');
+      this.renderer.drawText(`MISSILES ${ship.missiles}`,                260, y, DASH_FONT, '#ff8844', 'left');
+      this.renderer.drawText(`SCRAP ${ship.scrap}`,                      420, y, DASH_FONT, '#ddbb44', 'left');
+      break;
+    }
+
+    // Enemy hull (right side).
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'ENEMY') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship === undefined) break;
+      this.renderer.drawText(
+        `ENEMY HULL ${ship.currentHull}/${ship.maxHull}`,
+        width - 12, y, DASH_FONT, '#ff6644', 'right',
+      );
+      break;
+    }
   }
 
   // ── Layer 1: rooms ──────────────────────────────────────────────────────────
@@ -422,8 +541,14 @@ export class RenderSystem {
   // ── Layer 3: crew ───────────────────────────────────────────────────────────
 
   private drawCrew(world: IWorld): void {
-    const entities = world.query(['Crew', 'Selectable', 'Position']);
+    const entities = world.query(['Crew', 'Selectable', 'Position', 'Owner']);
     for (const entity of entities) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+      // Hide enemy crew until the Sensors subsystem is implemented.
+      const faction = world.getComponent<FactionComponent>(ownerComp.shipEntity, 'Faction');
+      if (faction?.id === 'ENEMY') continue;
+
       const pos        = world.getComponent<PositionComponent>(entity, 'Position');
       const selectable = world.getComponent<SelectableComponent>(entity, 'Selectable');
       const crew       = world.getComponent<CrewComponent>(entity, 'Crew');
@@ -507,7 +632,9 @@ export class RenderSystem {
         color = '#88bbcc';
       }
 
-      this.renderer.drawText(label, DASH_X, DASH_Y0 + DASH_LINE_H * 5, DASH_FONT, color, 'left');
+      // Draw cloak status centered in the top bar.
+      const { width: cw } = this.renderer.getCanvasSize();
+      this.renderer.drawText(label, cw / 2, 26, DASH_FONT, color, 'center');
       return;
     }
   }
@@ -691,45 +818,15 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: player dashboard (top-left) ────────────────────────────────────
-
-  private drawPlayerDashboard(world: IWorld): void {
-    const entities = world.query(['Ship', 'Faction', 'Reactor']);
-    for (const entity of entities) {
-      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
-      if (faction?.id !== 'PLAYER') continue;
-      const ship    = world.getComponent<ShipComponent>(entity, 'Ship');
-      const reactor = world.getComponent<ReactorComponent>(entity, 'Reactor');
-      if (ship === undefined || reactor === undefined) return;
-
-      this.renderer.drawText(
-        `HULL:    ${ship.currentHull} / ${ship.maxHull}`,
-        DASH_X, DASH_Y0, DASH_FONT, '#44ff44', 'left',
-      );
-      this.renderer.drawText(
-        `REACTOR: ${reactor.currentPower} / ${reactor.totalPower}`,
-        DASH_X, DASH_Y0 + DASH_LINE_H, DASH_FONT, '#66eecc', 'left',
-      );
-      this.renderer.drawText(
-        `FUEL:    ${ship.fuel}`,
-        DASH_X, DASH_Y0 + DASH_LINE_H * 2, DASH_FONT, '#ffaa44', 'left',
-      );
-      this.renderer.drawText(
-        `SCRAP:   ${ship.scrap}`,
-        DASH_X, DASH_Y0 + DASH_LINE_H * 3, DASH_FONT, '#ddbb44', 'left',
-      );
-      this.renderer.drawText(
-        `MISSILES:${ship.missiles}`,
-        DASH_X, DASH_Y0 + DASH_LINE_H * 4, DASH_FONT, '#ff8844', 'left',
-      );
-      return;
-    }
-  }
-
-  // ── HUD: system power panel (below resource stats) ──────────────────────
+  // ── HUD: left pillar (crew roster + system power panel) ─────────────────
 
   private drawSystemPanel(world: IWorld): void {
     if (this.powerSystem === null) return;
+
+    // Left pillar panel background.
+    const { height } = this.renderer.getCanvasSize();
+    this.renderer.drawRect(0, TOP_BAR_H, LEFT_PANEL_W, height - TOP_BAR_H, UI_PANEL_BG, true);
+    this.renderer.drawLine(LEFT_PANEL_W, TOP_BAR_H, LEFT_PANEL_W, height, UI_PANEL_BORDER, 1);
 
     // Find the player ship entity.
     let playerShipEntity: number | undefined;
@@ -742,6 +839,39 @@ export class RenderSystem {
       break;
     }
     if (playerShipEntity === undefined || reactor === undefined) return;
+
+    // ── Crew roster ─────────────────────────────────────────────────────────
+    this.renderer.drawText('CREW', SYSPANEL_X, ROSTER_HEADER_Y, '10px monospace', '#445566', 'left');
+
+    let crewRow = 0;
+    for (const entity of world.query(['Crew', 'Owner'])) {
+      if (crewRow >= 5) break;
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp?.shipEntity !== playerShipEntity) continue;
+      const crew = world.getComponent<CrewComponent>(entity, 'Crew');
+      if (crew === undefined) continue;
+
+      const ry = ROSTER_Y0 + crewRow * ROSTER_ROW_H;
+      const nameColor = CREW_RACE_COLOR[crew.race] ?? '#aaaaaa';
+      this.renderer.drawText(
+        `${crew.name} [${crew.crewClass[0]}]`,
+        SYSPANEL_X, ry, '11px monospace', nameColor, 'left',
+      );
+
+      // HP bar.
+      const hpFrac  = Math.max(0, crew.health / crew.maxHealth);
+      const barY    = ry + 2;
+      this.renderer.drawRect(SYSPANEL_X, barY, ROSTER_BAR_W, ROSTER_BAR_H, '#1a2233', true);
+      if (hpFrac > 0) {
+        const hpCol = hpFrac > 0.5 ? '#44cc44' : hpFrac > 0.25 ? '#ccaa00' : '#cc3333';
+        this.renderer.drawRect(SYSPANEL_X, barY, Math.round(ROSTER_BAR_W * hpFrac), ROSTER_BAR_H, hpCol, true);
+      }
+
+      crewRow++;
+    }
+
+    // Separator between crew roster and system panel.
+    this.renderer.drawLine(SYSPANEL_X, SYSPANEL_Y0 - 14, SYSPANEL_X + SYSPANEL_W, SYSPANEL_Y0 - 14, UI_PANEL_BORDER, 1);
 
     const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
     const mouse   = this.input.getMousePosition();
@@ -789,33 +919,19 @@ export class RenderSystem {
     }
   }
 
-  // ── HUD: enemy dashboard (top-right) ────────────────────────────────────
-
-  private drawEnemyDashboard(world: IWorld): void {
-    const entities = world.query(['Ship', 'Faction']);
-    for (const entity of entities) {
-      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
-      if (faction?.id !== 'ENEMY') continue;
-      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
-      if (ship === undefined) return;
-
-      const { width } = this.renderer.getCanvasSize();
-      this.renderer.drawText(
-        `HULL: ${ship.currentHull} / ${ship.maxHull}`,
-        width - DASH_X, DASH_Y0, DASH_FONT, '#ff6644', 'right',
-      );
-      return;
-    }
-  }
-
-  // ── HUD: weapon UI boxes (bottom strip) ───────────────────────────────────
+  // ── HUD: weapon UI boxes (bottom strip with panel background) ────────────
 
   private drawWeaponUI(world: IWorld): void {
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
     if (playerWeapons.length === 0) return;
 
-    const { height }     = this.renderer.getCanvasSize();
-    const boxBaseY       = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const { width, height } = this.renderer.getCanvasSize();
+    const boxBaseY          = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+
+    // Bottom panel background.
+    const panelY = boxBaseY - 10;
+    this.renderer.drawRect(0, panelY, width, height - panelY, UI_PANEL_BG, true);
+    this.renderer.drawLine(0, panelY, width, panelY, UI_PANEL_BORDER, 1);
     const selectedEntity = this.targetingSystem.getSelectedWeaponEntity();
     const chargeBarY     = boxBaseY + WEAPON_BOX_H - WEAPON_UI_PAD - WEAPON_CHARGE_H;
     const chargeBarW     = WEAPON_BOX_W - WEAPON_UI_PAD * 2;
