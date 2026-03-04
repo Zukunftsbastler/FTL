@@ -1,6 +1,9 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
+import { LayoutEngine } from '../../engine/ui/LayoutEngine';
+import { findComputedNodeById } from '../../engine/ui/UITypes';
+import type { UINode, ComputedBounds } from '../../engine/ui/UITypes';
 import { AssetLoader } from '../../utils/AssetLoader';
 import { xpThresholdFor } from '../logic/CrewXP';
 import {
@@ -154,6 +157,56 @@ const ROSTER_BAR_H    = 5;
 /** Width (px) of each HP bar in the crew roster. */
 const ROSTER_BAR_W    = 220;
 
+// ── Declarative Combat HUD layout tree ───────────────────────────────────────
+/**
+ * Single source of truth for the combat HUD panel layout.
+ * Solved by LayoutEngine each frame; rendered by UIRenderer.renderTree.
+ *
+ * Structure:
+ *   Column (full canvas)
+ *     ├── Panel  — Top resource bar
+ *     ├── Row    — Middle section
+ *     │     ├── Panel   — Left pillar (crew + systems)
+ *     │     └── Spacer  — Safe zone for ships
+ *     └── Panel  — Bottom weapon strip
+ */
+const COMBAT_HUD: UINode = {
+  type: 'Column',
+  width: '100%',
+  height: '100%',
+  children: [
+    {
+      type: 'Panel',
+      id:   'top-bar',
+      height: TOP_BAR_H,
+      content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+    },
+    {
+      type:     'Row',
+      flexGrow: 1,
+      children: [
+        {
+          type:  'Panel',
+          id:    'left-pillar',
+          width: LEFT_PANEL_W,
+          content: { chamfer: 10, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+        },
+        {
+          type:     'Spacer',
+          id:       'safe-zone',
+          flexGrow: 1,
+        },
+      ],
+    },
+    {
+      type:   'Panel',
+      id:     'bottom-bar',
+      height: WEAPON_BOX_H + WEAPON_BOX_BOTTOM + 10,
+      content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
+    },
+  ],
+};
+
 // ── Procedural hull constants ─────────────────────────────────────────────────
 /** Padding (px) added around the room bounding box for the ship hull rect. */
 const HULL_PAD         = 16;
@@ -204,6 +257,12 @@ export class RenderSystem {
   /** Parallax star field — initialized once, updated each frame. */
   private readonly stars: Array<{ x: number; y: number; size: number; opacity: number }>;
 
+  /**
+   * Computed bounds of the 'safe-zone' Spacer node from the last layout solve.
+   * Updated every frame inside `update()`.  Null until the first frame.
+   */
+  private safeZoneBounds: ComputedBounds | null = null;
+
   constructor(
     renderer: IRenderer,
     targetingSystem: TargetingSystem,
@@ -235,8 +294,25 @@ export class RenderSystem {
     this.powerSystem = ps;
   }
 
+  /**
+   * Returns the latest computed bounds of the 'safe-zone' Spacer node.
+   * Available after the first call to `update()`.  Returns null before that.
+   */
+  getSafeZoneBounds(): ComputedBounds | null {
+    return this.safeZoneBounds;
+  }
+
   update(world: IWorld): void {
     this.updateShieldFlashTimers(world);
+
+    // ── Layout engine — solve the CombatHUD tree for this frame ─────────────
+    const { width, height } = this.renderer.getCanvasSize();
+    const layoutResult = LayoutEngine.computeLayout(
+      COMBAT_HUD,
+      { x: 0, y: 0, w: width, h: height },
+    );
+    this.safeZoneBounds = findComputedNodeById(layoutResult, 'safe-zone')?.bounds ?? null;
+
     // ── Background layers (drawn behind everything) ──────────────────────────
     this.drawStarfield();
     this.drawHulls(world);
@@ -252,7 +328,9 @@ export class RenderSystem {
     this.drawTargetingCrosshairs(world);
     this.drawShields(world);
     this.drawSprites(world);
-    // ── HUD panels (drawn on top of the world) ───────────────────────────────
+    // ── HUD panel backgrounds (rendered declaratively from the layout tree) ──
+    UIRenderer.renderTree(this.renderer.getContext(), layoutResult);
+    // ── HUD content (rendered on top of the panel backgrounds) ───────────────
     this.drawTopBar(world);
     this.drawSystemPanel(world);
     this.drawCloakHUD(world);
@@ -386,13 +464,7 @@ export class RenderSystem {
 
   private drawTopBar(world: IWorld): void {
     const { width } = this.renderer.getCanvasSize();
-
-    // Sci-fi panel background.
-    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, 0, width, TOP_BAR_H, {
-      chamfer:     8,
-      borderColor: UI_PANEL_BORDER,
-      alpha:       0.92,
-    });
+    void width; // layout engine draws the panel background; this method draws content only.
 
     const y = Math.round(TOP_BAR_H / 2) + 6; // text baseline centred in bar
 
@@ -825,13 +897,7 @@ export class RenderSystem {
   private drawSystemPanel(world: IWorld): void {
     if (this.powerSystem === null) return;
 
-    // Left pillar sci-fi panel background.
-    const { height } = this.renderer.getCanvasSize();
-    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, TOP_BAR_H, LEFT_PANEL_W, height - TOP_BAR_H, {
-      chamfer:     10,
-      borderColor: UI_PANEL_BORDER,
-      alpha:       0.92,
-    });
+    // Layout engine draws the left-pillar panel background; this method draws content only.
 
     // Find the player ship entity.
     let playerShipEntity: number | undefined;
@@ -930,16 +996,10 @@ export class RenderSystem {
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
     if (playerWeapons.length === 0) return;
 
-    const { width, height } = this.renderer.getCanvasSize();
-    const boxBaseY          = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const { height } = this.renderer.getCanvasSize();
+    const boxBaseY   = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
 
-    // Bottom sci-fi panel background.
-    const panelY = boxBaseY - 10;
-    UIRenderer.drawSciFiPanel(this.renderer.getContext(), 0, panelY, width, height - panelY, {
-      chamfer:     8,
-      borderColor: UI_PANEL_BORDER,
-      alpha:       0.92,
-    });
+    // Layout engine draws the bottom-bar panel background; this method draws weapon boxes only.
     const selectedEntity = this.targetingSystem.getSelectedWeaponEntity();
     const chargeBarY     = boxBaseY + WEAPON_BOX_H - WEAPON_UI_PAD - WEAPON_CHARGE_H;
     const chargeBarW     = WEAPON_BOX_W - WEAPON_UI_PAD * 2;

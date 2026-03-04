@@ -1,3 +1,5 @@
+import type { ComputedNode } from './UITypes';
+
 /** Options for the sci-fi chamfered panel renderer. */
 export interface SciFiPanelOptions {
   /** Title text displayed in a solid header bar at the top of the panel. */
@@ -108,6 +110,40 @@ export class UIRenderer {
       ctx.fillStyle = '#b8c8d8';
       ctx.textAlign = 'center';
       ctx.fillText(options.title.toUpperCase(), x + w / 2, y + HEADER_H / 2 + 5);
+    }
+  }
+
+  // ── Declarative tree renderer ─────────────────────────────────────────────
+
+  /**
+   * Recursively traverses a fully-solved `ComputedNode` tree and renders
+   * each node to the canvas according to its type:
+   *
+   *   Panel  → drawSciFiPanel  (reads SciFiPanelOptions from node.content)
+   *   Text   → ctx.fillText    (reads string from node.content)
+   *   Row / Column / Spacer → invisible containers; only their children are rendered
+   */
+  static renderTree(ctx: CanvasRenderingContext2D, node: ComputedNode): void {
+    const { type } = node.node;
+    const { x, y, w, h } = node.bounds;
+
+    if (type === 'Panel') {
+      // Cast content to SciFiPanelOptions — callers are responsible for type consistency.
+      const opts = (node.node.content ?? {}) as SciFiPanelOptions;
+      UIRenderer.drawSciFiPanel(ctx, x, y, w, h, opts);
+    } else if (type === 'Text') {
+      const text = typeof node.node.content === 'string' ? node.node.content : '';
+      if (text.length > 0) {
+        ctx.font      = '13px monospace';
+        ctx.fillStyle = '#aabbcc';
+        ctx.textAlign = 'left';
+        ctx.fillText(text, x, y + h / 2 + 5);
+      }
+    }
+    // Row, Column, Spacer — no visual output; fall through to children.
+
+    for (const child of node.children) {
+      UIRenderer.renderTree(ctx, child);
     }
   }
 }
