@@ -1,5 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { GameStateData } from '../../engine/GameState';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
 import { LayoutEngine } from '../../engine/ui/LayoutEngine';
 import { findComputedNodeById } from '../../engine/ui/UITypes';
@@ -282,7 +283,7 @@ export class RenderSystem {
   private layoutResult: ComputedNode | null = null;
 
   /** Procedural background planet — drifts leftward at a very slow parallax rate. */
-  private readonly planet: { x: number; y: number; radius: number; speed: number };
+  private readonly planet: { x: number; y: number; speed: number };
 
   constructor(
     renderer: IRenderer,
@@ -306,10 +307,9 @@ export class RenderSystem {
 
     // Seed the background planet — starts on the right side of the screen.
     this.planet = {
-      x:      width  * (0.65 + Math.random() * 0.25),
-      y:      height * (0.10 + Math.random() * 0.80),
-      radius: 300 + Math.random() * 200,
-      speed:  1.5,   // much slower than stars (STAR_SPEED = 10)
+      x:     width  * (0.65 + Math.random() * 0.25),
+      y:     height * (0.10 + Math.random() * 0.80),
+      speed: 1.5,   // much slower than stars (STAR_SPEED = 10)
     };
   }
 
@@ -440,31 +440,25 @@ export class RenderSystem {
   // ── Procedural planet (deep background — drawn before the starfield) ────────
 
   private drawPlanet(): void {
+    const pc = GameStateData.cachedPlanet;
+    if (pc === null) return;
+
     const dt = Time.deltaTime;
     const { width, height } = this.renderer.getCanvasSize();
-    const ctx = this.renderer.getContext();
+
+    // The offscreen canvas is radius*2.5 wide; half of that is the draw offset
+    // needed to keep the planet sphere centred at (this.planet.x, this.planet.y).
+    const halfW = pc.width  / 2;
+    const halfH = pc.height / 2;
 
     // Drift the planet slowly left; wrap it back when fully off-screen.
     this.planet.x -= this.planet.speed * dt;
-    if (this.planet.x + this.planet.radius < 0) {
-      this.planet.x = width + this.planet.radius;
+    if (this.planet.x + halfW < 0) {
+      this.planet.x = width  + halfW;
       this.planet.y = height * 0.10 + Math.random() * height * 0.80;
     }
 
-    const { x, y, radius } = this.planet;
-
-    // Radial gradient: bright rusty-orange highlight off-centre → transparent edge.
-    const grad = ctx.createRadialGradient(
-      x - radius * 0.30, y - radius * 0.30, radius * 0.05,
-      x, y, radius,
-    );
-    grad.addColorStop(0, 'rgba(200,80,40,0.8)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
+    this.renderer.getContext().drawImage(pc, this.planet.x - halfW, this.planet.y - halfH);
   }
 
   // ── Starfield (background layer) ────────────────────────────────────────────

@@ -31,8 +31,11 @@ import { DroneControlSystem } from './game/systems/DroneControlSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { Pathfinder } from './utils/Pathfinder';
+import { PlanetGenerator } from './game/world/PlanetGenerator';
+import type { PlanetTheme } from './game/world/PlanetGenerator';
 import { TILE_SIZE } from './game/constants';
 import type { GameState } from './engine/GameState';
+import { GameStateData } from './engine/GameState';
 import type { ShipTemplate } from './game/data/ShipTemplate';
 import type { WeaponTemplate } from './game/data/WeaponTemplate';
 import type { EventTemplate } from './game/data/EventTemplate';
@@ -108,6 +111,18 @@ async function init(): Promise<void> {
     AssetLoader.loadJSON<DroneTemplate[]>('drones',     '/data/drones.json'),
     AssetLoader.loadJSON<SectorTemplate[]>('sectors',   '/data/sectors.json'),
   ]);
+
+  // ── Planet generation ─────────────────────────────────────────────────────────
+  const PLANET_THEMES: PlanetTheme[] = ['TERRA', 'LAVA', 'ICE', 'DESERT', 'GAS'];
+  function randomPlanet(): void {
+    const theme = PLANET_THEMES[Math.floor(Math.random() * PLANET_THEMES.length)];
+    GameStateData.cachedPlanet = PlanetGenerator.generatePlanet(
+      theme,
+      300,
+      Math.floor(Math.random() * 999983),
+    );
+  }
+  randomPlanet();
 
   // ── UI safe-zone layout ──────────────────────────────────────────────────────
   // These must match the panel constants in RenderSystem.ts.
@@ -432,9 +447,10 @@ async function init(): Promise<void> {
         },
         onStore: () => { currentState = 'STORE'; },
         onExit: () => {
-          // New sector: regenerate the map.
+          // New sector: regenerate the map and roll a new planet.
           const { width: w, height: h } = renderer.getCanvasSize();
           mapSystem.nextSector(w, h);
+          randomPlanet();
         },
       });
 

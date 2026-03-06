@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-500 -100 1000 1250" width="100%" height="100%" style="background-color: #08080a;">
+  
+  <defs>
+    <pattern id="greeble1" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="40" height="40" fill="#2a2a2a"/>
+      <rect x="2" y="2" width="16" height="16" fill="#4a4a4a"/>
+      <rect x="20" y="5" width="15" height="10" fill="#383838"/>
+      <rect x="5" y="22" width="30" height="14" fill="#555555"/>
+      <line x1="10" y1="0" x2="10" y2="40" stroke="#1c1c1c" stroke-width="2"/>
+      <line x1="28" y1="20" x2="28" y2="40" stroke="#1c1c1c" stroke-width="1.5"/>
+      <circle cx="30" cy="10" r="2" fill="#111111"/>
+      <rect x="8" y="25" width="4" height="8" fill="#777777"/>
+      <rect x="15" y="25" width="4" height="8" fill="#777777"/>
+    </pattern>
+
+    <pattern id="ribs" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="12" fill="#3d3d3d"/>
+      <rect x="6" width="6" height="12" fill="#111111"/>
+    </pattern>
+
+    <g id="turret-heavy">
+      <circle cx="0" cy="0" r="14" fill="#222"/>
+      <circle cx="0" cy="0" r="12" fill="#555"/>
+      <rect x="-6" y="-25" width="4" height="25" fill="#444"/>
+      <rect x="2" y="-25" width="4" height="25" fill="#444"/>
+      <rect x="-8" y="-15" width="16" height="8" fill="#333"/>
+      <path d="M -10 5 L -6 -8 L 6 -8 L 10 5 Z" fill="#777"/>
+      <circle cx="0" cy="0" r="4" fill="#333"/>
+    </g>
+
+    <g id="turret-light">
+      <circle cx="0" cy="0" r="6" fill="#666"/>
+      <rect x="-1" y="-12" width="2" height="12" fill="#888"/>
+      <rect x="-3" y="-4" width="6" height="5" fill="#444"/>
+    </g>
+
+    <g id="engine">
+      <rect x="-25" y="0" width="50" height="80" fill="#222"/>
+      <rect x="-20" y="10" width="40" height="60" fill="#3a3a3a"/>
+      <path d="M -25 80 L -35 110 L 35 110 L 25 80 Z" fill="#1a1a1a"/>
+      <line x1="-10" y1="10" x2="-10" y2="70" stroke="#111" stroke-width="2"/>
+      <line x1="10" y1="10" x2="10" y2="70" stroke="#111" stroke-width="2"/>
+      <ellipse cx="0" cy="110" rx="30" ry="12" fill="#666"/>
+      <ellipse cx="0" cy="110" rx="20" ry="8" fill="#aaa"/>
+      <ellipse cx="0" cy="110" rx="10" ry="4" fill="#fff"/>
+    </g>
+
+    <g id="half-ship">
+      
+      <polygon points="0,0 -120,250 -450,750 -450,900 -250,900 -180,1050 0,1000" fill="#2c2c2c" stroke="#111" stroke-width="4"/>
+
+      <polygon points="-100,350 -250,600 -200,680 -80,450" fill="url(#greeble1)"/>
+      <polygon points="-350,800 -430,800 -430,880 -280,880" fill="url(#ribs)"/>
+      
+      <polygon points="0,50 -90,260 -380,750 -280,850 -160,980 0,930" fill="#4d4d4d"/>
+      <line x1="-150" y1="400" x2="-280" y2="600" stroke="#222" stroke-width="3"/>
+      <line x1="-200" y1="450" x2="-100" y2="650" stroke="#222" stroke-width="2"/>
+      <polygon points="-120,400 -180,500 -130,520 -80,430" fill="#5e5e5e"/>
+
+      <polygon points="0,100 -60,280 -300,700 -220,780 -120,900 0,870" fill="#6b6b6b"/>
+      <polygon points="-280,710 -360,740 -360,830 -260,830" fill="#555555"/>
+
+      <line x1="-360" y1="710" x2="-490" y2="680" stroke="#777" stroke-width="2"/>
+      <line x1="-390" y1="760" x2="-470" y2="760" stroke="#555" stroke-width="4"/>
+      <rect x="-490" y="678" width="8" height="4" fill="#aaa"/>
+      <polygon points="-440,755 -450,750 -450,770 -440,765" fill="#888"/>
+
+      <rect x="-340" y="800" width="60" height="20" fill="#333"/>
+      <rect x="-330" y="810" width="40" height="30" fill="#888"/>
+      <circle cx="-310" cy="825" r="8" fill="#111"/>
+
+      <use href="#engine" x="-280" y="880" transform="scale(0.8) translate(-70, 20)" />
+      <use href="#engine" x="-200" y="940" transform="scale(1) translate(0, 0)" />
+      <use href="#engine" x="-100" y="960" transform="scale(1.2) translate(16, -16)" />
+
+      <polygon points="0,150 -40,300 -80,600 -120,800 0,800" fill="#7a7a7a"/>
+      <polygon points="0,180 -25,310 -50,600 -80,780 0,780" fill="#8f8f8f"/>
+
+      <rect x="-15" y="0" width="15" height="400" fill="#222"/>
+      <rect x="-10" y="20" width="10" height="360" fill="#111"/>
+      <rect x="-18" y="50" width="18" height="8" fill="#999"/>
+      <rect x="-18" y="100" width="18" height="8" fill="#999"/>
+      <rect x="-18" y="150" width="18" height="8" fill="#999"/>
+      <rect x="-18" y="200" width="18" height="8" fill="#999"/>
+      <rect x="-18" y="250" width="18" height="8" fill="#999"/>
+      <rect x="-18" y="300" width="18" height="8" fill="#999"/>
+
+      <rect x="-50" y="400" width="30" height="80" fill="#444"/>
+      <rect x="-40" y="410" width="20" height="60" fill="url(#ribs)"/>
+      <rect x="-70" y="550" width="40" height="120" fill="#5a5a5a"/>
+
+      <use href="#turret-heavy" x="-180" y="550" transform="rotate(-30, -180, 550)" />
+      <use href="#turret-heavy" x="-240" y="680" transform="rotate(-50, -240, 680)" />
+      <use href="#turret-light" x="-90" y="350" transform="rotate(-15, -90, 350)" />
+      <use href="#turret-light" x="-130" y="450" transform="rotate(-25, -130, 450)" />
+      <use href="#turret-light" x="-100" y="650" transform="rotate(-10, -100, 650)" />
+      <use href="#turret-light" x="-320" y="760" transform="rotate(-80, -320, 760)" />
+
+      <line x1="0" y1="-20" x2="-20" y2="-60" stroke="#777" stroke-width="2"/>
+      <line x1="0" y1="-20" x2="-5" y2="-90" stroke="#999" stroke-width="3"/>
+      
+    </g>
+  </defs>
+
+  <use href="#half-ship" />
+  <use href="#half-ship" transform="scale(-1, 1)" />
+
+  <g id="bridge-tower">
+    <polygon points="-120,780 120,780 90,880 -90,880" fill="#404040" stroke="#111" stroke-width="2"/>
+    <polygon points="-100,800 100,800 70,870 -70,870" fill="#555555"/>
+    <polygon points="-80,820 80,820 50,860 -50,860" fill="#777777"/>
+    <rect x="-40" y="830" width="80" height="20" fill="#999999"/>
+    <line x1="-35" y1="840" x2="35" y2="840" stroke="#e0e0e0" stroke-width="3"/>
+    
+    <circle cx="-60" cy="810" r="18" fill="#888"/>
+    <circle cx="-60" cy="810" r="12" fill="#aaa"/>
+    <line x1="-60" y1="792" x2="-60" y2="828" stroke="#333" stroke-width="2"/>
+    
+    <circle cx="60" cy="810" r="18" fill="#888"/>
+    <circle cx="60" cy="810" r="12" fill="#aaa"/>
+    <line x1="60" y1="792" x2="60" y2="828" stroke="#333" stroke-width="2"/>
+
+    <circle cx="0" cy="870" r="10" fill="#666"/>
+  </g>
+
+  <g id="exposed-tech" transform="translate(180, 520)">
+    <polygon points="-20,-50 40,-20 30,80 -30,40" fill="url(#greeble1)" stroke="#222" stroke-width="4"/>
+    <line x1="-15" y1="-40" x2="25" y2="70" stroke="#111" stroke-width="3"/>
+    <circle cx="0" cy="10" r="15" fill="#333"/>
+    <circle cx="0" cy="10" r="10" fill="#555"/>
+  </g>
+
+  <g id="radar-dish" transform="translate(-200, 480)">
+    <ellipse cx="0" cy="0" rx="35" ry="45" fill="#3d3d3d" stroke="#222" stroke-width="2" transform="rotate(-20)"/>
+    <ellipse cx="0" cy="0" rx="25" ry="32" fill="#6b6b6b" transform="rotate(-20)"/>
+    <line x1="-25" y1="-30" x2="25" y2="30" stroke="#444" stroke-width="2"/>
+    <line x1="-30" y1="15" x2="30" y2="-15" stroke="#444" stroke-width="2"/>
+    <circle cx="0" cy="0" r="8" fill="#111"/>
+    <path d="M 0 0 L -15 -25 L -5 -25 Z" fill="#999"/>
+  </g>
+
+  <g id="decals">
+    <polygon points="-100,280 -120,300 -240,480 -210,480" fill="#222222" opacity="0.8"/>
+    <polygon points="-120,320 -130,330 -220,460 -200,460" fill="#333333" opacity="0.8"/>
+    
+    <path d="M 120 400 L 150 400 L 150 460 L 120 460 Z" fill="none" stroke="#222222" stroke-width="8" opacity="0.6"/>
+    <path d="M 170 400 L 170 440 L 195 440 M 190 400 L 190 460" fill="none" stroke="#222222" stroke-width="8" opacity="0.6"/>
+  </g>
+
+  <g id="battle-damage">
+    <circle cx="-50" cy="200" r="12" fill="#111" opacity="0.9"/>
+    <circle cx="-50" cy="200" r="6" fill="#333"/>
+    <path d="M -50 200 Q -30 180 -10 160 Q -20 190 -50 200 Z" fill="#111" opacity="0.7"/>
+    
+    <path d="M 250 850 Q 280 800 320 860 Q 300 880 250 850 Z" fill="#111" opacity="0.8"/>
+    <path d="M 260 855 Q 280 820 310 860 Q 290 870 260 855 Z" fill="#222" opacity="0.9"/>
+  </g>
+
+</svg>
