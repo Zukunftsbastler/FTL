@@ -2,6 +2,7 @@ import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { GameStateData } from '../../engine/GameState';
 import { HULL_PAD } from '../world/ShipGenerator';
+import { getShieldTexture } from '../vfx/ShieldGenerator';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
 import { LayoutEngine } from '../../engine/ui/LayoutEngine';
 import { findComputedNodeById } from '../../engine/ui/UITypes';
@@ -221,13 +222,13 @@ const COMBAT_HUD: UINode = {
 const STAR_SPEED = 10; // pixels per second scrolling left
 
 // ── Shield constants ──────────────────────────────────────────────────────────
-/** How many pixels of padding beyond the ship bounding box the shield ellipse uses. */
-const SHIELD_PAD_X  = 22;
-const SHIELD_PAD_Y  = 16;
-const SHIELD_COLOR  = 'rgba(80,160,255,0.22)';
-const SHIELD_STROKE = 'rgba(120,200,255,0.70)';
-const SHIELD_LW     = 2;
-const SHIELD_FLASH  = 'rgba(200,230,255,0.60)';
+/**
+ * Padding multiplier applied to HULL_PAD when sizing the shield bubble.
+ * The shield must safely encompass the aerodynamic hull nose and wing tips.
+ */
+const SHIELD_HULL_SCALE = 2.5;
+/** Extra pixels outward per additional concentric shield bubble layer. */
+const SHIELD_LAYER_STEP = 16;
 /** Duration (seconds) the shield flashes brighter after absorbing a hit. */
 const SHIELD_FLASH_DURATION = 0.20;
 
@@ -382,15 +383,22 @@ export class RenderSystem {
   // ── Shield bubbles ────────────────────────────────────────────────────────
 
   private drawShields(world: IWorld): void {
-    const shipEntities = world.query(['Ship', 'Shield']);
-    for (const shipEntity of shipEntities) {
-      const shield = world.getComponent<ShieldComponent>(shipEntity, 'Shield');
-      if (shield === undefined || Math.floor(shield.currentLayers) < 1) continue;
+    const ctx = this.renderer.getContext();
+
+    for (const shipEntity of world.query(['Ship', 'Shield', 'Faction'])) {
+      const shield  = world.getComponent<ShieldComponent>(shipEntity, 'Shield');
+      const faction = world.getComponent<FactionComponent>(shipEntity, 'Faction');
+      if (shield === undefined || faction === undefined) continue;
+
+      const bubbles = Math.floor(shield.currentLayers);
+      if (bubbles < 1) continue;
+
+      const tex = getShieldTexture(faction.id);
+      if (tex === undefined) continue;
 
       // Compute bounding box from all rooms owned by this ship.
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      const roomEntities = world.query(['Room', 'Position', 'Owner']);
-      for (const re of roomEntities) {
+      for (const re of world.query(['Room', 'Position', 'Owner'])) {
         const owner = world.getComponent<OwnerComponent>(re, 'Owner');
         if (owner?.shipEntity !== shipEntity) continue;
         const pos  = world.getComponent<PositionComponent>(re, 'Position');
@@ -405,22 +413,31 @@ export class RenderSystem {
 
       const cx = (minX + maxX) / 2;
       const cy = (minY + maxY) / 2;
-      const rx = (maxX - minX) / 2 + SHIELD_PAD_X;
-      const ry = (maxY - minY) / 2 + SHIELD_PAD_Y;
+
+      // Size the bubble to encompass the full aerodynamic hull (nose + wing tips).
+      const hullPad = HULL_PAD * SHIELD_HULL_SCALE;
+      const baseW   = (maxX - minX) + hullPad * 2;
+      const baseH   = (maxY - minY) + hullPad * 2;
 
       const isFlashing = this.shieldFlashTimers.has(shipEntity);
+      const pulse      = Math.sin(Date.now() / 200) * 0.05;
 
-      // Fill layer (semi-transparent).
-      this.renderer.drawEllipse(cx, cy, rx, ry, isFlashing ? SHIELD_FLASH : SHIELD_COLOR, true);
-      // Stroke border.
-      this.renderer.drawEllipse(cx, cy, rx, ry, SHIELD_STROKE, false, SHIELD_LW);
+      ctx.save();
+      // Additive compositing makes the hex glow visible on top of the dark ship.
+      ctx.globalCompositeOperation = 'screen';
 
-      // Draw one ring per active layer beyond the first.
-      const layers = Math.floor(shield.currentLayers);
-      for (let l = 1; l < layers; l++) {
-        const extra = l * 8;
-        this.renderer.drawEllipse(cx, cy, rx + extra, ry + extra, SHIELD_STROKE, false, SHIELD_LW);
+      for (let i = 0; i < bubbles; i++) {
+        const extra  = i * SHIELD_LAYER_STEP;
+        const drawW  = baseW + extra * 2;
+        const drawH  = baseH + extra * 2;
+        const alpha  = (isFlashing ? 0.95 : 0.72) - i * 0.12 + pulse;
+        ctx.globalAlpha = Math.max(0.10, Math.min(1.0, alpha));
+        ctx.drawImage(tex, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
       }
+
+      ctx.globalAlpha              = 1.0;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     }
   }
 

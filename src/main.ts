@@ -32,6 +32,7 @@ import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { EnemyScaler } from './game/logic/EnemyScaler';
 import { pregenerateExplosions } from './game/vfx/ExplosionGenerator';
+import { pregenerateShields } from './game/vfx/ShieldGenerator';
 import { ExplosionSystem } from './game/systems/ExplosionSystem';
 import { ExplosionRenderSystem } from './game/systems/ExplosionRenderSystem';
 import { ProjectileRenderSystem } from './game/systems/ProjectileRenderSystem';
@@ -132,6 +133,10 @@ async function init(): Promise<void> {
   // ── Explosion spritesheet pre-generation ──────────────────────────────────────
   // Pre-render all explosion types into cached 2D spritesheets once at startup.
   pregenerateExplosions();
+
+  // ── Shield texture pre-generation ─────────────────────────────────────────────
+  // Pre-render hex-grid shield sprites for PLAYER and ENEMY factions once at startup.
+  pregenerateShields();
 
   // ── UI safe-zone layout ──────────────────────────────────────────────────────
   // These must match the panel constants in RenderSystem.ts.
