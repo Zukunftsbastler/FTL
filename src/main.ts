@@ -31,6 +31,9 @@ import { DroneControlSystem } from './game/systems/DroneControlSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { EnemyScaler } from './game/logic/EnemyScaler';
+import { pregenerateExplosions } from './game/vfx/ExplosionGenerator';
+import { ExplosionSystem } from './game/systems/ExplosionSystem';
+import { ExplosionRenderSystem } from './game/systems/ExplosionRenderSystem';
 import { Pathfinder } from './utils/Pathfinder';
 import { PlanetGenerator } from './game/world/PlanetGenerator';
 import type { PlanetTheme } from './game/world/PlanetGenerator';
@@ -124,6 +127,10 @@ async function init(): Promise<void> {
     );
   }
   randomPlanet();
+
+  // ── Explosion spritesheet pre-generation ──────────────────────────────────────
+  // Pre-render all explosion types into cached 2D spritesheets once at startup.
+  pregenerateExplosions();
 
   // ── UI safe-zone layout ──────────────────────────────────────────────────────
   // These must match the panel constants in RenderSystem.ts.
@@ -351,10 +358,12 @@ async function init(): Promise<void> {
 
   // ── Systems ─────────────────────────────────────────────────────────────────
 
-  const targetingSystem    = new TargetingSystem(input, renderer);
-  const combatSystem       = new CombatSystem();
-  const projectileSystem   = new ProjectileSystem();
-  const particleSystem     = new ParticleSystem(renderer);
+  const targetingSystem      = new TargetingSystem(input, renderer);
+  const combatSystem         = new CombatSystem();
+  const projectileSystem     = new ProjectileSystem();
+  const particleSystem       = new ParticleSystem(renderer);
+  const explosionSystem      = new ExplosionSystem();
+  const explosionRenderSystem = new ExplosionRenderSystem(renderer);
   const victorySystem      = new VictorySystem();
   const upgradeSystem      = new UpgradeSystem();
   const eventSystem        = new EventSystem();
@@ -384,6 +393,8 @@ async function init(): Promise<void> {
   renderSystem.setPowerSystem(powerSystem);
   // Inject ParticleSystem into ProjectileSystem so impacts spawn spark bursts.
   projectileSystem.setParticleSystem(particleSystem);
+  // Inject ExplosionSystem into ProjectileSystem so direct hits spawn explosions.
+  projectileSystem.setExplosionSystem(explosionSystem);
 
   // ── Game Loop ───────────────────────────────────────────────────────────────
 
@@ -459,12 +470,15 @@ async function init(): Promise<void> {
       if (!isPaused) enemyAISystem.update(world); // assign targets to charged enemy weapons
       combatSystem.update(world);       // weapon charging + projectile spawning + beam fire
       projectileSystem.update(world);   // advance projectiles, shield check, damage
+      explosionSystem.update(world);    // tick explosion ages, destroy expired entities
       oxygenSystem.update(world);       // O2 regen / decay / equalization + Lanius drain
       crewSystem.update(world);         // suffocation damage (racial multipliers)
       repairSystem.update(world);       // system repair + medbay healing (racial repair speed)
 
       // Render all layers.
       renderSystem.update(world);
+      // Render noise-dissolve explosions on top of the world scene.
+      explosionRenderSystem.update(world);
       // Render particle bursts on top of the world scene.
       particleSystem.update();
 

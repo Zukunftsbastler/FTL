@@ -2,6 +2,7 @@ import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { awardXP } from '../logic/CrewXP';
 import { FIRE_HEALTH_INITIAL, BREACH_HEALTH_INITIAL } from './OxygenSystem';
+import type { ExplosionSystem } from './ExplosionSystem';
 import type { ParticleSystem } from './ParticleSystem';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
@@ -55,6 +56,8 @@ const NEAR_MISS_CHANCE = 0.08;
 export class ProjectileSystem {
   /** Injected after construction — used to spawn impact spark bursts. */
   private particleSystem: ParticleSystem | null = null;
+  /** Injected after construction — used to spawn noise-dissolve explosion VFX. */
+  private explosionSystem: ExplosionSystem | null = null;
 
   /** Room entities damaged this frame — cleared at start of each update(). */
   private readonly impactedRooms = new Set<number>();
@@ -74,6 +77,7 @@ export class ProjectileSystem {
   private readonly missMap = new Map<number, { displayX: number; displayY: number }>();
 
   setParticleSystem(ps: ParticleSystem): void { this.particleSystem = ps; }
+  setExplosionSystem(es: ExplosionSystem): void { this.explosionSystem = es; }
 
   getImpactedRooms(): ReadonlySet<number> { return this.impactedRooms; }
   getShieldHitShips(): ReadonlySet<number> { return this.shieldHitShips; }
@@ -126,8 +130,10 @@ export class ProjectileSystem {
           } else {
             this.applyImpact(world, proj);
             this.impactedRooms.add(proj.targetRoomEntity);
-            // Spawn impact particle burst at the hit location.
-            this.particleSystem?.spawnBurst(proj.targetX, proj.targetY, 14);
+            // Spawn noise-dissolve explosion scaled by weapon damage.
+            this.explosionSystem?.spawnExplosion(
+              world, proj.targetX, proj.targetY, proj.weaponType, proj.damage,
+            );
             // Deal direct hit damage to all crew in the room.
             if (proj.damage > 0) {
               this.damageCrew(world, proj.targetRoomEntity, CREW_HIT_DAMAGE);
