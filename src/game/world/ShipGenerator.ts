@@ -4,7 +4,7 @@ import { TILE_SIZE } from '../constants';
  * Pixels of canvas padding around the room bounding box.
  * Exported so RenderSystem can position the hull sprite correctly.
  */
-export const HULL_PAD = 40;
+export const HULL_PAD = 100;
 
 type RGB = [number, number, number];
 type FactionPalette = { hull: RGB; accent: RGB };
@@ -46,6 +46,32 @@ uniform vec2      u_resolution;
 uniform vec3      u_hullColor;
 uniform vec3      u_accentColor;
 uniform float     u_seed;
+uniform float     u_rearUV;   // UV X of ship rear (player = left, enemy = right)
+uniform float     u_isPlayer; // 1.0 = player, 0.0 = enemy
+uniform float     u_midUV;    // UV Y of ship vertical centre (shader coords, Y=0 bottom)
+uniform float     u_plumeOff; // UV Y offset from centre to each nacelle plume axis
+
+// ── Engine exhaust glow ───────────────────────────────────────────────────────
+vec4 engineGlow(vec2 uv) {
+  // dir: plume extends in the negative X direction for player, positive for enemy.
+  float dir   = u_isPlayer > 0.5 ? -1.0 : 1.0;
+  float depth = (u_rearUV - uv.x) * dir; // positive = inside plume zone
+  if (depth < 0.0) return vec4(0.0);
+
+  // Two nacelle plume axes (above and below midY).
+  float d1 = abs(uv.y - (u_midUV + u_plumeOff));
+  float d2 = abs(uv.y - (u_midUV - u_plumeOff));
+  float d  = min(d1, d2);
+
+  float radial = smoothstep(0.08, 0.0, d);  // falls off from plume axis
+  float linear = exp(-depth * 6.5);         // falls off along plume length
+  float alpha  = radial * linear * 0.88;
+  if (alpha < 0.02) return vec4(0.0);
+
+  // Cyan core → white hot at base.
+  vec3 col = mix(vec3(0.0, 0.85, 1.0), vec3(0.8, 1.0, 1.0), 1.0 - linear);
+  return vec4(col, alpha);
+}
 
 void main() {
   vec2 texel = 1.0 / u_resolution;
@@ -62,7 +88,12 @@ void main() {
         texture(u_mask, uv + vec2(float(dx), float(dy)) * texel * 4.0).r);
     }
   }
-  if (hullNear < 0.5) discard; // open space — transparent
+  if (hullNear < 0.5) {
+    // Not part of the hull — check for engine exhaust glow before discarding.
+    vec4 glow = engineGlow(uv);
+    if (glow.a > 0.01) { outColor = glow; return; }
+    discard;
+  }
 
   // ── Inner radius (stride 4 px → ±12 px) for outer-edge darkening ─────────
   float innerNear = 0.0;
@@ -149,10 +180,12 @@ export class ShipGenerator {
       maxPX = Math.max(maxPX, px + r.width  * TILE_SIZE);
       maxPY = Math.max(maxPY, py + r.height * TILE_SIZE);
     }
-    const canvasW = Math.ceil(maxPX - minPX) + 2 * HULL_PAD;
-    const canvasH = Math.ceil(maxPY - minPY) + 2 * HULL_PAD;
+    const roomBoundsW = Math.ceil(maxPX - minPX);
+    const roomBoundsH = Math.ceil(maxPY - minPY);
+    const canvasW = roomBoundsW + 2 * HULL_PAD;
+    const canvasH = roomBoundsH + 2 * HULL_PAD;
 
-    // ── Room mask: white rectangles on black background ───────────────────────
+    // ── Room mask: aerodynamic chassis + nacelles + room rectangles ───────────
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width  = canvasW;
     maskCanvas.height = canvasH;
@@ -160,7 +193,44 @@ export class ShipGenerator {
     if (mCtx !== null) {
       mCtx.fillStyle = '#000000';
       mCtx.fillRect(0, 0, canvasW, canvasH);
+
+      // Local canvas coordinates: rooms sit at (HULL_PAD, HULL_PAD).
+      const localLeft   = HULL_PAD;
+      const localRight  = HULL_PAD + roomBoundsW;
+      const localBottom = HULL_PAD + roomBoundsH;
+      const localMidY   = HULL_PAD + roomBoundsH / 2;
+      const nacW = 30, nacH = 14, nacGap = 26;
+
       mCtx.fillStyle = '#ffffff';
+
+      // ── Chassis polygon (drawn first — rooms overlap it perfectly) ───────────
+      mCtx.beginPath();
+      if (faction === 'PLAYER') {
+        // Nose points right; wings flare rear-left.
+        mCtx.moveTo(localLeft,        HULL_PAD - 40);    // rear top wing
+        mCtx.lineTo(localRight + 60,  localMidY);        // nose tip
+        mCtx.lineTo(localLeft,        localBottom + 40); // rear bottom wing
+        mCtx.lineTo(localLeft - 20,   localMidY);        // rear notch
+      } else {
+        // Nose points left; wings flare rear-right.
+        mCtx.moveTo(localRight,       HULL_PAD - 40);    // rear top wing
+        mCtx.lineTo(localLeft - 60,   localMidY);        // nose tip
+        mCtx.lineTo(localRight,       localBottom + 40); // rear bottom wing
+        mCtx.lineTo(localRight + 20,  localMidY);        // rear notch
+      }
+      mCtx.closePath();
+      mCtx.fill();
+
+      // ── Engine nacelles (thick blocks behind the ship rear) ──────────────────
+      if (faction === 'PLAYER') {
+        mCtx.fillRect(localLeft - nacW, localMidY - nacGap - nacH / 2, nacW, nacH);
+        mCtx.fillRect(localLeft - nacW, localMidY + nacGap - nacH / 2, nacW, nacH);
+      } else {
+        mCtx.fillRect(localRight,       localMidY - nacGap - nacH / 2, nacW, nacH);
+        mCtx.fillRect(localRight,       localMidY + nacGap - nacH / 2, nacW, nacH);
+      }
+
+      // ── Room interiors (drawn on top — always fully inside the chassis) ──────
       for (const r of rooms) {
         const lx = startX + r.x * TILE_SIZE - minPX + HULL_PAD;
         const ly = startY + r.y * TILE_SIZE - minPY + HULL_PAD;
@@ -243,6 +313,22 @@ export class ShipGenerator {
     const palette = FACTION_PALETTES[faction] ?? DEFAULT_PALETTE;
     setV3('u_hullColor',   palette.hull);
     setV3('u_accentColor', palette.accent);
+
+    // Engine glow uniforms
+    const isPlayer  = faction === 'PLAYER';
+    const rearUV    = isPlayer
+      ? HULL_PAD / canvasW
+      : (HULL_PAD + roomBoundsW) / canvasW;
+    const midUV     = 1.0 - (HULL_PAD + roomBoundsH / 2) / canvasH; // flip Y (WebGL)
+    const plumeOff  = 26 / canvasH; // nacGap expressed in UV space
+    const rearLoc   = gl.getUniformLocation(prog, 'u_rearUV');
+    const isPlayLoc = gl.getUniformLocation(prog, 'u_isPlayer');
+    const midLoc    = gl.getUniformLocation(prog, 'u_midUV');
+    const plumeLoc  = gl.getUniformLocation(prog, 'u_plumeOff');
+    if (rearLoc   !== null) gl.uniform1f(rearLoc,   rearUV);
+    if (isPlayLoc !== null) gl.uniform1f(isPlayLoc, isPlayer ? 1.0 : 0.0);
+    if (midLoc    !== null) gl.uniform1f(midLoc,    midUV);
+    if (plumeLoc  !== null) gl.uniform1f(plumeLoc,  plumeOff);
 
     // Render
     gl.viewport(0, 0, canvasW, canvasH);
