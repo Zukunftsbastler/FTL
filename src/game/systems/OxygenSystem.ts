@@ -53,6 +53,21 @@ export class OxygenSystem {
     // Collect unique ship entities from all rooms that have an Owner.
     const shipEntities = this.collectShipEntities(world);
 
+    // Build a set of "venting" room keys: rooms connected to an open SPACE door.
+    // These rooms suppress O2 regen (powered life support can't fight a hull vent).
+    const ventingRooms = new Set<string>();
+    for (const doorEntity of world.query(['Door', 'Owner'])) {
+      const door      = world.getComponent<DoorComponent>(doorEntity, 'Door');
+      const ownerComp = world.getComponent<OwnerComponent>(doorEntity, 'Owner');
+      if (door === undefined || ownerComp === undefined || !door.isOpen) continue;
+      const sid = ownerComp.shipEntity;
+      if (door.roomA === 'SPACE' && door.roomB !== 'SPACE') {
+        ventingRooms.add(`${sid}:${door.roomB}`);
+      } else if (door.roomB === 'SPACE' && door.roomA !== 'SPACE') {
+        ventingRooms.add(`${sid}:${door.roomA}`);
+      }
+    }
+
     for (const shipEntity of shipEntities) {
       const isPowered = this.isOxygenPoweredForShip(world, shipEntity);
 
@@ -66,8 +81,15 @@ export class OxygenSystem {
         const room   = world.getComponent<RoomComponent>(entity, 'Room');
         if (oxygen === undefined || room === undefined) continue;
 
-        // Pass the actual breach flag so O2_BREACH_RATE is applied correctly.
-        oxygen.level = calculateO2Change(oxygen.level, isPowered, room.hasBreach, dt);
+        // A room venting to space suppresses life-support regen and is treated
+        // like an additional breach so O2 plummets even if OXYGEN is powered.
+        const isVenting = ventingRooms.has(`${shipEntity}:${room.roomId}`);
+        oxygen.level = calculateO2Change(
+          oxygen.level,
+          isPowered && !isVenting,
+          room.hasBreach || isVenting,
+          dt,
+        );
 
         // Fire drains O2 independently of breach.
         if (room.hasFire) {

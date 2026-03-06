@@ -1,8 +1,10 @@
 import { AssetLoader } from '../../utils/AssetLoader';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
+import { GameStateData } from '../../engine/GameState';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
+import type { CloakComponent } from '../components/CloakComponent';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
@@ -10,6 +12,7 @@ import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
+import type { SystemType } from '../data/SystemType';
 
 // ── Game rules ────────────────────────────────────────────────────────────────
 /** Maximum system capacity reachable through upgrades. */
@@ -326,6 +329,7 @@ export class UpgradeSystem {
     renderer: IRenderer,
     input: IInput,
     onLeave: () => void,
+    onUpgrade?: () => void,
   ): void {
     const { width, height } = renderer.getCanvasSize();
     renderer.clear(BG_COLOR);
@@ -334,11 +338,11 @@ export class UpgradeSystem {
 
     const playerData = this.findPlayerShip(world);
     if (playerData === null) { onLeave(); return; }
-    const { ship } = playerData;
+    const { shipEntity, ship } = playerData;
 
     // ── Panel ─────────────────────────────────────────────────────────────────
-    const PW = 500;
-    const PH = 380;
+    const PW = 560;
+    const PH = 560;
     const PX = (width  - PW) / 2;
     const PY = (height - PH) / 2;
 
@@ -359,7 +363,9 @@ export class UpgradeSystem {
     );
     renderer.drawLine(PX + 16, PY + 76, PX + PW - 16, PY + 76, PANEL_BORDER, 1);
 
-    // ── Store items ───────────────────────────────────────────────────────────
+    // ── Section 1: Consumables ─────────────────────────────────────────────────
+    renderer.drawText('SUPPLIES', PX + 24, PY + 96, HEADER_F, TITLE_COLOR, 'left');
+
     interface StoreItem {
       label: string; detail: string; cost: number; canBuy: () => boolean; onBuy: () => void;
     }
@@ -387,18 +393,18 @@ export class UpgradeSystem {
       },
     ];
 
-    const ITEM_Y0 = PY + 98;
-    const ITEM_H  = 54;
+    const ITEM_Y0 = PY + 112;
+    const ITEM_H  = 46;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const iy   = ITEM_Y0 + i * ITEM_H;
       const can  = item.canBuy();
 
-      renderer.drawText(item.label,  PX + 24, iy + 20, '13px monospace', VAL_COLOR, 'left');
-      renderer.drawText(item.detail, PX + 24, iy + 38, ROW_F, TEXT_COLOR, 'left');
+      renderer.drawText(item.label,  PX + 24, iy + 16, '13px monospace', VAL_COLOR, 'left');
+      renderer.drawText(item.detail, PX + 24, iy + 32, ROW_F, TEXT_COLOR, 'left');
 
       const bx = PX + PW - 110;
-      const by = iy + 8;
+      const by = iy + 6;
       const bw = 90;
       const bh = BTN_H;
       btn(renderer, 'Buy',
@@ -411,8 +417,128 @@ export class UpgradeSystem {
         hit(hitboxes, bx, by, bw, bh, item.onBuy);
       }
 
-      if (i < items.length - 1) {
-        renderer.drawLine(PX + 16, iy + ITEM_H - 2, PX + PW - 16, iy + ITEM_H - 2, '#1a2233', 1);
+      renderer.drawLine(PX + 16, iy + ITEM_H - 2, PX + PW - 16, iy + ITEM_H - 2, '#1a2233', 1);
+    }
+
+    // ── Section 2: Upgrade Ship ────────────────────────────────────────────────
+    const SEC2_Y = ITEM_Y0 + items.length * ITEM_H + 8;
+    renderer.drawText('UPGRADES', PX + 24, SEC2_Y, HEADER_F, TITLE_COLOR, 'left');
+
+    if (onUpgrade !== undefined) {
+      const ubx = PX + 24;
+      const uby = SEC2_Y + 10;
+      const ubw = PW - 48;
+      const ubh = BTN_H + 4;
+      btn(renderer, 'Open Upgrade Screen', ubx, uby, ubw, ubh,
+        BTN_EQ_BG, BTN_EQ_BORDER, BTN_EQ_TEXT);
+      hit(hitboxes, ubx, uby, ubw, ubh, onUpgrade);
+    }
+
+    // ── Section 3: Buy Subsystems ──────────────────────────────────────────────
+    const SEC3_Y = SEC2_Y + BTN_H + 28;
+    renderer.drawLine(PX + 16, SEC3_Y - 10, PX + PW - 16, SEC3_Y - 10, PANEL_BORDER, 1);
+    renderer.drawText('SUBSYSTEMS', PX + 24, SEC3_Y, HEADER_F, TITLE_COLOR, 'left');
+
+    // Determine which advanced systems the player already has.
+    const ownedTypes = new Set<string>();
+    for (const entity of world.query(['System', 'Owner'])) {
+      const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (owner?.shipEntity !== shipEntity) continue;
+      const sys = world.getComponent<SystemComponent>(entity, 'System');
+      if (sys !== undefined) ownedTypes.add(sys.type);
+    }
+
+    // Find an empty room on the player's ship (no SystemComponent attached).
+    const findEmptyRoom = (): number | undefined => {
+      for (const entity of world.query(['Room', 'Owner'])) {
+        const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
+        if (owner?.shipEntity !== shipEntity) continue;
+        const sys = world.getComponent<SystemComponent>(entity, 'System');
+        if (sys === undefined) return entity;
+      }
+      return undefined;
+    };
+
+    // Purchasable systems, tiered by sector.
+    interface SysOffer { type: SystemType; label: string; minSector: number; price: number }
+    const OFFERS: SysOffer[] = [
+      { type: 'CLOAKING',      label: 'Cloaking Drive',  minSector: 1, price: 150 },
+      { type: 'TELEPORTER',    label: 'Teleporter',       minSector: 1, price: 150 },
+      { type: 'DRONE_CONTROL', label: 'Drone Control',    minSector: 2, price: 150 },
+    ];
+
+    const availableOffers = OFFERS.filter(
+      (o) => !ownedTypes.has(o.type) && GameStateData.sectorNumber >= o.minSector,
+    );
+
+    let sysY = SEC3_Y + 14;
+    const SYS_H = 44;
+
+    if (availableOffers.length === 0) {
+      renderer.drawText(
+        '(No systems available — all installed or sector too low)',
+        PX + 24, sysY + 16, ROW_F, DIM_COLOR, 'left',
+      );
+    } else {
+      for (const offer of availableOffers) {
+        const canBuy  = ship.scrap >= offer.price;
+        const noRoom  = findEmptyRoom() === undefined;
+        const enabled = canBuy && !noRoom;
+
+        renderer.drawText(offer.label,             PX + 24, sysY + 14, '13px monospace', VAL_COLOR, 'left');
+        renderer.drawText(`${offer.price} Scrap`,  PX + 24, sysY + 30, ROW_F, TEXT_COLOR, 'left');
+        if (noRoom) {
+          renderer.drawText('(no empty room)', PX + 180, sysY + 30, ROW_F, '#664444', 'left');
+        }
+
+        const sbx = PX + PW - 110;
+        const sby = sysY + 6;
+        const sbw = 90;
+        const sbh = BTN_H;
+        btn(renderer, 'Buy',
+          sbx, sby, sbw, sbh,
+          enabled ? BTN_BUY_BG : BTN_NO_BG,
+          enabled ? BTN_BUY_BORDER : BTN_NO_BORDER,
+          enabled ? BTN_BUY_TEXT : BTN_NO_TEXT,
+        );
+
+        if (enabled) {
+          const capturedOffer = offer;
+          hit(hitboxes, sbx, sby, sbw, sbh, () => {
+            const emptyRoom = findEmptyRoom();
+            if (emptyRoom === undefined) return;
+            ship.scrap -= capturedOffer.price;
+
+            // Add the SystemComponent to the empty room entity.
+            const newSys: SystemComponent = {
+              _type:        'System',
+              type:         capturedOffer.type,
+              level:        1,
+              maxCapacity:  1,
+              currentPower: 0,
+              roomId:       0, // roomId will be read from the RoomComponent
+              damageAmount: 0,
+              zoltanBonus:  0,
+            };
+            world.addComponent(emptyRoom, newSys);
+
+            // CLOAKING additionally needs a CloakComponent on the ship root.
+            if (capturedOffer.type === 'CLOAKING') {
+              const cloakComp: CloakComponent = {
+                _type:         'Cloak',
+                isActive:      false,
+                durationTimer: 0,
+                cooldownTimer: 0,
+                maxDuration:   5.0,
+                maxCooldown:   10.0,
+              };
+              world.addComponent(shipEntity, cloakComp);
+            }
+          });
+        }
+
+        renderer.drawLine(PX + 16, sysY + SYS_H - 2, PX + PW - 16, sysY + SYS_H - 2, '#1a2233', 1);
+        sysY += SYS_H;
       }
     }
 

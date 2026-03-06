@@ -412,37 +412,7 @@ async function init(): Promise<void> {
       renderer.drawText('STAR MAP', width / 2, 55, '28px monospace', '#aaccff', 'center');
       renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
 
-      // "UPGRADE SHIP" button in the top-left corner.
-      const UPG_W = 160;
-      const UPG_H = 36;
-      const UPG_X = 16;
-      const UPG_Y = 16;
-      renderer.drawRect(UPG_X, UPG_Y, UPG_W, UPG_H, '#0a0a1e', true);
-      renderer.drawRect(UPG_X, UPG_Y, UPG_W, UPG_H, '#4455cc', false);
-      renderer.drawText('UPGRADE SHIP', UPG_X + UPG_W / 2, UPG_Y + UPG_H / 2 + 5, '13px monospace', '#8899ff', 'center');
-
-      // "STORE" button next to upgrade button.
-      const STORE_W = 100;
-      const STORE_X = UPG_X + UPG_W + 8;
-      renderer.drawRect(STORE_X, UPG_Y, STORE_W, UPG_H, '#0a0a1e', true);
-      renderer.drawRect(STORE_X, UPG_Y, STORE_W, UPG_H, '#557733', false);
-      renderer.drawText('STORE', STORE_X + STORE_W / 2, UPG_Y + UPG_H / 2 + 5, '13px monospace', '#99cc55', 'center');
-
-      // Handle upgrade/store button clicks before passing input to MapSystem.
-      if (input.isMouseJustPressed(0)) {
-        const mouse = input.getMousePosition();
-        if (
-          mouse.x >= UPG_X && mouse.x <= UPG_X + UPG_W &&
-          mouse.y >= UPG_Y && mouse.y <= UPG_Y + UPG_H
-        ) {
-          currentState = 'UPGRADE';
-        } else if (
-          mouse.x >= STORE_X && mouse.x <= STORE_X + STORE_W &&
-          mouse.y >= UPG_Y && mouse.y <= UPG_Y + UPG_H
-        ) {
-          currentState = 'STORE';
-        }
-      }
+      // Upgrades are only available from the Store — no map-level shortcut button.
 
       // Map graph — handles node click detection internally.
       mapSystem.drawStarMap(renderer, input, world, {
@@ -547,9 +517,11 @@ async function init(): Promise<void> {
 
     } else if (currentState === 'STORE') {
       // ── Store screen ──────────────────────────────────────────────────────
-      upgradeSystem.drawStoreScreen(world, renderer, input, () => {
-        currentState = 'STAR_MAP';
-      });
+      upgradeSystem.drawStoreScreen(
+        world, renderer, input,
+        () => { currentState = 'STAR_MAP'; },
+        () => { currentState = 'UPGRADE'; },
+      );
     }
 
     // Flush "just pressed" — last, so every system above can read this frame's events.

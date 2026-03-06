@@ -503,6 +503,18 @@ export class RenderSystem {
 
       // The hull sprite canvas was padded by HULL_PAD on all sides.
       ctx.drawImage(ship.hullSprite, minX - HULL_PAD, minY - HULL_PAD);
+
+      // Block background bleed-through: fill room footprints with solid black
+      // so the semi-transparent cutaway mask never reveals the background planet.
+      ctx.fillStyle = '#000000';
+      for (const re of world.query(['Room', 'Position', 'Owner'])) {
+        const owner2 = world.getComponent<OwnerComponent>(re, 'Owner');
+        if (owner2?.shipEntity !== shipEntity) continue;
+        const pos2 = world.getComponent<PositionComponent>(re, 'Position');
+        const room2 = world.getComponent<RoomComponent>(re, 'Room');
+        if (pos2 === undefined || room2 === undefined) continue;
+        ctx.fillRect(pos2.x, pos2.y, room2.width * TILE_SIZE, room2.height * TILE_SIZE);
+      }
     }
   }
 
@@ -627,13 +639,17 @@ export class RenderSystem {
             'center',
           );
 
-          // Damage indicator — orange tint overlay when damageAmount > 0.
+          // Damage indicator — red tint overlay + DAMAGED label when damageAmount > 0.
           if (system.damageAmount > 0) {
-            const dmgAlpha = Math.min(0.5, system.damageAmount * 0.15);
+            const dmgAlpha = Math.min(0.6, system.damageAmount * 0.2);
             this.renderer.drawRect(
               pos.x, pos.y, pw, ph,
-              `rgba(255,120,0,${dmgAlpha.toFixed(3)})`,
+              `rgba(220,20,20,${dmgAlpha.toFixed(3)})`,
               true,
+            );
+            this.renderer.drawText(
+              '⚠ DMG', pos.x + pw / 2, pos.y + ph - 6,
+              '9px monospace', '#ff4444', 'center',
             );
           }
         }
