@@ -1,6 +1,7 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { GameStateData } from '../../engine/GameState';
+import { HULL_PAD } from '../world/ShipGenerator';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
 import { LayoutEngine } from '../../engine/ui/LayoutEngine';
 import { findComputedNodeById } from '../../engine/ui/UITypes';
@@ -50,8 +51,6 @@ import type { ShieldComponent } from '../components/ShieldComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 
 // ── Room / door constants ─────────────────────────────────────────────────────
-const ROOM_FILL        = '#1a2033';
-const ROOM_BORDER      = '#4a6fa5';
 const LABEL_COLOR      = '#88aadd';
 const LABEL_FONT       = '11px monospace';
 const POWER_FONT       = '10px monospace';
@@ -225,10 +224,6 @@ const COMBAT_HUD: UINode = {
   ],
 };
 
-// ── Procedural hull constants ─────────────────────────────────────────────────
-const HULL_FILL        = '#2c303a';
-const HULL_BORDER      = '#4a5060';
-
 // ── Starfield constants ───────────────────────────────────────────────────────
 const STAR_SPEED = 10; // pixels per second scrolling left
 
@@ -345,9 +340,10 @@ export class RenderSystem {
     // ── Background layers (drawn behind everything) ──────────────────────────
     this.drawPlanet();
     this.drawStarfield();
-    this.drawHulls(world);
+    this.drawHulls(world);      // Layer 1: WebGL hull sprites
+    this.drawCutaway(world);    // Layer 2: dark room floor (cutaway look)
     // ── Ship interior ────────────────────────────────────────────────────────
-    this.drawRooms(world);
+    this.drawRooms(world);      // Layer 3: room content (systems, overlays)
     this.drawDoors(world);
     this.drawCrew(world);
     this.drawDrones(world);
@@ -484,57 +480,51 @@ export class RenderSystem {
     }
   }
 
-  // ── Procedural ship hulls (delta-wing style) ─────────────────────────────────
+  // ── WebGL hull sprites (Layer 1) ─────────────────────────────────────────────
 
   private drawHulls(world: IWorld): void {
     const ctx = this.renderer.getContext();
 
     for (const shipEntity of world.query(['Ship', 'Faction'])) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const ship = world.getComponent<ShipComponent>(shipEntity, 'Ship');
+      if (ship?.hullSprite === undefined) continue;
 
+      // Compute room bounding box to determine draw position.
+      let minX = Infinity, minY = Infinity;
       for (const re of world.query(['Room', 'Position', 'Owner'])) {
         const owner = world.getComponent<OwnerComponent>(re, 'Owner');
         if (owner?.shipEntity !== shipEntity) continue;
-        const pos  = world.getComponent<PositionComponent>(re, 'Position');
-        const room = world.getComponent<RoomComponent>(re, 'Room');
-        if (pos === undefined || room === undefined) continue;
+        const pos = world.getComponent<PositionComponent>(re, 'Position');
+        if (pos === undefined) continue;
         minX = Math.min(minX, pos.x);
         minY = Math.min(minY, pos.y);
-        maxX = Math.max(maxX, pos.x + room.width  * TILE_SIZE);
-        maxY = Math.max(maxY, pos.y + room.height * TILE_SIZE);
       }
-
       if (!isFinite(minX)) continue;
 
-      const faction  = world.getComponent<FactionComponent>(shipEntity, 'Faction');
-      const isPlayer = faction?.id === 'PLAYER';
-      const midY     = (minY + maxY) / 2;
+      // The hull sprite canvas was padded by HULL_PAD on all sides.
+      ctx.drawImage(ship.hullSprite, minX - HULL_PAD, minY - HULL_PAD);
+    }
+  }
 
-      ctx.beginPath();
-      if (isPlayer) {
-        // Player ship — nose points right.
-        ctx.moveTo(maxX + 40,      midY);        // nose tip
-        ctx.lineTo(maxX,           minY);        // top-right room corner
-        ctx.lineTo(minX - 20,      minY - 30);   // top wing tip
-        ctx.lineTo(minX,           midY);        // rear notch (centre-left)
-        ctx.lineTo(minX - 20,      maxY + 30);   // bottom wing tip
-        ctx.lineTo(maxX,           maxY);        // bottom-right room corner
-      } else {
-        // Enemy ship — nose points left.
-        ctx.moveTo(minX - 40,      midY);        // nose tip
-        ctx.lineTo(minX,           minY);        // top-left room corner
-        ctx.lineTo(maxX + 20,      minY - 30);   // top wing tip
-        ctx.lineTo(maxX,           midY);        // rear notch (centre-right)
-        ctx.lineTo(maxX + 20,      maxY + 30);   // bottom wing tip
-        ctx.lineTo(minX,           maxY);        // bottom-left room corner
-      }
-      ctx.closePath();
+  // ── Cutaway floor mask (Layer 2 — drawn on top of hull, behind room content) ─
 
-      ctx.fillStyle   = HULL_FILL;
-      ctx.fill();
-      ctx.strokeStyle = HULL_BORDER;
+  private drawCutaway(world: IWorld): void {
+    const ctx = this.renderer.getContext();
+    for (const entity of world.query(['Room', 'Position'])) {
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos === undefined || room === undefined) continue;
+
+      const pw = room.width  * TILE_SIZE;
+      const ph = room.height * TILE_SIZE;
+
+      // Nearly-black fill simulates the "sliced-open roof" cutaway.
+      ctx.fillStyle = 'rgba(5, 6, 16, 0.92)';
+      ctx.fillRect(pos.x, pos.y, pw, ph);
+      // Subtle dark border to separate adjacent rooms.
+      ctx.strokeStyle = '#1e1f2c';
       ctx.lineWidth   = 2;
-      ctx.stroke();
+      ctx.strokeRect(pos.x + 0.5, pos.y + 0.5, pw - 1, ph - 1);
     }
   }
 
@@ -602,9 +592,6 @@ export class RenderSystem {
 
       const pw = room.width  * TILE_SIZE;
       const ph = room.height * TILE_SIZE;
-
-      this.renderer.drawRect(pos.x, pos.y, pw, ph, ROOM_FILL, true);
-      this.renderer.drawRect(pos.x, pos.y, pw, ph, ROOM_BORDER, false);
 
       // O2 overlay — semi-transparent red tint proportional to O2 depletion.
       const oxygen = world.getComponent<OxygenComponent>(entity, 'Oxygen');

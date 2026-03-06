@@ -30,4 +30,9 @@ export interface ShipComponent extends Component {
    * AugmentSystem reads this each frame and applies passive effects.
    */
   augments: string[];
+  /**
+   * WebGL hull sprite generated once at spawn by ShipGenerator.
+   * RenderSystem draws this as the outermost visual layer each combat frame.
+   */
+  hullSprite?: HTMLCanvasElement;
 }

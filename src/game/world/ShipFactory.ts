@@ -20,6 +20,7 @@ import type { PositionComponent } from '../components/PositionComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { CloakComponent } from '../components/CloakComponent';
 import type { ShieldComponent } from '../components/ShieldComponent';
+import { ShipGenerator } from './ShipGenerator';
 
 /**
  * System types in the order they should receive auto-power on spawn.
@@ -91,6 +92,7 @@ export class ShipFactory {
       cargoWeapons: [],
       evasion: 0,
       augments: [],
+      hullSprite: ShipGenerator.generateShipSprite(template.rooms, faction, startX, startY),
     };
     const factionComp: FactionComponent = {
       _type: 'Faction',
