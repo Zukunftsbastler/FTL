@@ -281,9 +281,11 @@ export class DroneControlSystem {
       accuracy:         0.9,
       neverMisses:      false,
       weaponType:       'LASER',
+      visualType:       'LASER',
       ionDamage:        0,
       fireChance:       0,
       breachChance:     0,
+      history:          [],
     };
     const posComp: PositionComponent = { _type: 'Position', x: origin.x, y: origin.y };
     world.addComponent(projEntity, projComp);

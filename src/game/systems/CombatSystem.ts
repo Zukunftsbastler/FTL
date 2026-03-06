@@ -14,6 +14,7 @@ import type { ShieldComponent } from '../components/ShieldComponent';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
+import type { ReactorComponent } from '../components/ReactorComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 
 /**
@@ -200,9 +201,11 @@ export class CombatSystem {
       accuracy:         tpl?.accuracy     ?? 1.0,
       neverMisses:      tpl?.neverMisses  ?? false,
       weaponType:       tpl?.type         ?? 'LASER',
+      visualType:       tpl?.type         ?? 'LASER',
       ionDamage:        tpl?.damage.ion   ?? 0,
       fireChance:       tpl?.fireChance   ?? 0,
       breachChance:     tpl?.breachChance ?? 0,
+      history:          [],
     };
     const posComp: PositionComponent = { _type: 'Position', x: ox, y: oy };
 
@@ -278,7 +281,12 @@ export class CombatSystem {
         if (sys !== undefined && sys.maxCapacity > 0) {
           sys.maxCapacity  = Math.max(0, sys.maxCapacity  - effectiveDamage);
           sys.damageAmount = sys.damageAmount + effectiveDamage;
-          if (sys.currentPower > sys.maxCapacity) sys.currentPower = sys.maxCapacity;
+          if (sys.currentPower > sys.maxCapacity) {
+            const lostPower = sys.currentPower - sys.maxCapacity;
+            sys.currentPower = sys.maxCapacity;
+            const reactor = world.getComponent<ReactorComponent>(targetShipEntity, 'Reactor');
+            if (reactor !== undefined) reactor.currentPower += lostPower;
+          }
         }
 
         // Apply hull damage (once per room hit, not per shield).

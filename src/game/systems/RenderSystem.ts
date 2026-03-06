@@ -38,7 +38,6 @@ import type { FactionComponent } from '../components/FactionComponent';
 import type { OxygenComponent } from '../components/OxygenComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
-import type { ProjectileComponent } from '../components/ProjectileComponent';
 import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
@@ -111,12 +110,6 @@ const CROSSHAIR_COLOR = '#ff3333';
 const CROSSHAIR_LW    = 2;
 const CROSSHAIR_GAP   = 6;
 const CROSSHAIR_LEN   = 14;
-
-// ── Projectile rendering ──────────────────────────────────────────────────────
-const PROJ_PLAYER_COLOR = '#44aaff';  // blue laser (player)
-const PROJ_ENEMY_COLOR  = '#ff4422';  // red laser  (enemy)
-const PROJ_LINE_WIDTH   = 3;
-const PROJ_TAIL_LEN     = 22;         // pixels behind current position
 
 // ── Weapon UI ─────────────────────────────────────────────────────────────────
 const WEAPON_BOX_FILL         = '#0d1520';
@@ -244,9 +237,8 @@ const SHIELD_FLASH_DURATION = 0.20;
  *   Layer 1 — Rooms   (fill + border + O2 overlay + hit flash + system label + power bar)
  *   Layer 2 — Doors
  *   Layer 3 — Crew
- *   Layer 4 — Projectiles (traveling laser bolts)
- *   Layer 5 — Targeting crosshairs
- *   Layer 6 — Sprites (cursor — topmost)
+ *   Layer 4 — Targeting crosshairs
+ *   Layer 5 — Sprites (cursor — topmost)
  *   HUD     — Player dashboard (top-left), Enemy dashboard (top-right),
  *             Weapon UI boxes (bottom strip), Tooltips (floating near cursor)
  *
@@ -348,7 +340,6 @@ export class RenderSystem {
     this.drawCrew(world);
     this.drawDrones(world);
     // ── Combat effects ───────────────────────────────────────────────────────
-    this.drawProjectiles(world);
     this.drawBeams();
     this.drawMissIndicators();
     this.drawTargetingCrosshairs(world);
@@ -916,32 +907,7 @@ export class RenderSystem {
     }
   }
 
-  // ── Layer 4: projectiles ─────────────────────────────────────────────────
-
-  private drawProjectiles(world: IWorld): void {
-    const entities = world.query(['Projectile', 'Position']);
-    for (const entity of entities) {
-      const proj = world.getComponent<ProjectileComponent>(entity, 'Projectile');
-      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
-      if (proj === undefined || pos === undefined) continue;
-
-      const dx = proj.targetX - pos.x;
-      const dy = proj.targetY - pos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 1) continue;  // at target — will be destroyed this frame by ProjectileSystem
-
-      const nx = dx / dist;
-      const ny = dy / dist;
-
-      // Draw a tail trailing behind the current position.
-      const tailX = pos.x - nx * PROJ_TAIL_LEN;
-      const tailY = pos.y - ny * PROJ_TAIL_LEN;
-      const color = proj.isEnemyOrigin ? PROJ_ENEMY_COLOR : PROJ_PLAYER_COLOR;
-      this.renderer.drawLine(tailX, tailY, pos.x, pos.y, color, PROJ_LINE_WIDTH);
-    }
-  }
-
-  // ── Layer 5: targeting crosshairs ───────────────────────────────────────────
+  // ── Layer 4: targeting crosshairs ───────────────────────────────────────────
 
   private drawTargetingCrosshairs(world: IWorld): void {
     const entities = world.query(['Weapon']);
@@ -971,7 +937,7 @@ export class RenderSystem {
     this.renderer.drawRect(cx + g,     cy - h, l, w, CROSSHAIR_COLOR, true);
   }
 
-  // ── Layer 6: sprites ────────────────────────────────────────────────────────
+  // ── Layer 5: sprites ────────────────────────────────────────────────────────
 
   private drawSprites(world: IWorld): void {
     const entities = world.query(['Position', 'Sprite']);

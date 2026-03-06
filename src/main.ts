@@ -34,6 +34,7 @@ import { EnemyScaler } from './game/logic/EnemyScaler';
 import { pregenerateExplosions } from './game/vfx/ExplosionGenerator';
 import { ExplosionSystem } from './game/systems/ExplosionSystem';
 import { ExplosionRenderSystem } from './game/systems/ExplosionRenderSystem';
+import { ProjectileRenderSystem } from './game/systems/ProjectileRenderSystem';
 import { Pathfinder } from './utils/Pathfinder';
 import { PlanetGenerator } from './game/world/PlanetGenerator';
 import type { PlanetTheme } from './game/world/PlanetGenerator';
@@ -361,9 +362,10 @@ async function init(): Promise<void> {
   const targetingSystem      = new TargetingSystem(input, renderer);
   const combatSystem         = new CombatSystem();
   const projectileSystem     = new ProjectileSystem();
-  const particleSystem       = new ParticleSystem(renderer);
-  const explosionSystem      = new ExplosionSystem();
-  const explosionRenderSystem = new ExplosionRenderSystem(renderer);
+  const particleSystem          = new ParticleSystem(renderer);
+  const explosionSystem         = new ExplosionSystem();
+  const explosionRenderSystem   = new ExplosionRenderSystem(renderer);
+  const projectileRenderSystem  = new ProjectileRenderSystem(renderer);
   const victorySystem      = new VictorySystem();
   const upgradeSystem      = new UpgradeSystem();
   const eventSystem        = new EventSystem();
@@ -477,6 +479,8 @@ async function init(): Promise<void> {
 
       // Render all layers.
       renderSystem.update(world);
+      // Render in-flight projectiles with neon/trail VFX.
+      projectileRenderSystem.update(world);
       // Render noise-dissolve explosions on top of the world scene.
       explosionRenderSystem.update(world);
       // Render particle bursts on top of the world scene.

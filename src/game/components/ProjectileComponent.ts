@@ -41,6 +41,11 @@ export interface ProjectileComponent extends Component {
    */
   readonly weaponType: string;
   /**
+   * Visual type used by ProjectileRenderSystem to select the draw style.
+   * Matches weaponType at spawn time.
+   */
+  readonly visualType: string;
+  /**
    * Ion damage applied to the target ship's SHIELDS system on impact.
    * Non-zero only for ION weapon projectiles.
    */
@@ -49,4 +54,9 @@ export interface ProjectileComponent extends Component {
   readonly fireChance: number;
   /** Probability (0–1) of creating a hull breach in the target room on impact. */
   readonly breachChance: number;
+  /**
+   * Recent pixel positions for trail rendering.
+   * ProjectileSystem pushes (x, y) each frame; capped at 8 entries (oldest shifted out).
+   */
+  readonly history: { x: number; y: number }[];
 }

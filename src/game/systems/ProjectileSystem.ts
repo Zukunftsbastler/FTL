@@ -10,6 +10,7 @@ import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { ProjectileComponent } from '../components/ProjectileComponent';
+import type { ReactorComponent } from '../components/ReactorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { ShieldComponent } from '../components/ShieldComponent';
 import type { ShipComponent } from '../components/ShipComponent';
@@ -152,6 +153,9 @@ export class ProjectileSystem {
         const ny = dy / dist;
         pos.x += nx * step;
         pos.y += ny * step;
+        // Record position for trail rendering; keep at most 8 entries.
+        proj.history.push({ x: pos.x, y: pos.y });
+        if (proj.history.length > 8) proj.history.shift();
       }
     }
   }
@@ -285,8 +289,9 @@ export class ProjectileSystem {
   private applyImpact(world: IWorld, proj: ProjectileComponent): void {
     if (proj.targetRoomEntity === undefined) return;
 
-    const room   = world.getComponent<RoomComponent>(proj.targetRoomEntity, 'Room');
-    const system = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
+    const room      = world.getComponent<RoomComponent>(proj.targetRoomEntity, 'Room');
+    const system    = world.getComponent<SystemComponent>(proj.targetRoomEntity, 'System');
+    const ownerComp = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
 
     // Physical damage: reduce system capacity by actual weapon damage (clamped to remaining capacity).
     if (proj.damage > 0 && system !== undefined && system.maxCapacity > 0) {
@@ -294,7 +299,13 @@ export class ProjectileSystem {
       system.maxCapacity  -= sysDmg;
       system.damageAmount += proj.damage;
       if (system.currentPower > system.maxCapacity) {
+        const lostPower = system.currentPower - system.maxCapacity;
         system.currentPower = system.maxCapacity;
+        // Refund the lost power to the ship's reactor so it isn't permanently leaked.
+        if (ownerComp !== undefined) {
+          const reactor = world.getComponent<ReactorComponent>(ownerComp.shipEntity, 'Reactor');
+          if (reactor !== undefined) reactor.currentPower += lostPower;
+        }
       }
     }
 
@@ -304,7 +315,6 @@ export class ProjectileSystem {
     }
 
     if (proj.damage > 0) {
-      const ownerComp = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
       if (ownerComp === undefined) return;
       const ship = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
       if (ship !== undefined && ship.currentHull > 0) {
