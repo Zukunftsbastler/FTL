@@ -30,6 +30,7 @@ import { HazardSystem } from './game/systems/HazardSystem';
 import { DroneControlSystem } from './game/systems/DroneControlSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
+import { EnemyScaler } from './game/logic/EnemyScaler';
 import { Pathfinder } from './utils/Pathfinder';
 import { PlanetGenerator } from './game/world/PlanetGenerator';
 import type { PlanetTheme } from './game/world/PlanetGenerator';
@@ -169,7 +170,16 @@ async function init(): Promise<void> {
 
   function enterCombat(shipTemplateId = 'rebel_a'): void {
     victorySystem.reset();
-    ShipFactory.spawnShip(world, shipTemplateId, enemyShipX, enemyShipY, 'ENEMY');
+
+    // Scale the enemy template based on the current sector.
+    const allShipsData   = AssetLoader.getJSON<ShipTemplate[]>('ships');
+    const allWeaponsData = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
+    const rawEnemy = allShipsData?.find((s) => s.id === shipTemplateId);
+    const scaledTemplate = rawEnemy !== undefined
+      ? EnemyScaler.scaleEnemy(rawEnemy, GameStateData.sectorNumber, allWeaponsData)
+      : undefined;
+
+    ShipFactory.spawnShip(world, shipTemplateId, enemyShipX, enemyShipY, 'ENEMY', scaledTemplate);
     // Clear any stale weapon targets left over from a previous combat session.
     for (const entity of world.query(['Weapon'])) {
       const weapon = world.getComponent<WeaponComponent>(entity, 'Weapon');
@@ -447,10 +457,11 @@ async function init(): Promise<void> {
         },
         onStore: () => { currentState = 'STORE'; },
         onExit: () => {
-          // New sector: regenerate the map and roll a new planet.
+          // New sector: regenerate the map, roll a new planet, increment sector.
           const { width: w, height: h } = renderer.getCanvasSize();
           mapSystem.nextSector(w, h);
           randomPlanet();
+          GameStateData.sectorNumber += 1;
         },
       });
 

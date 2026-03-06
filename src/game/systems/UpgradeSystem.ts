@@ -161,6 +161,7 @@ export class UpgradeSystem {
           void capturedEntity;
           hit(hitboxes, bx, by, bw, BTN_H, () => {
             ship.scrap -= cost;
+            capturedSystem.level += 1;
             capturedSystem.maxCapacity += 1;
           });
         }

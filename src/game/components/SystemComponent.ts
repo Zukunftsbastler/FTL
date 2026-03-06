@@ -7,11 +7,11 @@ export interface SystemComponent extends Component {
   /** Which ship system this room contains. */
   readonly type: SystemType;
   /**
-   * Pristine maximum capacity set at spawn — never changes.
+   * Pristine maximum capacity set at spawn. Increases when the player upgrades the system.
    * Used for UI bar rendering: total bar count = level.
    * Damaged bars = level − maxCapacity.
    */
-  readonly level: number;
+  level: number;
   /** Maximum power this system can accept. Reduced by weapon hits; restored by repair. */
   maxCapacity: number;
   /** Currently allocated power (0 … maxCapacity). */

@@ -59,23 +59,30 @@ export class ShipFactory {
     startX: number,
     startY: number,
     faction: 'PLAYER' | 'ENEMY',
+    scaledTemplate?: ShipTemplate,
   ): void {
-    const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
-    if (allShips === undefined) {
-      throw new Error(
-        `ShipFactory.spawnShip: JSON asset 'ships' is not loaded. ` +
-          `Call AssetLoader.loadJSON before spawning ships.`,
-      );
-    }
+    let template: ShipTemplate;
+    if (scaledTemplate !== undefined) {
+      // Pre-scaled template provided (e.g. by EnemyScaler) — already deep-copied.
+      template = scaledTemplate;
+    } else {
+      const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
+      if (allShips === undefined) {
+        throw new Error(
+          `ShipFactory.spawnShip: JSON asset 'ships' is not loaded. ` +
+            `Call AssetLoader.loadJSON before spawning ships.`,
+        );
+      }
 
-    const rawTemplate = allShips.find((s) => s.id === templateId);
-    if (rawTemplate === undefined) {
-      throw new Error(
-        `ShipFactory.spawnShip: no ship template found with id '${templateId}'.`,
-      );
+      const rawTemplate = allShips.find((s) => s.id === templateId);
+      if (rawTemplate === undefined) {
+        throw new Error(
+          `ShipFactory.spawnShip: no ship template found with id '${templateId}'.`,
+        );
+      }
+      // Deep copy so that modifying spawned ECS components never mutates the cached JSON.
+      template = JSON.parse(JSON.stringify(rawTemplate)) as ShipTemplate;
     }
-    // Deep copy so that modifying spawned ECS components never mutates the cached JSON.
-    const template = JSON.parse(JSON.stringify(rawTemplate)) as ShipTemplate;
 
     // ── Ship root entity ──────────────────────────────────────────────────────
     const shipEntity = world.createEntity();
