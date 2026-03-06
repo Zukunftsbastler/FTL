@@ -1,4 +1,6 @@
 import { AssetLoader } from '../../utils/AssetLoader';
+import { GameStateData } from '../../engine/GameState';
+import { getPlanetNodeColor } from '../world/PlanetGenerator';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -293,6 +295,10 @@ export class MapSystem {
         }
       } else {
         // VISIBLE or VISITED — full information.
+        const eventFill = GameStateData.planetTheme !== null
+          ? getPlanetNodeColor(GameStateData.planetTheme)
+          : NODE_EVENT_FILL;
+
         const fillColor = node.isExit
           ? NODE_EXIT_FILL
           : node.visibility === 'VISITED'
@@ -303,7 +309,7 @@ export class MapSystem {
                 ? NODE_STORE_FILL
                 : node.nodeType === 'DISTRESS'
                   ? NODE_DISTRESS_FILL
-                  : NODE_EVENT_FILL;
+                  : eventFill;
 
         const borderColor = node.isExit
           ? '#aa8800'
@@ -497,6 +503,38 @@ export class MapSystem {
     nodes[N - 1].label      = 'EXIT';
     nodes[N - 1].isExit     = true;
     nodes[N - 1].visibility = 'VISIBLE';
+
+    // ── Enforce shop count: at least 1, at most 5 ────────────────────────────
+    const intermediate = nodes.slice(1, N - 1);
+    const storePool    = intermediate.filter((n) => n.nodeType === 'STORE');
+
+    if (storePool.length === 0) {
+      // Guarantee at least one store by converting a random intermediate node.
+      const pick = intermediate[Math.floor(Math.random() * intermediate.length)];
+      if (pick !== undefined) {
+        pick.nodeType   = 'STORE';
+        pick.visibility = 'HIDDEN';
+        storePool.push(pick);
+      }
+    }
+
+    // Guarantee a store near the exit (last 3 intermediate nodes by x position).
+    const nearExit = intermediate.slice(-3);
+    if (!nearExit.some((n) => n.nodeType === 'STORE')) {
+      const pick = nearExit[Math.floor(Math.random() * nearExit.length)];
+      if (pick !== undefined) {
+        pick.nodeType   = 'STORE';
+        pick.visibility = 'HIDDEN';
+        storePool.push(pick);
+      }
+    }
+
+    // Cap at 5 stores — randomly demote extras to EVENT.
+    while (storePool.length > 5) {
+      const idx  = Math.floor(Math.random() * storePool.length);
+      storePool[idx].nodeType = 'EVENT';
+      storePool.splice(idx, 1);
+    }
 
     this.nodes         = nodes;
     this.currentNodeId = 0;

@@ -494,31 +494,68 @@ export class RenderSystem {
     const ctx = this.renderer.getContext();
 
     for (const shipEntity of world.query(['Ship', 'Faction'])) {
-      const ship = world.getComponent<ShipComponent>(shipEntity, 'Ship');
-      if (ship?.hullSprite === undefined) continue;
+      const ship    = world.getComponent<ShipComponent>(shipEntity, 'Ship');
+      const faction = world.getComponent<FactionComponent>(shipEntity, 'Faction');
+      if (ship?.hullSprite === undefined || faction === undefined) continue;
 
-      // Compute room bounding box to determine draw position.
-      let minX = Infinity, minY = Infinity;
+      // Compute full room bounding box (need all four extremes for hull polygon).
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const re of world.query(['Room', 'Position', 'Owner'])) {
         const owner = world.getComponent<OwnerComponent>(re, 'Owner');
         if (owner?.shipEntity !== shipEntity) continue;
-        const pos = world.getComponent<PositionComponent>(re, 'Position');
-        if (pos === undefined) continue;
+        const pos  = world.getComponent<PositionComponent>(re, 'Position');
+        const room = world.getComponent<RoomComponent>(re, 'Room');
+        if (pos === undefined || room === undefined) continue;
         minX = Math.min(minX, pos.x);
         minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + room.width  * TILE_SIZE);
+        maxY = Math.max(maxY, pos.y + room.height * TILE_SIZE);
       }
       if (!isFinite(minX)) continue;
 
-      // The hull sprite canvas was padded by HULL_PAD on all sides.
+      const midY      = (minY + maxY) / 2;
+      const isPlayer  = faction.id === 'PLAYER';
+
+      // ── Black undercoat: fill the hull polygon before drawing the sprite ────
+      // The WebGL hull sprite has semi-transparent pixels at the wing tips and
+      // nose, allowing the background planet to bleed through.  Painting the
+      // exact same polygon (and nacelle blocks) in solid black first ensures
+      // every pixel of the aerodynamic shape is fully opaque.
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      if (isPlayer) {
+        ctx.moveTo(minX,      minY - 40);   // rear top wing
+        ctx.lineTo(maxX + 60, midY);        // nose tip (right)
+        ctx.lineTo(minX,      maxY + 40);   // rear bottom wing
+        ctx.lineTo(minX - 20, midY);        // rear notch
+      } else {
+        ctx.moveTo(maxX,      minY - 40);   // rear top wing
+        ctx.lineTo(minX - 60, midY);        // nose tip (left)
+        ctx.lineTo(maxX,      maxY + 40);   // rear bottom wing
+        ctx.lineTo(maxX + 20, midY);        // rear notch
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Engine nacelles — same dimensions as ShipGenerator (nacW=30, nacH=14, nacGap=26).
+      const nacW = 30, nacH = 14, nacGap = 26;
+      if (isPlayer) {
+        ctx.fillRect(minX - nacW, midY - nacGap - nacH / 2, nacW, nacH);
+        ctx.fillRect(minX - nacW, midY + nacGap - nacH / 2, nacW, nacH);
+      } else {
+        ctx.fillRect(maxX,        midY - nacGap - nacH / 2, nacW, nacH);
+        ctx.fillRect(maxX,        midY + nacGap - nacH / 2, nacW, nacH);
+      }
+
+      // Hull sprite drawn on top of the black undercoat.
       ctx.drawImage(ship.hullSprite, minX - HULL_PAD, minY - HULL_PAD);
 
-      // Block background bleed-through: fill room footprints with solid black
-      // so the semi-transparent cutaway mask never reveals the background planet.
-      ctx.fillStyle = '#000000';
+      // Fill room footprints with solid black so the semi-transparent cutaway
+      // mask never reveals the background through the room interiors.
       for (const re of world.query(['Room', 'Position', 'Owner'])) {
         const owner2 = world.getComponent<OwnerComponent>(re, 'Owner');
         if (owner2?.shipEntity !== shipEntity) continue;
-        const pos2 = world.getComponent<PositionComponent>(re, 'Position');
+        const pos2  = world.getComponent<PositionComponent>(re, 'Position');
         const room2 = world.getComponent<RoomComponent>(re, 'Room');
         if (pos2 === undefined || room2 === undefined) continue;
         ctx.fillRect(pos2.x, pos2.y, room2.width * TILE_SIZE, room2.height * TILE_SIZE);

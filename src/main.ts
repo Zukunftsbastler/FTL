@@ -127,6 +127,7 @@ async function init(): Promise<void> {
       300,
       Math.floor(Math.random() * 999983),
     );
+    GameStateData.planetTheme = theme;
   }
   randomPlanet();
 

@@ -10,6 +10,16 @@ interface ThemePalette {
   atmos:  RGB;  // atmosphere glow tint
 }
 
+/**
+ * Returns a CSS hex color representing the planet theme's atmosphere glow —
+ * the most visually distinctive per-theme colour, used to tint star map nodes.
+ */
+export function getPlanetNodeColor(theme: PlanetTheme): string {
+  const [r, g, b] = PALETTES[theme].atmos;
+  const hex = (v: number): string => Math.round(v * 255).toString(16).padStart(2, '0');
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 const PALETTES: Record<PlanetTheme, ThemePalette> = {
   TERRA:  { color1: [0.06,0.25,0.50], color2: [0.14,0.48,0.20], color3: [0.90,0.92,0.95], atmos: [0.30,0.65,1.00] },
   LAVA:   { color1: [0.18,0.04,0.02], color2: [0.80,0.25,0.02], color3: [1.00,0.80,0.00], atmos: [1.00,0.30,0.00] },
