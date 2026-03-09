@@ -868,9 +868,11 @@ export class RenderSystem {
         color = '#88bbcc';
       }
 
-      // Draw cloak status centred in the top bar.
+      // Draw cloak status right-aligned, immediately left of the FTL button.
+      // FTL button left edge = width - ENEMY_PANEL_W - 8 (gap) - 160 (btn width).
       const { width: cw } = this.renderer.getCanvasSize();
-      this.renderer.drawText(label, cw / 2, Math.round(TOP_BAR_H / 2) + 6, DASH_FONT, color, 'center');
+      const cloakX = cw - ENEMY_PANEL_W - 8 - 160 - 8;
+      this.renderer.drawText(label, cloakX, Math.round(TOP_BAR_H / 2) + 6, DASH_FONT, color, 'right');
       return;
     }
   }
