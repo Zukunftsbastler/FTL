@@ -34,6 +34,7 @@ import { HazardSystem } from './game/systems/HazardSystem';
 import { DroneControlSystem } from './game/systems/DroneControlSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
+import { StoreGenerator } from './game/world/StoreGenerator';
 import { EnemyScaler } from './game/logic/EnemyScaler';
 import { pregenerateExplosions } from './game/vfx/ExplosionGenerator';
 import { pregenerateShields } from './game/vfx/ShieldGenerator';
@@ -466,7 +467,10 @@ async function init(): Promise<void> {
           }
           currentState = 'EVENT';
         },
-        onStore: () => { currentState = 'STORE'; },
+        onStore: () => {
+          GameStateData.currentStore = StoreGenerator.generateStore(world, GameStateData.sectorNumber);
+          currentState = 'STORE';
+        },
         onShip:  () => { currentState = 'UPGRADE'; },
         onExit: () => {
           // Transition to sector selection instead of jumping directly.
@@ -563,7 +567,10 @@ async function init(): Promise<void> {
         onReward:        (reward) => { applyEventReward(reward); },
         onInstantReward: (reward) => { applyRewardEffects(reward); },
         onNextEvent:     (id)     => { eventSystem.loadEvent(id); },
-        onStore:         ()       => { currentState = 'STORE'; },
+        onStore:         ()       => {
+          GameStateData.currentStore = StoreGenerator.generateStore(world, GameStateData.sectorNumber);
+          currentState = 'STORE';
+        },
         onContinue:      ()       => { currentState = 'STAR_MAP'; },
       });
 
@@ -577,7 +584,7 @@ async function init(): Promise<void> {
       // ── Store screen ──────────────────────────────────────────────────────
       upgradeSystem.drawStoreScreen(
         world, renderer, input,
-        () => { currentState = 'STAR_MAP'; },
+        () => { GameStateData.currentStore = null; currentState = 'STAR_MAP'; },
         () => { currentState = 'UPGRADE'; },
       );
     }

@@ -12,35 +12,22 @@ import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { WeaponComponent } from '../components/WeaponComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
-import type { SystemType } from '../data/SystemType';
+import type { StoreItem } from '../data/StoreInventory';
 
 // (Upgrade cost constants are store-only; managed inside drawStoreScreen.)
 
 // ── Shared style constants ────────────────────────────────────────────────────
 const BG_COLOR       = '#020810';
-const PANEL_BORDER   = '#334466';
 const TITLE_F        = '20px monospace';
 const HEADER_F       = '13px monospace';
 const ROW_F          = '12px monospace';
-const TITLE_COLOR    = '#88ddff';
 const TEXT_COLOR     = '#aabbcc';
-const VAL_COLOR      = '#eef';
 const DIM_COLOR      = '#445566';
-
-const BTN_H          = 30;
 
 // Upgrade button — cannot afford.
 const BTN_NO_BG      = '#141414';
 const BTN_NO_BORDER  = '#2a2a2a';
 const BTN_NO_TEXT    = '#444444';
-// Equip / Unequip button.
-const BTN_EQ_BG      = '#0a0a1e';
-const BTN_EQ_BORDER  = '#4455cc';
-const BTN_EQ_TEXT    = '#8899ff';
-// Back / Leave button.
-const BTN_BACK_BG     = '#1a0a0a';
-const BTN_BACK_BORDER = '#aa3333';
-const BTN_BACK_TEXT   = '#ff5555';
 // Buy button (store).
 const BTN_BUY_BG     = '#0a100a';
 const BTN_BUY_BORDER = '#44aa44';
@@ -221,10 +208,11 @@ export class UpgradeSystem {
     renderer: IRenderer,
     input: IInput,
     onLeave: () => void,
-    onUpgrade?: () => void,
+    _onUpgrade?: () => void,
   ): void {
     const { width, height } = renderer.getCanvasSize();
     renderer.clear(BG_COLOR);
+    const ctx = renderer.getContext();
 
     const hitboxes: Hitbox[] = [];
 
@@ -232,217 +220,139 @@ export class UpgradeSystem {
     if (playerData === null) { onLeave(); return; }
     const { shipEntity, ship } = playerData;
 
-    // ── Panel ─────────────────────────────────────────────────────────────────
-    const PW = 560;
-    const PH = 560;
-    const PX = (width  - PW) / 2;
-    const PY = (height - PH) / 2;
+    const inventory = GameStateData.currentStore;
+    if (inventory === null) { onLeave(); return; }
 
-    UIRenderer.drawSciFiPanel(renderer.getContext(), PX, PY, PW, PH, {
-      chamfer:     12,
-      borderColor: PANEL_BORDER,
-      alpha:       0.96,
-    });
+    // ── Title panel (left-anchored) ───────────────────────────────────────────
+    const TITLE_W = Math.min(600, width - 20);
+    UIRenderer.drawSciFiPanel(ctx, 0, 0, TITLE_W, 56,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('STORE', TITLE_W / 2, 36, TITLE_F, '#001830', 'center');
 
-    // Title.
-    renderer.drawText('STORE', width / 2, PY + 36, TITLE_F, TITLE_COLOR, 'center');
-    renderer.drawLine(PX + 16, PY + 46, PX + PW - 16, PY + 46, PANEL_BORDER, 1);
+    // ── Player resources as pills ─────────────────────────────────────────────
+    const PILL_H   = 24;
+    const PILL_PAD = 9;
+    const PILL_GAP = 6;
+    const FONT     = '12px monospace';
+    ctx.font = FONT;
 
-    // Player resources.
-    renderer.drawText(
-      `Scrap: ${ship.scrap}   Fuel: ${ship.fuel}   Missiles: ${ship.missiles}   Hull: ${ship.currentHull}/${ship.maxHull}`,
-      width / 2, PY + 66, '12px monospace', TEXT_COLOR, 'center',
-    );
-    renderer.drawLine(PX + 16, PY + 76, PX + PW - 16, PY + 76, PANEL_BORDER, 1);
-
-    // ── Section 1: Consumables ─────────────────────────────────────────────────
-    renderer.drawText('SUPPLIES', PX + 24, PY + 96, HEADER_F, TITLE_COLOR, 'left');
-
-    interface StoreItem {
-      label: string; detail: string; cost: number; canBuy: () => boolean; onBuy: () => void;
+    const resPills = [
+      `SCRAP  ${ship.scrap}`,
+      `FUEL  ${ship.fuel}`,
+      `MSL  ${ship.missiles}`,
+      `HULL  ${ship.currentHull}/${ship.maxHull}`,
+    ];
+    const resWidths = resPills.map((t) => ctx.measureText(t).width + PILL_PAD * 2);
+    const resPanelW = resWidths.reduce((s, w2) => s + w2, 0) + (resPills.length - 1) * PILL_GAP + 20;
+    const resPanelH = PILL_H + 16;
+    UIRenderer.drawSciFiPanel(ctx, 0, 62, resPanelW, resPanelH,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.90 });
+    {
+      let px2 = 10;
+      const py2 = 62 + 8;
+      resPills.forEach((label, i) => {
+        const pw = resWidths[i];
+        UIRenderer.drawPill(ctx, px2, py2, pw, PILL_H, '#00ccdd');
+        ctx.font = FONT; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
+        ctx.fillText(label, px2 + PILL_PAD, py2 + PILL_H / 2 + 5);
+        px2 += pw + PILL_GAP;
+      });
     }
-    const items: StoreItem[] = [
-      {
-        label: 'Fuel  +1',
-        detail: '3 Scrap',
-        cost: 3,
-        canBuy: () => ship.scrap >= 3,
-        onBuy:  () => { ship.scrap -= 3; ship.fuel += 1; },
-      },
-      {
-        label: 'Missiles  +3',
-        detail: '6 Scrap',
-        cost: 6,
-        canBuy: () => ship.scrap >= 6,
-        onBuy:  () => { ship.scrap -= 6; ship.missiles += 3; },
-      },
-      {
-        label: 'Hull Repair  +1 HP',
-        detail: '2 Scrap',
-        cost: 2,
-        canBuy: () => ship.scrap >= 2 && ship.currentHull < ship.maxHull,
-        onBuy:  () => { ship.scrap -= 2; ship.currentHull = Math.min(ship.maxHull, ship.currentHull + 1); },
-      },
+
+    // ── Category layout ───────────────────────────────────────────────────────
+    const CARD_W   = 190;
+    const CARD_H   = 72;
+    const CARD_GAP = 10;
+    const SECT_PAD = 16;
+    const CONTENT_X = 10;
+    let   cy        = 62 + resPanelH + 12;
+
+    const categories: Array<{ label: string; cat: StoreItem['category'] }> = [
+      { label: 'RESOURCES', cat: 'RESOURCE' },
+      { label: 'WEAPONS',   cat: 'WEAPON'   },
+      { label: 'SYSTEMS',   cat: 'SYSTEM'   },
     ];
 
-    const ITEM_Y0 = PY + 112;
-    const ITEM_H  = 46;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const iy   = ITEM_Y0 + i * ITEM_H;
-      const can  = item.canBuy();
+    for (const { label, cat } of categories) {
+      const catItems = inventory.items.filter((it) => it.category === cat);
+      if (catItems.length === 0) continue;
 
-      renderer.drawText(item.label,  PX + 24, iy + 16, '13px monospace', VAL_COLOR, 'left');
-      renderer.drawText(item.detail, PX + 24, iy + 32, ROW_F, TEXT_COLOR, 'left');
+      // Section header.
+      renderer.drawText(label, CONTENT_X + 4, cy + 14, HEADER_F, TEXT_COLOR, 'left');
+      cy += 22;
 
-      const bx = PX + PW - 110;
-      const by = iy + 6;
-      const bw = 90;
-      const bh = BTN_H;
-      btn(renderer, 'Buy',
-        bx, by, bw, bh,
-        can ? BTN_BUY_BG : BTN_NO_BG,
-        can ? BTN_BUY_BORDER : BTN_NO_BORDER,
-        can ? BTN_BUY_TEXT : BTN_NO_TEXT,
-      );
-      if (can) {
-        hit(hitboxes, bx, by, bw, bh, item.onBuy);
-      }
+      // Cards row.
+      let cx2 = CONTENT_X;
+      for (const item of catItems) {
+        const canAfford = ship.scrap >= item.price;
+        const isSold    = item.sold;
 
-      renderer.drawLine(PX + 16, iy + ITEM_H - 2, PX + PW - 16, iy + ITEM_H - 2, '#1a2233', 1);
-    }
+        UIRenderer.drawSciFiPanel(ctx, cx2, cy, CARD_W, CARD_H,
+          { lightBg: true, borderColor: isSold ? '#aaaaaa' : '#ffffff', alpha: isSold ? 0.6 : 0.93 });
 
-    // ── Section 2: Upgrade Ship ────────────────────────────────────────────────
-    const SEC2_Y = ITEM_Y0 + items.length * ITEM_H + 8;
-    renderer.drawText('UPGRADES', PX + 24, SEC2_Y, HEADER_F, TITLE_COLOR, 'left');
-
-    if (onUpgrade !== undefined) {
-      const ubx = PX + 24;
-      const uby = SEC2_Y + 10;
-      const ubw = PW - 48;
-      const ubh = BTN_H + 4;
-      btn(renderer, 'Open Upgrade Screen', ubx, uby, ubw, ubh,
-        BTN_EQ_BG, BTN_EQ_BORDER, BTN_EQ_TEXT);
-      hit(hitboxes, ubx, uby, ubw, ubh, onUpgrade);
-    }
-
-    // ── Section 3: Buy Subsystems ──────────────────────────────────────────────
-    const SEC3_Y = SEC2_Y + BTN_H + 28;
-    renderer.drawLine(PX + 16, SEC3_Y - 10, PX + PW - 16, SEC3_Y - 10, PANEL_BORDER, 1);
-    renderer.drawText('SUBSYSTEMS', PX + 24, SEC3_Y, HEADER_F, TITLE_COLOR, 'left');
-
-    // Determine which advanced systems the player already has.
-    const ownedTypes = new Set<string>();
-    for (const entity of world.query(['System', 'Owner'])) {
-      const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
-      if (owner?.shipEntity !== shipEntity) continue;
-      const sys = world.getComponent<SystemComponent>(entity, 'System');
-      if (sys !== undefined) ownedTypes.add(sys.type);
-    }
-
-    // Find an empty room on the player's ship (no SystemComponent attached).
-    const findEmptyRoom = (): number | undefined => {
-      for (const entity of world.query(['Room', 'Owner'])) {
-        const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
-        if (owner?.shipEntity !== shipEntity) continue;
-        const sys = world.getComponent<SystemComponent>(entity, 'System');
-        if (sys === undefined) return entity;
-      }
-      return undefined;
-    };
-
-    // Purchasable systems, tiered by sector.
-    interface SysOffer { type: SystemType; label: string; minSector: number; price: number }
-    const OFFERS: SysOffer[] = [
-      { type: 'CLOAKING',      label: 'Cloaking Drive',  minSector: 1, price: 150 },
-      { type: 'TELEPORTER',    label: 'Teleporter',       minSector: 1, price: 150 },
-      { type: 'DRONE_CONTROL', label: 'Drone Control',    minSector: 2, price: 150 },
-    ];
-
-    const availableOffers = OFFERS.filter(
-      (o) => !ownedTypes.has(o.type) && GameStateData.sectorNumber >= o.minSector,
-    );
-
-    let sysY = SEC3_Y + 14;
-    const SYS_H = 44;
-
-    if (availableOffers.length === 0) {
-      renderer.drawText(
-        '(No systems available — all installed or sector too low)',
-        PX + 24, sysY + 16, ROW_F, DIM_COLOR, 'left',
-      );
-    } else {
-      for (const offer of availableOffers) {
-        const canBuy  = ship.scrap >= offer.price;
-        const noRoom  = findEmptyRoom() === undefined;
-        const enabled = canBuy && !noRoom;
-
-        renderer.drawText(offer.label,             PX + 24, sysY + 14, '13px monospace', VAL_COLOR, 'left');
-        renderer.drawText(`${offer.price} Scrap`,  PX + 24, sysY + 30, ROW_F, TEXT_COLOR, 'left');
-        if (noRoom) {
-          renderer.drawText('(no empty room)', PX + 180, sysY + 30, ROW_F, '#664444', 'left');
-        }
-
-        const sbx = PX + PW - 110;
-        const sby = sysY + 6;
-        const sbw = 90;
-        const sbh = BTN_H;
-        btn(renderer, 'Buy',
-          sbx, sby, sbw, sbh,
-          enabled ? BTN_BUY_BG : BTN_NO_BG,
-          enabled ? BTN_BUY_BORDER : BTN_NO_BORDER,
-          enabled ? BTN_BUY_TEXT : BTN_NO_TEXT,
+        // Item name.
+        renderer.drawText(
+          item.label, cx2 + CARD_W / 2, cy + 18,
+          '11px monospace', isSold ? '#888888' : '#001830', 'center',
         );
 
-        if (enabled) {
-          const capturedOffer = offer;
-          hit(hitboxes, sbx, sby, sbw, sbh, () => {
-            const emptyRoom = findEmptyRoom();
-            if (emptyRoom === undefined) return;
-            ship.scrap -= capturedOffer.price;
+        if (isSold) {
+          renderer.drawText('SOLD OUT', cx2 + CARD_W / 2, cy + CARD_H / 2 + 10,
+            '10px monospace', '#888888', 'center');
+        } else {
+          // Price pill.
+          const priceLabel = `${item.price} scrap`;
+          ctx.font = '11px monospace';
+          const priceW = ctx.measureText(priceLabel).width + 12;
+          const priceX = cx2 + CARD_W / 2 - priceW / 2;
+          const priceY = cy + 26;
+          UIRenderer.drawPill(ctx, priceX, priceY, priceW, 18, canAfford ? '#00ccdd' : '#cc4444');
+          ctx.font = '11px monospace'; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
+          ctx.fillText(priceLabel, priceX + 6, priceY + 13);
 
-            // Add the SystemComponent to the empty room entity.
-            const newSys: SystemComponent = {
-              _type:        'System',
-              type:         capturedOffer.type,
-              level:        1,
-              maxCapacity:  1,
-              currentPower: 0,
-              roomId:       0, // roomId will be read from the RoomComponent
-              damageAmount: 0,
-              zoltanBonus:  0,
-            };
-            world.addComponent(emptyRoom, newSys);
+          // Buy button.
+          const BUY_W = 80; const BUY_H = 22;
+          const bx2   = cx2 + CARD_W / 2 - BUY_W / 2;
+          const by2   = cy + CARD_H - BUY_H - 6;
+          btn(renderer, 'BUY',
+            bx2, by2, BUY_W, BUY_H,
+            canAfford ? BTN_BUY_BG : BTN_NO_BG,
+            canAfford ? BTN_BUY_BORDER : BTN_NO_BORDER,
+            canAfford ? BTN_BUY_TEXT : BTN_NO_TEXT,
+          );
 
-            // CLOAKING additionally needs a CloakComponent on the ship root.
-            if (capturedOffer.type === 'CLOAKING') {
-              const cloakComp: CloakComponent = {
-                _type:         'Cloak',
-                isActive:      false,
-                durationTimer: 0,
-                cooldownTimer: 0,
-                maxDuration:   5.0,
-                maxCooldown:   10.0,
-              };
-              world.addComponent(shipEntity, cloakComp);
-            }
-          });
+          if (canAfford) {
+            const capturedItem = item;
+            hit(hitboxes, bx2, by2, BUY_W, BUY_H, () => {
+              ship.scrap -= capturedItem.price;
+              capturedItem.sold = true;
+              this.applyPurchase(world, capturedItem, shipEntity, ship);
+            });
+          }
         }
 
-        renderer.drawLine(PX + 16, sysY + SYS_H - 2, PX + PW - 16, sysY + SYS_H - 2, '#1a2233', 1);
-        sysY += SYS_H;
+        cx2 += CARD_W + CARD_GAP;
+        // Wrap to next row if needed.
+        if (cx2 + CARD_W > width - SECT_PAD) {
+          cx2  = CONTENT_X;
+          cy  += CARD_H + CARD_GAP;
+        }
       }
+
+      cy += CARD_H + 18;
     }
 
-    // ── Leave button ─────────────────────────────────────────────────────────
+    // ── Leave button ──────────────────────────────────────────────────────────
     const LEAVE_W = 180;
     const LEAVE_H = 40;
-    const lbx = width / 2 - LEAVE_W / 2;
-    const lby = PY + PH - LEAVE_H - 16;
-    btn(renderer, 'Leave Store', lbx, lby, LEAVE_W, LEAVE_H, BTN_BACK_BG, BTN_BACK_BORDER, BTN_BACK_TEXT);
-    hit(hitboxes, lbx, lby, LEAVE_W, LEAVE_H, onLeave);
+    const LEAVE_Y = height - LEAVE_H - 14;
+    UIRenderer.drawSciFiPanel(ctx, 0, LEAVE_Y, LEAVE_W, LEAVE_H,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('← Leave Store', LEAVE_W / 2, LEAVE_Y + LEAVE_H / 2 + 6,
+      'bold 12px monospace', '#001830', 'center');
+    hit(hitboxes, 0, LEAVE_Y, LEAVE_W, LEAVE_H, onLeave);
 
-    // ── Process clicks ────────────────────────────────────────────────────────
+    // ── Click handling ────────────────────────────────────────────────────────
     if (input.isMouseJustPressed(0)) {
       const mouse = input.getMousePosition();
       for (const hb of hitboxes) {
@@ -498,6 +408,69 @@ export class UpgradeSystem {
       if (weapon !== undefined) result.push([entity, weapon]);
     }
     return result;
+  }
+
+  /**
+   * Applies the effect of a purchased store item to the player ship.
+   * Resources are added immediately; weapons go into cargo; systems are installed
+   * into the first empty room (with any required auxiliary components).
+   */
+  private applyPurchase(
+    world: IWorld,
+    item: StoreItem,
+    shipEntity: number,
+    ship: ShipComponent,
+  ): void {
+    if (item.category === 'RESOURCE') {
+      switch (item.resourceType) {
+        case 'fuel':       ship.fuel       += item.resourceAmount ?? 1; break;
+        case 'missiles':   ship.missiles   += item.resourceAmount ?? 1; break;
+        case 'droneParts': ship.droneParts += item.resourceAmount ?? 1; break;
+        case 'hull':
+          ship.currentHull = Math.min(ship.maxHull, ship.currentHull + (item.resourceAmount ?? 1));
+          break;
+      }
+      return;
+    }
+
+    if (item.category === 'WEAPON' && item.weaponId !== undefined) {
+      ship.cargoWeapons.push(item.weaponId);
+      return;
+    }
+
+    if (item.category === 'SYSTEM' && item.systemType !== undefined) {
+      // Find first empty room owned by this ship.
+      let emptyRoom: number | undefined;
+      for (const entity of world.query(['Room', 'Owner'])) {
+        const owner = world.getComponent<OwnerComponent>(entity, 'Owner');
+        if (owner?.shipEntity !== shipEntity) continue;
+        const sys = world.getComponent<SystemComponent>(entity, 'System');
+        if (sys === undefined) { emptyRoom = entity; break; }
+      }
+      if (emptyRoom === undefined) return; // no room available
+
+      const newSys: SystemComponent = {
+        _type:        'System',
+        type:         item.systemType,
+        level:        1,
+        maxCapacity:  1,
+        currentPower: 0,
+        roomId:       0,
+        damageAmount: 0,
+        zoltanBonus:  0,
+      };
+      world.addComponent(emptyRoom, newSys);
+
+      // Auxiliary root components.
+      if (item.systemType === 'CLOAKING') {
+        const cloakComp: CloakComponent = {
+          _type: 'Cloak', isActive: false,
+          durationTimer: 0, cooldownTimer: 0,
+          maxDuration: 5.0, maxCooldown: 10.0,
+        };
+        world.addComponent(shipEntity, cloakComp);
+      }
+    }
   }
 
 }

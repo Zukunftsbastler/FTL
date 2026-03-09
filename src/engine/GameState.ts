@@ -9,8 +9,9 @@ export type GameState =
   | 'STORE'
   | 'EVENT';
 
-import type { PlanetTheme } from '../game/world/PlanetGenerator';
-import type { SectorNode }  from '../game/data/SectorNode';
+import type { PlanetTheme }    from '../game/world/PlanetGenerator';
+import type { SectorNode }     from '../game/data/SectorNode';
+import type { StoreInventory } from '../game/data/StoreInventory';
 
 /** Mutable runtime data shared across systems. */
 export const GameStateData: {
@@ -19,10 +20,13 @@ export const GameStateData: {
   planetTheme:          PlanetTheme | null;
   sectorTree:           SectorNode[];
   currentSectorNodeId:  number;
+  /** Persistent store inventory for the current store node. Null outside a store. */
+  currentStore:         StoreInventory | null;
 } = {
   cachedPlanet:         null,
   sectorNumber:         1,
   planetTheme:          null,
   sectorTree:           [],
   currentSectorNodeId:  0,
+  currentStore:         null,
 };
