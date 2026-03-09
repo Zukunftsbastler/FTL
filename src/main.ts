@@ -25,6 +25,9 @@ import { JumpSystem } from './game/systems/JumpSystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
 import { EventSystem } from './game/systems/EventSystem';
 import { MapSystem } from './game/systems/MapSystem';
+import { SectorMapSystem } from './game/systems/SectorMapSystem';
+import { SectorGenerator }  from './game/world/SectorGenerator';
+import type { SectorNode }   from './game/data/SectorNode';
 import { ZoltanPowerSystem } from './game/systems/ZoltanPowerSystem';
 import { AugmentSystem } from './game/systems/AugmentSystem';
 import { HazardSystem } from './game/systems/HazardSystem';
@@ -131,6 +134,11 @@ async function init(): Promise<void> {
     GameStateData.planetTheme = theme;
   }
   randomPlanet();
+
+  // ── Sector tree generation ──────────────────────────────────────────────────
+  const sectorsData = AssetLoader.getJSON<SectorTemplate[]>('sectors') ?? [];
+  GameStateData.sectorTree        = SectorGenerator.generate(sectorsData);
+  GameStateData.currentSectorNodeId = 0;  // Start at node 0 (level 1)
 
   // ── Explosion spritesheet pre-generation ──────────────────────────────────────
   // Pre-render all explosion types into cached 2D spritesheets once at startup.
@@ -389,6 +397,7 @@ async function init(): Promise<void> {
   const upgradeSystem      = new UpgradeSystem();
   const eventSystem        = new EventSystem();
   const mapSystem          = new MapSystem();
+  const sectorMapSystem    = new SectorMapSystem();
   const renderSystem       = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem    = new SelectionSystem(input);
   const movementSystem     = new MovementSystem(input, pathfinder);
@@ -459,12 +468,21 @@ async function init(): Promise<void> {
         },
         onStore: () => { currentState = 'STORE'; },
         onExit: () => {
-          // New sector: regenerate the map, roll a new planet, increment sector.
-          const { width: w, height: h } = renderer.getCanvasSize();
-          mapSystem.nextSector(w, h);
-          randomPlanet();
-          GameStateData.sectorNumber += 1;
+          // Transition to sector selection instead of jumping directly.
+          currentState = 'SECTOR_MAP_SELECTION';
         },
+      });
+
+    } else if (currentState === 'SECTOR_MAP_SELECTION') {
+      // ── Sector Selection ──────────────────────────────────────────────────
+      sectorMapSystem.draw(renderer, input, (node: SectorNode, template: SectorTemplate) => {
+        // Player chose a sector — advance the game state.
+        GameStateData.currentSectorNodeId = node.id;
+        GameStateData.sectorNumber        = node.level;
+        const { width: sw, height: sh } = renderer.getCanvasSize();
+        mapSystem.nextSectorWithTemplate(template, sw, sh);
+        randomPlanet();
+        currentState = 'STAR_MAP';
       });
 
     } else if (currentState === 'COMBAT') {

@@ -9,6 +9,7 @@ import type { IWorld } from '../../engine/IWorld';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { SectorTemplate } from '../data/SectorTemplate';
+import { UIRenderer } from '../../engine/ui/UIRenderer';
 
 // ── Segment intersection helpers ──────────────────────────────────────────────
 
@@ -193,6 +194,8 @@ export class MapSystem {
   private sectorTemplate:   SectorTemplate | null = null;
   /** Cached procedural background canvas — generated once per sector in generate(). */
   private backgroundCanvas: HTMLCanvasElement | null = null;
+  /** When set, generate() uses this template instead of picking randomly. */
+  private forcedTemplate:   SectorTemplate | null = null;
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -361,12 +364,33 @@ export class MapSystem {
       }
     }
 
-    // ── Sector name HUD ──────────────────────────────────────────────────────
-    if (this.sectorTemplate !== null) {
+    // ── Bottom HUD panels (sector level + type, using beveled panel renderer) ─
+    {
+      const ctx         = renderer.getContext();
+      const PANEL_H     = 52;
+      const PANEL_W     = 200;
+      const PANEL_Y     = height - PANEL_H - 10;
+      const GAP         = 12;
+      const leftPanelX  = width / 2 - PANEL_W - GAP / 2;
+      const rightPanelX = width / 2 + GAP / 2;
+
+      UIRenderer.drawSciFiPanel(ctx, leftPanelX, PANEL_Y, PANEL_W, PANEL_H,
+        { chamfer: 8, borderColor: '#445566', alpha: 0.93 });
       renderer.drawText(
-        this.sectorTemplate.name.toUpperCase(),
-        width / 2, HUD_MARGIN_Y + 20,
-        '11px monospace', '#556677', 'center',
+        `SECTOR  ${GameStateData.sectorNumber}`,
+        leftPanelX + PANEL_W / 2, PANEL_Y + PANEL_H / 2 + 6,
+        '14px monospace', '#88aacc', 'center',
+      );
+
+      UIRenderer.drawSciFiPanel(ctx, rightPanelX, PANEL_Y, PANEL_W, PANEL_H,
+        { chamfer: 8, borderColor: '#445566', alpha: 0.93 });
+      const sectorLabel = this.sectorTemplate !== null
+        ? this.sectorTemplate.name.toUpperCase()
+        : '— UNKNOWN —';
+      renderer.drawText(
+        sectorLabel,
+        rightPanelX + PANEL_W / 2, PANEL_Y + PANEL_H / 2 + 6,
+        '11px monospace', '#88aacc', 'center',
       );
     }
 
@@ -434,15 +458,26 @@ export class MapSystem {
     this.generated = true;
   }
 
+  /** Like nextSector but uses a specific template for the new sector. */
+  nextSectorWithTemplate(template: SectorTemplate, canvasW: number, canvasH: number): void {
+    this.forcedTemplate = template;
+    this.nextSector(canvasW, canvasH);
+  }
+
   // ── Graph generation ──────────────────────────────────────────────────────
 
   private generate(canvasW: number, canvasH: number): void {
-    // Pick a random sector type.
-    const sectors = AssetLoader.getJSON<SectorTemplate[]>('sectors');
-    if (sectors !== undefined && sectors.length > 0) {
-      this.sectorTemplate = sectors[Math.floor(Math.random() * sectors.length)];
+    // Use a forced template (from sector selection) or pick randomly.
+    if (this.forcedTemplate !== null) {
+      this.sectorTemplate  = this.forcedTemplate;
+      this.forcedTemplate  = null;
     } else {
-      this.sectorTemplate = null;
+      const sectors = AssetLoader.getJSON<SectorTemplate[]>('sectors');
+      if (sectors !== undefined && sectors.length > 0) {
+        this.sectorTemplate = sectors[Math.floor(Math.random() * sectors.length)];
+      } else {
+        this.sectorTemplate = null;
+      }
     }
 
     // Generate and cache the procedural background for this sector.

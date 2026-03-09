@@ -2,6 +2,7 @@
 export interface SectorTemplate {
   readonly id: string;
   readonly name: string;
+  readonly description?: string;
   readonly type: 'CIVILIAN' | 'HOSTILE' | 'NEBULA' | 'BOSS';
   /** Probability (0–1) that any intermediate node has an environmental hazard. */
   readonly hazardChance: number;
