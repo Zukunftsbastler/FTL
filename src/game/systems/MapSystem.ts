@@ -363,34 +363,43 @@ export class MapSystem {
       }
     }
 
-    // ── Bottom HUD panels (sector level + type, using beveled panel renderer) ─
+    // ── Bottom HUD panel (sector + type as pills, anchored to left edge) ────────
     {
-      const ctx         = renderer.getContext();
-      const PANEL_H     = 52;
-      const PANEL_W     = 200;
-      const PANEL_Y     = height - PANEL_H - 10;
-      const GAP         = 12;
-      const leftPanelX  = width / 2 - PANEL_W - GAP / 2;
-      const rightPanelX = width / 2 + GAP / 2;
+      const ctx        = renderer.getContext();
+      const PILL_H     = 24;
+      const PILL_PAD_X = 9;
+      const PILL_GAP   = 6;
+      const PANEL_PAD  = 10;
+      const FONT       = '12px monospace';
 
-      UIRenderer.drawSciFiPanel(ctx, leftPanelX, PANEL_Y, PANEL_W, PANEL_H,
-        { chamfer: 8, borderColor: '#445566', alpha: 0.93 });
-      renderer.drawText(
-        `SECTOR  ${GameStateData.sectorNumber}`,
-        leftPanelX + PANEL_W / 2, PANEL_Y + PANEL_H / 2 + 6,
-        '14px monospace', '#88aacc', 'center',
-      );
-
-      UIRenderer.drawSciFiPanel(ctx, rightPanelX, PANEL_Y, PANEL_W, PANEL_H,
-        { chamfer: 8, borderColor: '#445566', alpha: 0.93 });
+      ctx.font = FONT;
       const sectorLabel = this.sectorTemplate !== null
         ? this.sectorTemplate.name.toUpperCase()
         : '— UNKNOWN —';
-      renderer.drawText(
+      const botItems = [
+        `SECTOR  ${GameStateData.sectorNumber}`,
         sectorLabel,
-        rightPanelX + PANEL_W / 2, PANEL_Y + PANEL_H / 2 + 6,
-        '11px monospace', '#88aacc', 'center',
-      );
+      ];
+      const botWidths  = botItems.map((t) => ctx.measureText(t).width + PILL_PAD_X * 2);
+      const botPanelW  = botWidths.reduce((s, w2) => s + w2, 0)
+        + (botItems.length - 1) * PILL_GAP + PANEL_PAD * 2;
+      const botPanelH  = PILL_H + PANEL_PAD * 2;
+      const botPanelY  = height - botPanelH - 10;
+
+      UIRenderer.drawSciFiPanel(ctx, 0, botPanelY, botPanelW, botPanelH,
+        { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+
+      let bpx = PANEL_PAD;
+      const bpy = botPanelY + PANEL_PAD;
+      botItems.forEach((label, i) => {
+        const pw = botWidths[i];
+        UIRenderer.drawPill(ctx, bpx, bpy, pw, PILL_H, '#00ccdd');
+        ctx.font      = FONT;
+        ctx.fillStyle = '#001820';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, bpx + PILL_PAD_X, bpy + PILL_H / 2 + 5);
+        bpx += pw + PILL_GAP;
+      });
     }
 
     // ── Top-left resource panel with cyan pills ───────────────────────────────
@@ -401,8 +410,8 @@ export class MapSystem {
       const PILL_PAD_X = 9;
       const PILL_GAP   = 6;
       const PANEL_PAD  = 10;
-      const PANEL_X    = 10;
-      const PANEL_Y    = 10;
+      const PANEL_X    = 0;
+      const PANEL_Y    = 0;
       const FONT       = '12px monospace';
 
       ctx.font = FONT;
@@ -421,7 +430,7 @@ export class MapSystem {
       const panelH     = PILL_H + PANEL_PAD * 2;
 
       UIRenderer.drawSciFiPanel(ctx, PANEL_X, PANEL_Y, panelW, panelH,
-        { chamfer: 12, borderColor: '#ffffff', alpha: 0.93 });
+        { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
 
       let px2 = PANEL_X + PANEL_PAD;
       const py2 = PANEL_Y + PANEL_PAD;
@@ -441,9 +450,9 @@ export class MapSystem {
       const BTN_X = PANEL_X;
       const BTN_Y = PANEL_Y + panelH + 6;
       UIRenderer.drawSciFiPanel(ctx, BTN_X, BTN_Y, BTN_W, BTN_H,
-        { chamfer: 8, borderColor: '#44aaff', alpha: 0.95 });
-      renderer.drawText('⚙ SHIP', BTN_X + BTN_W / 2, BTN_Y + BTN_H / 2 + 6,
-        'bold 12px monospace', '#88ddff', 'center');
+        { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+      renderer.drawText('⚙  SHIP', BTN_X + BTN_W / 2, BTN_Y + BTN_H / 2 + 6,
+        'bold 12px monospace', '#001830', 'center');
 
       if (input.isMouseJustPressed(0)) {
         const m = input.getMousePosition();

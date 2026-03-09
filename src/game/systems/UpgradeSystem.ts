@@ -14,18 +14,7 @@ import type { WeaponComponent } from '../components/WeaponComponent';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
 import type { SystemType } from '../data/SystemType';
 
-// ── Game rules ────────────────────────────────────────────────────────────────
-/** Maximum system capacity reachable through upgrades. */
-const MAX_SYSTEM_LEVEL = 8;
-/** Maximum active (equipped) weapons at once. */
-const MAX_WEAPONS = 4;
-/** Flat scrap cost to upgrade the reactor by +1 power. */
-const REACTOR_UPGRADE_COST = 30;
-
-/** Cost to upgrade a system from its current level. Formula: currentLevel × 15. */
-function systemUpgradeCost(currentLevel: number): number {
-  return currentLevel * 15;
-}
+// (Upgrade cost constants are store-only; managed inside drawStoreScreen.)
 
 // ── Shared style constants ────────────────────────────────────────────────────
 const BG_COLOR       = '#020810';
@@ -40,10 +29,6 @@ const DIM_COLOR      = '#445566';
 
 const BTN_H          = 30;
 
-// Upgrade button — can afford.
-const BTN_CAN_BG     = '#0a1a0a';
-const BTN_CAN_BORDER = '#44cc44';
-const BTN_CAN_TEXT   = '#44ff44';
 // Upgrade button — cannot afford.
 const BTN_NO_BG      = '#141414';
 const BTN_NO_BORDER  = '#2a2a2a';
@@ -93,6 +78,10 @@ export class UpgradeSystem {
 
   // ── UPGRADE screen ──────────────────────────────────────────────────────────
 
+  /**
+   * Read-only ship overview — accessed from the SHIP button on the Star Map.
+   * Shows installed systems and equipped weapons; all editing is store-only.
+   */
   drawUpgradeScreen(
     world: IWorld,
     renderer: IRenderer,
@@ -102,212 +91,115 @@ export class UpgradeSystem {
     const { width, height } = renderer.getCanvasSize();
     renderer.clear(BG_COLOR);
 
-    // Sci-fi background panel for the full upgrade screen.
-    UIRenderer.drawSciFiPanel(renderer.getContext(), 30, 30, width - 60, height - 60, {
-      chamfer:     20,
-      borderColor: PANEL_BORDER,
-      alpha:       0.95,
-    });
-
     const hitboxes: Hitbox[] = [];
+    const ctx = renderer.getContext();
 
-    // Locate the player ship.
     const playerData = this.findPlayerShip(world);
     if (playerData === null) { onBack(); return; }
     const { shipEntity, ship, reactor } = playerData;
 
-    // ── Header ──────────────────────────────────────────────────────────────
-    renderer.drawText('UPGRADE SHIP', width / 2, 44, TITLE_F, TITLE_COLOR, 'center');
+    // ── Title panel (left-anchored) ───────────────────────────────────────────
+    const TITLE_W = Math.min(520, width - 20);
+    UIRenderer.drawSciFiPanel(ctx, 0, 0, TITLE_W, 56,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('SHIP OVERVIEW', TITLE_W / 2, 36, TITLE_F, '#001830', 'center');
+
     renderer.drawText(
-      `Scrap: ${ship.scrap}`,
-      width / 2, 68, HEADER_F, '#ddbb44', 'center',
+      'Upgrades and weapon swaps are available in stores only.',
+      16, 76, ROW_F, DIM_COLOR, 'left',
     );
-    renderer.drawLine(40, 78, width - 40, 78, PANEL_BORDER, 1);
 
-    // ── Layout split ────────────────────────────────────────────────────────
-    const MID_X   = Math.round(width / 2);
-    const LEFT_X  = 60;
-    const RIGHT_X = MID_X + 30;
-    const RIGHT_W = width - RIGHT_X - 60;
-    let   ly      = 106;  // left column y cursor
-    const ROW_H   = 48;
+    // ── Pill helper ───────────────────────────────────────────────────────────
+    const PILL_H   = 28;
+    const PILL_PAD = 10;
+    const PILL_GAP = 6;
+    const FONT     = '12px monospace';
 
-    // ── Left: Systems ────────────────────────────────────────────────────────
-    renderer.drawText('SYSTEMS', LEFT_X, ly - 8, HEADER_F, TITLE_COLOR, 'left');
+    const drawPillRow = (label: string, x: number, y: number): void => {
+      ctx.font = FONT;
+      const tw = ctx.measureText(label).width;
+      const pw = tw + PILL_PAD * 2;
+      UIRenderer.drawPill(ctx, x, y, pw, PILL_H, '#00ccdd');
+      ctx.font      = FONT;
+      ctx.fillStyle = '#001820';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, x + PILL_PAD, y + PILL_H / 2 + 5);
+    };
+
+    // ── Left column: Systems ──────────────────────────────────────────────────
+    const COL_X = 20;
+    let   ly    = 100;
+
+    UIRenderer.drawSciFiPanel(ctx, 0, ly, Math.round(width / 2) - 20, height - ly - 70,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.92 });
+
+    ly += 14;
+    renderer.drawText('SYSTEMS', COL_X + 4, ly + 12, HEADER_F, '#001830', 'left');
+    ly += 32;
 
     const systems = this.collectPlayerSystems(world, shipEntity);
-    for (const { entity, system } of systems) {
-      const canUpgrade = system.maxCapacity < MAX_SYSTEM_LEVEL;
-      const cost       = systemUpgradeCost(system.maxCapacity);
-      const canAfford  = ship.scrap >= cost;
-
-      renderer.drawText(
-        `${system.type.padEnd(10)}  Lv ${system.maxCapacity}`,
-        LEFT_X, ly + 10, ROW_F, TEXT_COLOR, 'left',
-      );
-
-      const bx  = LEFT_X + 200;
-      const by  = ly - 2;
-      const bw  = 170;
-      if (canUpgrade) {
-        const active = canAfford;
-        btn(renderer,
-          `+1 Cap  (${cost} Scrap)`,
-          bx, by, bw, BTN_H,
-          active ? BTN_CAN_BG : BTN_NO_BG,
-          active ? BTN_CAN_BORDER : BTN_NO_BORDER,
-          active ? BTN_CAN_TEXT : BTN_NO_TEXT,
-        );
-        if (active) {
-          const capturedSystem = system;
-          const capturedEntity = entity;
-          void capturedEntity;
-          hit(hitboxes, bx, by, bw, BTN_H, () => {
-            ship.scrap -= cost;
-            capturedSystem.level += 1;
-            capturedSystem.maxCapacity += 1;
-          });
-        }
-      } else {
-        renderer.drawText('MAX', bx + bw / 2, by + BTN_H / 2 + 5, '11px monospace', DIM_COLOR, 'center');
-      }
-
-      ly += ROW_H;
+    for (const { system } of systems) {
+      drawPillRow(`${system.type.padEnd(14)} Lv ${system.maxCapacity}`, COL_X, ly);
+      ly += PILL_H + PILL_GAP;
     }
 
     // Reactor row.
-    const canAffordReactor = ship.scrap >= REACTOR_UPGRADE_COST;
-    renderer.drawText(
-      `REACTOR    P ${reactor.totalPower}`,
-      LEFT_X, ly + 10, ROW_F, TEXT_COLOR, 'left',
-    );
-    {
-      const bx = LEFT_X + 200;
-      const by = ly - 2;
-      const bw = 170;
-      btn(renderer,
-        `+1 Power  (${REACTOR_UPGRADE_COST} Scrap)`,
-        bx, by, bw, BTN_H,
-        canAffordReactor ? BTN_CAN_BG : BTN_NO_BG,
-        canAffordReactor ? BTN_CAN_BORDER : BTN_NO_BORDER,
-        canAffordReactor ? BTN_CAN_TEXT : BTN_NO_TEXT,
-      );
-      if (canAffordReactor) {
-        hit(hitboxes, bx, by, bw, BTN_H, () => {
-          ship.scrap     -= REACTOR_UPGRADE_COST;
-          reactor.totalPower   += 1;
-          reactor.currentPower += 1;
-        });
-      }
-    }
+    ly += 4;
+    drawPillRow(`REACTOR   Power ${reactor.totalPower}`, COL_X, ly);
 
-    // ── Right: Weapons ────────────────────────────────────────────────────────
-    let ry = 106;
-    renderer.drawText('WEAPONS', RIGHT_X, ry - 8, HEADER_F, TITLE_COLOR, 'left');
+    // ── Right column: Weapons ─────────────────────────────────────────────────
+    const RIGHT_X = Math.round(width / 2) + 10;
+    const RIGHT_W = width - RIGHT_X - 20;
+    let   ry      = 100;
 
-    const equippedWeapons = this.collectPlayerWeapons(world, shipEntity);
+    UIRenderer.drawSciFiPanel(ctx, RIGHT_X, ry, RIGHT_W, height - ry - 70,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.92 });
+
+    ry += 14;
+    renderer.drawText('EQUIPPED WEAPONS', RIGHT_X + 10, ry + 12, HEADER_F, '#001830', 'left');
+    ry += 32;
+
     const allWeapons      = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
-    const SLOT_W          = RIGHT_W;
-    const SLOT_H          = 38;
+    const equippedWeapons = this.collectPlayerWeapons(world, shipEntity);
 
-    // Active weapon slots.
-    for (let i = 0; i < MAX_WEAPONS; i++) {
-      const slot = equippedWeapons[i];
-      const sx   = RIGHT_X;
-      const sy   = ry;
-
-      if (slot !== undefined) {
-        const [wEntity, wComp] = slot;
-        const tpl = allWeapons.find((t) => t.id === wComp.templateId);
+    if (equippedWeapons.length === 0) {
+      renderer.drawText('(none equipped)', RIGHT_X + 14, ry + 14, ROW_F, DIM_COLOR, 'left');
+      ry += PILL_H + PILL_GAP;
+    } else {
+      for (const [, wComp] of equippedWeapons) {
+        const tpl  = allWeapons.find((t) => t.id === wComp.templateId);
         const name = tpl?.name ?? wComp.templateId;
-
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#0d1520', true);
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#334455', false);
-        renderer.drawText(name, sx + 8, sy + SLOT_H / 2 + 5, ROW_F, VAL_COLOR, 'left');
-
-        const ubx = sx + SLOT_W - 84;
-        const uby = sy + 3;
-        const ubw = 80;
-        const ubh = SLOT_H - 6;
-        btn(renderer, 'Unequip', ubx, uby, ubw, ubh, BTN_EQ_BG, BTN_EQ_BORDER, BTN_EQ_TEXT);
-        const capturedEntity = wEntity;
-        const capturedId     = wComp.templateId;
-        hit(hitboxes, ubx, uby, ubw, ubh, () => {
-          world.destroyEntity(capturedEntity);
-          ship.cargoWeapons.push(capturedId);
-        });
-      } else {
-        // Empty slot.
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#080c14', true);
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#1a2233', false);
-        renderer.drawText('─── empty ───', sx + (SLOT_W - 90) / 2, sy + SLOT_H / 2 + 5, ROW_F, '#1e2e40', 'center');
+        drawPillRow(name, RIGHT_X + 10, ry);
+        ry += PILL_H + PILL_GAP;
       }
-
-      ry += SLOT_H + 6;
     }
 
     // Cargo weapons.
-    ry += 12;
-    renderer.drawLine(RIGHT_X, ry, RIGHT_X + RIGHT_W, ry, PANEL_BORDER, 1);
-    ry += 14;
-    renderer.drawText('CARGO', RIGHT_X, ry, HEADER_F, TITLE_COLOR, 'left');
-    ry += 18;
+    ry += 8;
+    renderer.drawText('CARGO', RIGHT_X + 10, ry + 12, HEADER_F, '#001830', 'left');
+    ry += 28;
 
     if (ship.cargoWeapons.length === 0) {
-      renderer.drawText('(empty)', RIGHT_X + 8, ry + 14, ROW_F, DIM_COLOR, 'left');
+      renderer.drawText('(empty)', RIGHT_X + 14, ry + 14, ROW_F, DIM_COLOR, 'left');
     } else {
-      for (let ci = 0; ci < ship.cargoWeapons.length; ci++) {
-        const weaponId  = ship.cargoWeapons[ci];
-        const tpl       = allWeapons.find((t) => t.id === weaponId);
-        const name      = tpl?.name ?? weaponId;
-        const hasSlot   = equippedWeapons.length < MAX_WEAPONS;
-
-        const sx = RIGHT_X;
-        const sy = ry;
-
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#0d1520', true);
-        renderer.drawRect(sx, sy, SLOT_W - 90, SLOT_H, '#1a2233', false);
-        renderer.drawText(name, sx + 8, sy + SLOT_H / 2 + 5, ROW_F, TEXT_COLOR, 'left');
-
-        const ebx = sx + SLOT_W - 84;
-        const eby = sy + 3;
-        const ebw = 80;
-        const ebh = SLOT_H - 6;
-        btn(renderer, 'Equip',
-          ebx, eby, ebw, ebh,
-          hasSlot ? BTN_CAN_BG : BTN_NO_BG,
-          hasSlot ? BTN_CAN_BORDER : BTN_NO_BORDER,
-          hasSlot ? BTN_CAN_TEXT : BTN_NO_TEXT,
-        );
-
-        if (hasSlot) {
-          const capturedId = weaponId;
-          const capturedIdx = ci;
-          void capturedIdx;
-          hit(hitboxes, ebx, eby, ebw, ebh, () => {
-            // Remove from cargo.
-            const idx = ship.cargoWeapons.indexOf(capturedId);
-            if (idx !== -1) ship.cargoWeapons.splice(idx, 1);
-            // Spawn weapon entity owned by player ship.
-            this.equipWeapon(world, capturedId, shipEntity, allWeapons);
-          });
-        }
-
-        ry += SLOT_H + 6;
+      for (const weaponId of ship.cargoWeapons) {
+        const tpl  = allWeapons.find((t) => t.id === weaponId);
+        const name = tpl?.name ?? weaponId;
+        drawPillRow(name, RIGHT_X + 10, ry);
+        ry += PILL_H + PILL_GAP;
       }
     }
 
     // ── Back button ───────────────────────────────────────────────────────────
-    const BACK_W = 200;
+    const BACK_W = 180;
     const BACK_H = 40;
-    const bx = (width - BACK_W) / 2;
-    const by = height - BACK_H - 24;
-    btn(renderer, 'Back to Star Map', bx, by, BACK_W, BACK_H, BTN_BACK_BG, BTN_BACK_BORDER, BTN_BACK_TEXT);
-    hit(hitboxes, bx, by, BACK_W, BACK_H, onBack);
-
-    // ── Panel border drawn over content ───────────────────────────────────────
-    // Vertical divider.
-    renderer.drawLine(MID_X, 82, MID_X, height - 70, PANEL_BORDER, 1);
+    const backX  = 0;
+    const backY  = height - BACK_H - 14;
+    UIRenderer.drawSciFiPanel(ctx, backX, backY, BACK_W, BACK_H,
+      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('← Back to Map', backX + BACK_W / 2, backY + BACK_H / 2 + 6,
+      'bold 12px monospace', '#001830', 'center');
+    hit(hitboxes, backX, backY, BACK_W, BACK_H, onBack);
 
     // ── Process clicks ────────────────────────────────────────────────────────
     if (input.isMouseJustPressed(0)) {
@@ -608,27 +500,4 @@ export class UpgradeSystem {
     return result;
   }
 
-  private equipWeapon(
-    world: IWorld,
-    weaponId: string,
-    shipEntity: number,
-    allWeapons: WeaponTemplate[],
-  ): void {
-    const tpl = allWeapons.find((w) => w.id === weaponId);
-    if (tpl === undefined) return;
-
-    const weaponEntity = world.createEntity();
-    world.addComponent(weaponEntity, {
-      _type: 'Weapon',
-      templateId: tpl.id,
-      charge: 0,
-      maxCharge: tpl.cooldown,
-      powerRequired: tpl.powerCost,
-      isPowered: false,
-      targetRoomEntity: undefined,
-      chargeRateMultiplier: 1.0,
-    } as WeaponComponent);
-    const ownerComp: OwnerComponent = { _type: 'Owner', shipEntity };
-    world.addComponent(weaponEntity, ownerComp);
-  }
 }

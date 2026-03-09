@@ -4,12 +4,25 @@ import type { ComputedNode } from './UITypes';
 export interface SciFiPanelOptions {
   /** Title text displayed in a solid header bar at the top of the panel. */
   title?: string;
-  /** Size in px of the diagonal corner cut-offs (top-left and bottom-right). Default: 10. */
+  /**
+   * Size in px of the bottom-right diagonal corner cut.
+   * Default: Math.floor(panelHeight * 2 / 3) — two-thirds of the height.
+   */
   chamfer?: number;
   /** Alpha (0–1) applied to the gradient fill. Default: 0.92. */
   alpha?: number;
-  /** CSS colour string for the 2px border. Default: '#4c5866'. */
+  /** CSS colour string for the 3px border. Default: '#ffffff'. */
   borderColor?: string;
+  /**
+   * When true the left edge is perfectly straight (no top-left bevel).
+   * Use this for panels anchored to the left edge of the screen (x = 0).
+   */
+  noLeftChamfer?: boolean;
+  /**
+   * When true uses a white/light gradient instead of the default dark one.
+   * Text drawn on top should use dark colours for contrast.
+   */
+  lightBg?: boolean;
 }
 
 /**
@@ -17,14 +30,14 @@ export interface SciFiPanelOptions {
  * CanvasRenderingContext2D.  All methods are static — no instantiation needed.
  *
  * Usage:
- *   UIRenderer.drawSciFiPanel(renderer.getContext(), x, y, w, h, { title: 'WEAPONS', chamfer: 10 });
+ *   UIRenderer.drawSciFiPanel(renderer.getContext(), x, y, w, h, { title: 'WEAPONS' });
  */
 export class UIRenderer {
   /**
    * Draws a sci-fi style panel with:
-   *   • Chamfered (diagonally cut) top-left and bottom-right corners.
-   *   • Vertical dark gradient fill.
-   *   • 2px coloured border.
+   *   • Chamfered bottom-right corner (and optionally top-left).
+   *   • Vertical gradient fill (dark by default, white when lightBg = true).
+   *   • 3px coloured border.
    *   • Optional solid header bar with a bold uppercase title.
    */
   static drawSciFiPanel(
@@ -35,79 +48,91 @@ export class UIRenderer {
     height: number,
     options: SciFiPanelOptions = {},
   ): void {
-    const chamfer     = options.chamfer     ?? 20;
-    const alpha       = options.alpha       ?? 0.92;
-    const borderColor = options.borderColor ?? '#ffffff';
+    const chamfer  = options.chamfer        ?? Math.floor(height * 2 / 3);
+    const alpha    = options.alpha          ?? 0.92;
+    const border   = options.borderColor    ?? '#ffffff';
+    const noLeft   = options.noLeftChamfer  ?? false;
+    const lightBg  = options.lightBg        ?? false;
     const w = width;
     const h = height;
 
-    // ── Chamfered polygon path ───────────────────────────────────────────────
-    // Top-left and bottom-right corners are cut diagonally by `chamfer` px.
-    ctx.beginPath();
-    ctx.moveTo(x + chamfer, y);           // top edge, left of top-left corner
-    ctx.lineTo(x + w,       y);           // top-right corner (square)
-    ctx.lineTo(x + w,       y + h - chamfer); // right edge, above bottom-right corner
-    ctx.lineTo(x + w - chamfer, y + h);   // bottom-right chamfer point
-    ctx.lineTo(x,           y + h);       // bottom-left corner (square)
-    ctx.lineTo(x,           y + chamfer); // left edge, below top-left corner
-    ctx.closePath();                       // closes back to (x + chamfer, y)
+    // ── Build the polygon path ────────────────────────────────────────────────
+    const path = (): void => {
+      ctx.beginPath();
+      if (noLeft) {
+        ctx.moveTo(x,             y);               // top-left  (square)
+      } else {
+        ctx.moveTo(x + chamfer,   y);               // top edge, past top-left cut
+      }
+      ctx.lineTo(x + w,           y);               // top-right (square)
+      ctx.lineTo(x + w,           y + h - chamfer); // right edge
+      ctx.lineTo(x + w - chamfer, y + h);           // bottom-right cut
+      ctx.lineTo(x,               y + h);           // bottom-left (square)
+      if (!noLeft) {
+        ctx.lineTo(x,             y + chamfer);      // left edge, past top-left cut
+      }
+      ctx.closePath();
+    };
 
-    // ── Vertical gradient fill ───────────────────────────────────────────────
+    path();
+
+    // ── Vertical gradient fill ────────────────────────────────────────────────
     const grad = ctx.createLinearGradient(x, y, x, y + h);
-    grad.addColorStop(0, `rgba(30,35,45,${alpha})`);
-    grad.addColorStop(1, `rgba(15,18,25,${alpha})`);
+    if (lightBg) {
+      grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      grad.addColorStop(1, `rgba(220,228,240,${alpha})`);
+    } else {
+      grad.addColorStop(0, `rgba(30,35,45,${alpha})`);
+      grad.addColorStop(1, `rgba(15,18,25,${alpha})`);
+    }
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // ── Border stroke ────────────────────────────────────────────────────────
-    ctx.strokeStyle = borderColor;
+    // ── Border stroke ─────────────────────────────────────────────────────────
+    ctx.strokeStyle = border;
     ctx.lineWidth   = 3;
     ctx.stroke();
 
-    // ── Optional title header ────────────────────────────────────────────────
+    // ── Optional title header ─────────────────────────────────────────────────
     if (options.title !== undefined && options.title.length > 0) {
       const HEADER_H = 28;
 
-      // Clip to the top portion of the chamfered shape so the solid header
-      // fill does not bleed outside the angled top-left corner.
+      // Clip to header region so the fill stays inside the chamfered shape.
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x + chamfer, y);
-      ctx.lineTo(x + w,       y);
-      ctx.lineTo(x + w,       y + HEADER_H);
-      ctx.lineTo(x,           y + HEADER_H);
-      ctx.lineTo(x,           y + chamfer);
+      if (noLeft) {
+        ctx.moveTo(x,           y);
+      } else {
+        ctx.moveTo(x + chamfer, y);
+      }
+      ctx.lineTo(x + w,   y);
+      ctx.lineTo(x + w,   y + HEADER_H);
+      ctx.lineTo(x,       y + HEADER_H);
+      if (!noLeft) ctx.lineTo(x, y + chamfer);
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = 'rgba(40,50,65,0.95)';
+      ctx.fillStyle = lightBg ? 'rgba(190,210,235,0.97)' : 'rgba(40,50,65,0.95)';
       ctx.fillRect(x, y, w, HEADER_H);
       ctx.restore();
 
-      // Re-stroke the border so it isn't painted over by the header fill.
-      ctx.beginPath();
-      ctx.moveTo(x + chamfer, y);
-      ctx.lineTo(x + w,       y);
-      ctx.lineTo(x + w,       y + h - chamfer);
-      ctx.lineTo(x + w - chamfer, y + h);
-      ctx.lineTo(x,           y + h);
-      ctx.lineTo(x,           y + chamfer);
-      ctx.closePath();
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth   = 2;
+      // Re-stroke the main border on top of the header fill.
+      path();
+      ctx.strokeStyle = border;
+      ctx.lineWidth   = 3;
       ctx.stroke();
 
-      // Separator line beneath the header.
+      // Separator beneath the header.
       ctx.beginPath();
-      ctx.moveTo(x + 4, y + HEADER_H);
+      ctx.moveTo(x + 4,     y + HEADER_H);
       ctx.lineTo(x + w - 4, y + HEADER_H);
-      ctx.strokeStyle = borderColor;
+      ctx.strokeStyle = border;
       ctx.lineWidth   = 1;
       ctx.stroke();
 
-      // Title text — bold, uppercase, centred in header.
+      // Title text.
       ctx.font      = 'bold 12px monospace';
-      ctx.fillStyle = '#b8c8d8';
+      ctx.fillStyle = lightBg ? '#001830' : '#b8c8d8';
       ctx.textAlign = 'center';
       ctx.fillText(options.title.toUpperCase(), x + w / 2, y + HEADER_H / 2 + 5);
     }
@@ -158,7 +183,6 @@ export class UIRenderer {
     const { x, y, w, h } = node.bounds;
 
     if (type === 'Panel') {
-      // Cast content to SciFiPanelOptions — callers are responsible for type consistency.
       const opts = (node.node.content ?? {}) as SciFiPanelOptions;
       UIRenderer.drawSciFiPanel(ctx, x, y, w, h, opts);
     } else if (type === 'Text') {
@@ -170,7 +194,6 @@ export class UIRenderer {
         ctx.fillText(text, x, y + h / 2 + 5);
       }
     }
-    // Row, Column, Spacer — no visual output; fall through to children.
 
     for (const child of node.children) {
       UIRenderer.renderTree(ctx, child);
