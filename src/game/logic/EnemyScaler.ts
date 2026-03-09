@@ -1,3 +1,4 @@
+import { GameStateData } from '../../engine/GameState';
 import type { ShipTemplate } from '../data/ShipTemplate';
 import type { SystemType } from '../data/SystemType';
 import type { WeaponTemplate } from '../data/WeaponTemplate';
@@ -23,14 +24,20 @@ export class EnemyScaler {
     // Deep copy — never mutate the cached JSON template.
     const t = JSON.parse(JSON.stringify(template)) as ShipTemplate;
 
+    // Effective sector level — shifted by difficulty so enemies feel weaker/stronger.
+    const diffOffset    = GameStateData.difficulty === 'EASY' ? -1
+                        : GameStateData.difficulty === 'HARD' ?  1
+                        : 0;
+    const effectiveSector = Math.max(1, sector + diffOffset);
+
     // ── Hull scaling: +1 HP per sector above sector 1 (authentic FTL pacing) ─
-    t.maxHull = t.maxHull + (sector - 1);
+    t.maxHull = t.maxHull + (effectiveSector - 1);
 
     // ── Reactor ────────────────────────────────────────────────────────────
-    t.startingReactorPower += (sector - 1) * 2;
+    t.startingReactorPower += (effectiveSector - 1) * 2;
 
     // ── System level scaling (every 2 sectors) ─────────────────────────────
-    const sysBonus = Math.floor((sector - 1) / 2);
+    const sysBonus = Math.floor((effectiveSector - 1) / 2);
     for (const sys of t.systems) {
       if (sys.type === 'SHIELDS' || sys.type === 'ENGINES') {
         sys.level += sysBonus;
@@ -46,9 +53,9 @@ export class EnemyScaler {
     const tier3 = availableWeapons.filter((w) => w.powerCost >= 3);
 
     const pool: WeaponTemplate[] =
-      sector >= 5 ? [...tier1, ...tier2, ...tier3] :
-      sector >= 3 ? [...tier1, ...tier2] :
-                    tier1;
+      effectiveSector >= 5 ? [...tier1, ...tier2, ...tier3] :
+      effectiveSector >= 3 ? [...tier1, ...tier2] :
+                              tier1;
 
     if (pool.length > 0) {
       const weaponSys = t.systems.find((s) => s.type === 'WEAPONS');
@@ -70,10 +77,10 @@ export class EnemyScaler {
     }
 
     // ── Advanced system injection ───────────────────────────────────────────
-    if (sector >= 2 && Math.random() < 0.25) {
+    if (effectiveSector >= 2 && Math.random() < 0.25) {
       EnemyScaler.addSystemRoom(t, 'DRONE_CONTROL', 2);
     }
-    if (sector >= 3 && Math.random() < 0.20) {
+    if (effectiveSector >= 3 && Math.random() < 0.20) {
       EnemyScaler.addSystemRoom(t, 'CLOAKING', 1);
     }
 

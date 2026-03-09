@@ -444,6 +444,21 @@ async function init(): Promise<void> {
     // Spawn the player ship.
     ShipFactory.spawnShip(world, shipId, spawnX, spawnY, 'PLAYER');
 
+    // Apply difficulty-based starting resource bonuses.
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship !== undefined) {
+        const diff = GameStateData.difficulty;
+        ship.scrap      += diff === 'EASY' ? 30 : diff === 'NORMAL' ? 10 : 0;
+        ship.fuel       += diff === 'EASY' ? 15 : diff === 'NORMAL' ? 10 : 10;
+        ship.missiles   += diff === 'EASY' ? 15 : diff === 'NORMAL' ? 10 : 5;
+        ship.droneParts += diff === 'EASY' ? 10 : diff === 'NORMAL' ? 5  : 0;
+      }
+      break;
+    }
+
     // Reset combat state.
     victorySystem.reset();
     isPaused = false;

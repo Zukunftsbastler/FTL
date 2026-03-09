@@ -1,3 +1,6 @@
+/** Player-selected run difficulty. */
+export type Difficulty = 'EASY' | 'NORMAL' | 'HARD';
+
 /** The top-level game screens. main.ts switches between them. */
 export type GameState =
   | 'HANGAR'
@@ -42,6 +45,8 @@ export const GameStateData: {
    * 99 = unreachable / unknown.
    */
   distanceToExit:         number;
+  /** Player-chosen difficulty for the current run. Set in the Hangar. */
+  difficulty:             Difficulty;
 } = {
   cachedPlanet:           null,
   sectorNumber:           1,
@@ -52,5 +57,6 @@ export const GameStateData: {
   narrativeFlags:         [],
   jumpsInCurrentSector:   0,
   currentStoryId:         null, // set to a random story ID in main.ts after assets load
+  difficulty:             'NORMAL' as Difficulty,
   distanceToExit:         99,
 };

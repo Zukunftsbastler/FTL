@@ -1,6 +1,8 @@
 import { AssetLoader }         from '../../utils/AssetLoader';
 import { UIRenderer }          from '../../engine/ui/UIRenderer';
 import { BackgroundGenerator } from '../world/BackgroundGenerator';
+import { GameStateData }       from '../../engine/GameState';
+import type { Difficulty }     from '../../engine/GameState';
 import type { IInput }         from '../../engine/IInput';
 import type { IRenderer }      from '../../engine/IRenderer';
 import type { ShipTemplate }   from '../data/ShipTemplate';
@@ -50,9 +52,33 @@ export class HangarSystem {
 
     const selectedShip = playerShips.find((s) => s.id === this.selectedShipId) ?? playerShips[0];
 
+    // ── Difficulty selector ────────────────────────────────────────────────
+    {
+      const levels: Difficulty[] = ['EASY', 'NORMAL', 'HARD'];
+      const PILL_W = 90; const PILL_H = 32; const GAP = 8;
+      const totalW = levels.length * PILL_W + (levels.length - 1) * GAP;
+      let dx = width / 2 - totalW / 2;
+      const dy = 78;
+
+      for (const lvl of levels) {
+        const isActive = GameStateData.difficulty === lvl;
+        const pillColor = isActive
+          ? (lvl === 'EASY' ? '#00cc66' : lvl === 'HARD' ? '#cc3333' : '#00ccdd')
+          : 'rgba(60,70,90,0.7)';
+        UIRenderer.drawPill(ctx, dx, dy, PILL_W, PILL_H, pillColor);
+        renderer.drawText(lvl, dx + PILL_W / 2, dy + PILL_H / 2 + 5,
+          isActive ? 'bold 12px monospace' : '11px monospace',
+          isActive ? '#001830' : '#556677', 'center');
+        const capLvl = lvl;
+        hitboxes.push({ x: dx, y: dy, w: PILL_W, h: PILL_H,
+          action: () => { GameStateData.difficulty = capLvl; } });
+        dx += PILL_W + GAP;
+      }
+    }
+
     // ── Left panel: Ship list ──────────────────────────────────────────────
     const LP_X = 10; const LP_W = 260;
-    const LP_Y = 80; const LP_H = height - LP_Y - 70;
+    const LP_Y = 120; const LP_H = height - LP_Y - 70;
     UIRenderer.drawSciFiPanel(ctx, LP_X, LP_Y, LP_W, LP_H,
       { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
     renderer.drawText('SHIPS', LP_X + LP_W / 2, LP_Y + 18, '13px monospace', '#001830', 'center');

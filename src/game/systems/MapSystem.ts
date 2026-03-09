@@ -765,7 +765,10 @@ export class MapSystem {
     const wasVisited = node.visibility === 'VISITED';
 
     this.deductFuel(world);
-    this.rebelFleetX += REBEL_ADVANCE;
+    const fleetMult   = GameStateData.difficulty === 'EASY' ? 0.85
+                      : GameStateData.difficulty === 'HARD' ? 1.1
+                      : 1.0;
+    this.rebelFleetX += REBEL_ADVANCE * fleetMult;
 
     // Track jumps for the Narrative Director.
     GameStateData.jumpsInCurrentSector += 1;

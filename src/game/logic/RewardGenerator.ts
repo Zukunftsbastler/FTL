@@ -1,3 +1,4 @@
+import { GameStateData } from '../../engine/GameState';
 import type { CrewTemplate, CrewSkills } from '../data/CrewTemplate';
 import type { CrewRace } from '../data/CrewRace';
 import type { CrewClass } from '../data/CrewClass';
@@ -49,8 +50,12 @@ export function generateCombatReward(
 ): Reward {
   const isCrewKill   = victoryType === 'CREW_KILL';
   const scrapBase    = 10 + sectorLevel * 5 + Math.floor(Math.random() * 11);
+  const diffMult     = GameStateData.difficulty === 'EASY' ? 1.5
+                     : GameStateData.difficulty === 'HARD' ? 0.9
+                     : 1.0;
+  const scrapFinal   = Math.round(scrapBase * (isCrewKill ? 1.25 : 1.0) * diffMult);
   const reward: Reward = {
-    scrap:      isCrewKill ? Math.round(scrapBase * 1.25) : scrapBase,
+    scrap:      scrapFinal,
     fuel:       Math.random() < 0.70 ? 1 + Math.floor(Math.random() * 2) : 0,
     missiles:   Math.random() < 0.60 ? 1 + Math.floor(Math.random() * 2) : 0,
     droneParts: Math.random() < 0.30 ? 1 : 0,
