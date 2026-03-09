@@ -1,5 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
+import { ENEMY_PANEL_W } from './RenderSystem';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -10,11 +11,13 @@ import type { RoomComponent } from '../components/RoomComponent';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 
-// ── FTL button layout (top-right corner) ─────────────────────────────────────
+// ── FTL button layout ─────────────────────────────────────────────────────────
 export const FTL_BTN_W     = 160;
 export const FTL_BTN_H     = 40;
-export const FTL_BTN_TOP   = 10;   // distance from top of canvas
-export const FTL_BTN_RIGHT = 10;   // distance from right of canvas
+/** Vertical offset: centres the 40 px button in the 50 px top bar. */
+export const FTL_BTN_TOP   = 5;
+/** Gap between the right edge of the FTL button and the left edge of the enemy panel. */
+const FTL_BTN_GAP          = 8;
 
 /**
  * Authentic FTL charge times (seconds) indexed by engine power level.
@@ -62,7 +65,7 @@ export class JumpSystem {
     // Only clickable when fully charged.
     if (ftlCharge >= 1.0 && this.input.isMouseJustPressed(0)) {
       const { width } = this.renderer.getCanvasSize();
-      const bx = width - FTL_BTN_RIGHT - FTL_BTN_W;
+      const bx = width - ENEMY_PANEL_W - FTL_BTN_GAP - FTL_BTN_W;
       const by = FTL_BTN_TOP;
       const mouse = this.input.getMousePosition();
       if (
@@ -167,26 +170,28 @@ export class JumpSystem {
 
   private drawButton(ftlCharge: number): void {
     const { width } = this.renderer.getCanvasSize();
-    const bx = width - FTL_BTN_RIGHT - FTL_BTN_W;
+    // Position the button immediately to the left of the enemy-panel with a small gap.
+    const bx = width - ENEMY_PANEL_W - FTL_BTN_GAP - FTL_BTN_W;
     const by = FTL_BTN_TOP;
 
     const isReady     = ftlCharge >= 1.0;
     const bgColor     = isReady ? '#2a2200' : '#161616';
+    const fillColor   = isReady ? '#ffee00' : '#886600';
     const borderColor = isReady ? '#eecc00' : '#444444';
-    const textColor   = isReady ? '#ffee44' : '#555555';
+    const textColor   = isReady ? '#ffee44' : '#888888';
     const label       = isReady ? 'FTL ESCAPE' : 'FTL CHARGING';
 
-    this.renderer.drawRect(bx, by, FTL_BTN_W, FTL_BTN_H, bgColor,     true);
+    // 1. Dark background.
+    this.renderer.drawRect(bx, by, FTL_BTN_W, FTL_BTN_H, bgColor, true);
+    // 2. Yellow charge fill (grows left-to-right inside the button).
+    if (ftlCharge > 0) {
+      this.renderer.drawRect(bx, by, Math.round(FTL_BTN_W * ftlCharge), FTL_BTN_H,
+        fillColor + '55', true);   // semi-transparent fill
+    }
+    // 3. Border.
     this.renderer.drawRect(bx, by, FTL_BTN_W, FTL_BTN_H, borderColor, false);
+    // 4. Label text.
     this.renderer.drawText(label, bx + FTL_BTN_W / 2, by + FTL_BTN_H / 2 + 5,
       '13px monospace', textColor, 'center');
-
-    // Yellow FTL charge bar below the button.
-    const barY = by + FTL_BTN_H + 3;
-    const barH = 6;
-    this.renderer.drawRect(bx, barY, FTL_BTN_W,                             barH, '#1a1600', true);
-    this.renderer.drawRect(bx, barY, Math.round(FTL_BTN_W * ftlCharge),     barH,
-      isReady ? '#ffee00' : '#aa8800', true);
-    this.renderer.drawRect(bx, barY, FTL_BTN_W,                             barH, '#554400', false);
   }
 }

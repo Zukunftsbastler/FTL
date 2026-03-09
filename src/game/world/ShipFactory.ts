@@ -90,6 +90,7 @@ export class ShipFactory {
     const shipComp: ShipComponent = {
       _type: 'Ship',
       id: template.id,
+      name: template.name,
       maxHull: template.maxHull,
       currentHull: template.maxHull,
       fuel: template.startingResources.fuel,

@@ -136,6 +136,9 @@ const BEAM_LW        = 3;
 // ── UI panel layout constants ─────────────────────────────────────────────────
 /** Height of the top resource bar spanning the full canvas width. */
 const TOP_BAR_H       = 50;
+/** Width of the enemy status panel anchored to the right of the top bar.
+ *  Exported so JumpSystem can position the FTL button adjacent to it. */
+export const ENEMY_PANEL_W = 300;
 /** Border colour shared by all anchored UI panels (passed to UIRenderer). */
 const UI_PANEL_BORDER = '#334455';
 /** Width of the left pillar panel (crew roster + system power). */
@@ -187,7 +190,7 @@ const COMBAT_HUD: UINode = {
         {
           type:    'Panel',
           id:      'enemy-panel',
-          width:   300,
+          width:   ENEMY_PANEL_W,
           content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
         },
       ],
@@ -588,6 +591,7 @@ export class RenderSystem {
   // ── Top bar (player-panel left | spacer | enemy-panel right) ────────────────
 
   private drawTopBar(world: IWorld): void {
+    const { width } = this.renderer.getCanvasSize();
     const y = Math.round(TOP_BAR_H / 2) + 6; // text baseline centred in bar
 
     // ── Player resource stats — drawn inside the left 'player-panel' ──────
@@ -620,10 +624,17 @@ export class RenderSystem {
       if (ship === undefined) break;
       const ex = enemyBounds !== null && enemyBounds !== undefined
         ? enemyBounds.x + enemyBounds.w / 2
-        : this.renderer.getCanvasSize().width - 150;
+        : width - 150;
       this.renderer.drawText(
         `ENEMY HULL ${ship.currentHull}/${ship.maxHull}`,
         ex, y, DASH_FONT, '#ff6644', 'center',
+      );
+
+      // Enemy ship name — prominently at top-bar centre.
+      this.renderer.drawText(
+        ship.name.toUpperCase(),
+        width / 2, y,
+        '13px monospace', '#ff9966', 'center',
       );
       break;
     }

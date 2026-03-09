@@ -24,7 +24,7 @@
     "id": "pirate_ambush",
     "text": "A ship with pirate markings suddenly decloaks off your port bow. They are charging weapons!",
     "choices": [
-      { "text": "Show them no mercy.", "triggerCombatWithShipId": "rebel_a" }
+      { "text": "Show them no mercy.", "triggerCombatWithShipId": "pirate_interceptor" }
     ]
   },
   {
@@ -61,7 +61,7 @@
     "id": "distress_start",
     "text": "You arrive at a distress beacon to find a civilian ship under attack by a pirate interceptor!",
     "choices": [
-      { "text": "Move in to attack!", "triggerCombatWithShipId": "rebel_a" },
+      { "text": "Move in to attack!", "triggerCombatWithShipId": "pirate_interceptor" },
       { "text": "Stay out of it." }
     ]
   },
@@ -130,7 +130,7 @@
     "text": "A heavily armed slaver ship hails you: 'We have prime workers for sale! Give us 25 scrap, or we'll take your crew by force!'",
     "choices": [
       { "text": "Pay their ransom.", "requirementId": "scrap:25", "reward": { "scrap": -25, "crewMember": true } },
-      { "text": "We don't negotiate with slavers. Open fire!", "triggerCombatWithShipId": "rebel_a" }
+      { "text": "We don't negotiate with slavers. Open fire!", "triggerCombatWithShipId": "pirate_interceptor" }
     ]
   },
   {
@@ -138,7 +138,7 @@
     "text": "A pirate ship is hiding inside an asteroid field, waiting for unsuspecting travelers. They attack!",
     "hazard": "ASTEROIDS",
     "choices": [
-      { "text": "Evasive maneuvers!", "triggerCombatWithShipId": "rebel_a" }
+      { "text": "Evasive maneuvers!", "triggerCombatWithShipId": "pirate_interceptor" }
     ]
   },
   {
@@ -203,7 +203,7 @@
     "text": "You arrive in an ion storm. Your reactor power is severely limited. Suddenly, a ship decloaks!",
     "hazard": "ION_STORM",
     "choices": [
-      { "text": "Fight blind!", "triggerCombatWithShipId": "rebel_a" }
+      { "text": "Fight blind!", "triggerCombatWithShipId": "auto_assault" }
     ]
   },
   {
@@ -227,9 +227,9 @@
   },
   {
     "id": "mantis_attacks",
-    "text": "The Mantis wakes up in a frenzy and thrashes the cargo bay, causing hull damage before venting itself into space.",
+    "text": "The Mantis wakes up in a frenzy and immediately attacks your crew! You have no choice but to fight back.",
     "choices": [
-      { "text": "Well, that backfired.", "reward": { "hullRepair": -3 } }
+      { "text": "Battle stations!", "triggerCombatWithShipId": "mantis_scout" }
     ]
   },
   {

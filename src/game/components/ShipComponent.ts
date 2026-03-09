@@ -5,6 +5,8 @@ export interface ShipComponent extends Component {
   readonly _type: 'Ship';
   /** Template ID this ship was spawned from (e.g. 'kestrel_a'). */
   readonly id: string;
+  /** Human-readable ship name (e.g. 'Kestrel Cruiser (Type A)'). */
+  readonly name: string;
   /** Maximum hull hit points; game over when currentHull reaches 0. */
   readonly maxHull: number;
   /** Mutable current hull — reduced by enemy fire, repaired by scrap/events. */
