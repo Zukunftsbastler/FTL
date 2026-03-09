@@ -15,6 +15,8 @@ import type { WeaponTemplate } from '../data/WeaponTemplate';
 import type { StoreItem } from '../data/StoreInventory';
 
 // (Upgrade cost constants are store-only; managed inside drawStoreScreen.)
+/** Maximum number of weapons that can be actively equipped at once. */
+const MAX_WEAPONS = 4;
 
 // ── Shared style constants ────────────────────────────────────────────────────
 const TITLE_F        = '20px monospace';
@@ -98,7 +100,7 @@ export class UpgradeSystem {
 
     // ── Header (floating text over the map) ───────────────────────────────────
     renderer.drawText('SHIP OVERVIEW', width / 2, 28, TITLE_F, '#ffffff', 'center');
-    renderer.drawText('Read-only  ·  upgrades available in stores',
+    renderer.drawText('Equip/unequip weapons below  ·  system upgrades available in stores',
       width / 2, 48, ROW_F, '#888888', 'center');
 
     // ── Three floating panels ─────────────────────────────────────────────────
@@ -133,25 +135,55 @@ export class UpgradeSystem {
 
     const allWeapons = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
     const equipped   = this.collectPlayerWeapons(world, shipEntity);
+    const BTN_W = 78; const BTN_H = 22;
+    const namePillMaxW = CP_W - PAD * 2 - BTN_W - 6;
     let wy = PY + 32;
-    renderer.drawText('EQUIPPED', CP_X + PAD, wy + 10, ROW_F, '#556677', 'left'); wy += 22;
+
+    renderer.drawText(`EQUIPPED  (${equipped.length}/${MAX_WEAPONS})`,
+      CP_X + PAD, wy + 10, ROW_F, '#556677', 'left'); wy += 22;
     if (equipped.length === 0) {
       renderer.drawText('(none)', CP_X + PAD, wy + 12, ROW_F, DIM_COLOR, 'left'); wy += 22;
     } else {
-      for (const [, wc] of equipped) {
+      for (const [wEntity, wc] of equipped) {
         const name = allWeapons.find((t) => t.id === wc.templateId)?.name ?? wc.templateId;
-        pill(name, CP_X + PAD, wy, CP_W - PAD * 2);
+        pill(name, CP_X + PAD, wy, namePillMaxW);
+        const bx = CP_X + CP_W - PAD - BTN_W;
+        const by = wy + 1;
+        btn(renderer, 'UNEQUIP', bx, by, BTN_W, BTN_H,
+          '#1a0a0a', '#aa3333', '#ff5555');
+        const capturedEntity = wEntity;
+        const capturedId     = wc.templateId;
+        hit(hitboxes, bx, by, BTN_W, BTN_H, () => {
+          world.destroyEntity(capturedEntity);
+          ship.cargoWeapons.push(capturedId);
+        });
         wy += PILL_H + PILL_GAP;
       }
     }
+
     wy += 6;
     renderer.drawText('CARGO', CP_X + PAD, wy + 10, ROW_F, '#556677', 'left'); wy += 22;
     if (ship.cargoWeapons.length === 0) {
       renderer.drawText('(empty)', CP_X + PAD, wy + 12, ROW_F, DIM_COLOR, 'left');
     } else {
       for (const wId of ship.cargoWeapons) {
-        const name = allWeapons.find((t) => t.id === wId)?.name ?? wId;
-        pill(name, CP_X + PAD, wy, CP_W - PAD * 2);
+        const name      = allWeapons.find((t) => t.id === wId)?.name ?? wId;
+        const hasSlot   = equipped.length < MAX_WEAPONS;
+        pill(name, CP_X + PAD, wy, namePillMaxW);
+        const bx = CP_X + CP_W - PAD - BTN_W;
+        const by = wy + 1;
+        btn(renderer, 'EQUIP', bx, by, BTN_W, BTN_H,
+          hasSlot ? '#0a1a0a' : '#141414',
+          hasSlot ? '#44cc44' : '#2a2a2a',
+          hasSlot ? '#44ff44' : '#444444');
+        if (hasSlot) {
+          const capturedId = wId;
+          hit(hitboxes, bx, by, BTN_W, BTN_H, () => {
+            const idx = ship.cargoWeapons.indexOf(capturedId);
+            if (idx !== -1) ship.cargoWeapons.splice(idx, 1);
+            this.equipWeapon(world, capturedId, shipEntity, allWeapons);
+          });
+        }
         wy += PILL_H + PILL_GAP;
       }
     }
@@ -393,6 +425,30 @@ export class UpgradeSystem {
       if (weapon !== undefined) result.push([entity, weapon]);
     }
     return result;
+  }
+
+  /** Spawns a weapon entity owned by the player ship from a weapon template ID. */
+  private equipWeapon(
+    world:       IWorld,
+    weaponId:    string,
+    shipEntity:  number,
+    allWeapons:  WeaponTemplate[],
+  ): void {
+    const tpl = allWeapons.find((w) => w.id === weaponId);
+    if (tpl === undefined) return;
+    const weaponEntity = world.createEntity();
+    world.addComponent(weaponEntity, {
+      _type:                'Weapon',
+      templateId:           tpl.id,
+      charge:               0,
+      maxCharge:            tpl.cooldown,
+      powerRequired:        tpl.powerCost,
+      userPowered:          false,
+      isPowered:            false,
+      targetRoomEntity:     undefined,
+      chargeRateMultiplier: 1.0,
+    } as WeaponComponent);
+    world.addComponent(weaponEntity, { _type: 'Owner', shipEntity } as OwnerComponent);
   }
 
   /**
