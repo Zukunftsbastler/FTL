@@ -769,9 +769,9 @@ export class MapSystem {
     // Reveal neighbours from the new position.
     this.revealAdjacent(nodeId);
 
-    // Rebel fleet check: node inside fleet territory → forced combat.
-    if (node.x <= this.rebelFleetX) {
-      callbacks.onCombat('rebel_a');
+    // Previously-cleared nodes are always safe regardless of rebel fleet position.
+    if (wasVisited) {
+      callbacks.onEvent('safe_passage');
       return;
     }
 
@@ -780,9 +780,9 @@ export class MapSystem {
       return;
     }
 
-    if (wasVisited) {
-      // Already explored — safe passage.
-      callbacks.onEvent('safe_passage');
+    // Rebel fleet check (only for unvisited nodes): forced combat if caught up.
+    if (node.x <= this.rebelFleetX) {
+      callbacks.onCombat('rebel_a');
       return;
     }
 
