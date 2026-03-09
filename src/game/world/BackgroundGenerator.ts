@@ -11,7 +11,7 @@ interface ThemePalette {
 
 const THEMES: Record<MapTheme, ThemePalette> = {
   NEBULA:   { cloudA: [0.20, 0.04, 0.35], cloudB: [0.55, 0.10, 0.65] },
-  STANDARD: { cloudA: [0.02, 0.04, 0.10], cloudB: [0.04, 0.06, 0.20] },
+  STANDARD: { cloudA: [0.05, 0.15, 0.25], cloudB: [0.15, 0.05, 0.20] },
 };
 
 // ── WebGL2 source strings ─────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ void main() {
 
   float cloudStrength = u_isNebula > 0.5
     ? smoothstep(0.35, 0.65, n) * 0.50   // NEBULA: vivid
-    : smoothstep(0.42, 0.58, n) * 0.07;  // STANDARD: subtle
+    : smoothstep(0.30, 0.70, n) * 0.25;  // STANDARD: visible galaxy dust
 
   vec3 cloudColor = mix(u_cloudA, u_cloudB, n);
   color = mix(color, cloudColor, cloudStrength);
