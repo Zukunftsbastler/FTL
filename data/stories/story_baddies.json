@@ -1,0 +1,14 @@
+{
+  "id": "story_baddies",
+  "introEvent": "sb_intro",
+  "beats": [
+    { "sectorLevel": 1, "eventId": "sb_beat_1", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 2, "eventId": "sb_beat_2", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 3, "eventId": "sb_beat_3", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+    { "sectorLevel": 4, "eventId": "sb_beat_4", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } },
+    { "sectorLevel": 5, "eventId": "sb_beat_5", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 6, "eventId": "sb_beat_6", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 7, "eventId": "sb_beat_7", "condition": { "type": "JUMP_COUNT", "jumps": 4 } }
+  ],
+  "finaleEvent": "sb_finale"
+}

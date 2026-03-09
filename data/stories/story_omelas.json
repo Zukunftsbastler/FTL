@@ -1,0 +1,14 @@
+{
+  "id": "story_omelas",
+  "introEvent": "so_intro",
+  "beats": [
+    { "sectorLevel": 1, "eventId": "so_beat_1", "condition": { "type": "JUMP_COUNT", "jumps": 4 } },
+    { "sectorLevel": 2, "eventId": "so_beat_2", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 3, "eventId": "so_beat_3", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+    { "sectorLevel": 4, "eventId": "so_beat_4", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 5, "eventId": "so_beat_5", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 6, "eventId": "so_beat_6", "condition": { "type": "JUMP_COUNT", "jumps": 4 } },
+    { "sectorLevel": 7, "eventId": "so_beat_7", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } }
+  ],
+  "finaleEvent": "so_finale"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "story_zoo",
+  "introEvent": "sz_intro",
+  "beats": [
+    { "sectorLevel": 1, "eventId": "sz_beat_1", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+    { "sectorLevel": 2, "eventId": "sz_beat_2", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } },
+    { "sectorLevel": 3, "eventId": "sz_beat_3", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 4, "eventId": "sz_beat_4", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 5, "eventId": "sz_beat_5", "condition": { "type": "JUMP_COUNT", "jumps": 4 } },
+    { "sectorLevel": 6, "eventId": "sz_beat_6", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+    { "sectorLevel": 7, "eventId": "sz_beat_7", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } }
+  ],
+  "finaleEvent": "sz_finale"
+}

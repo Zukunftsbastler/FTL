@@ -32,6 +32,7 @@ import { ZoltanPowerSystem } from './game/systems/ZoltanPowerSystem';
 import { AugmentSystem } from './game/systems/AugmentSystem';
 import { HazardSystem } from './game/systems/HazardSystem';
 import { DroneControlSystem } from './game/systems/DroneControlSystem';
+import { HangarSystem } from './game/systems/HangarSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { StoreGenerator } from './game/world/StoreGenerator';
@@ -135,18 +136,7 @@ async function init(): Promise<void> {
     AssetLoader.loadJSON<StoryTemplate>('story_amnesia',      '/data/stories/story_amnesia.json'),
   ]);
 
-  // ── Random story selection for this run ───────────────────────────────────────
-  {
-    const availableStories = [
-      'story_quarantine', 'story_baddies', 'story_simulation', 'story_relativity',
-      'story_trojan',     'story_bait',    'story_omelas',     'story_paradox',
-      'story_zoo',        'story_amnesia',
-    ];
-    GameStateData.currentStoryId =
-      availableStories[Math.floor(Math.random() * availableStories.length)];
-  }
-
-  // ── Planet generation ─────────────────────────────────────────────────────────
+  // ── Planet generation helper ──────────────────────────────────────────────────
   const PLANET_THEMES: PlanetTheme[] = ['TERRA', 'LAVA', 'ICE', 'DESERT', 'GAS'];
   function randomPlanet(): void {
     const theme = PLANET_THEMES[Math.floor(Math.random() * PLANET_THEMES.length)];
@@ -157,12 +147,6 @@ async function init(): Promise<void> {
     );
     GameStateData.planetTheme = theme;
   }
-  randomPlanet();
-
-  // ── Sector tree generation ──────────────────────────────────────────────────
-  const sectorsData = AssetLoader.getJSON<SectorTemplate[]>('sectors') ?? [];
-  GameStateData.sectorTree        = SectorGenerator.generate(sectorsData);
-  GameStateData.currentSectorNodeId = 0;  // Start at node 0 (level 1)
 
   // ── Explosion spritesheet pre-generation ──────────────────────────────────────
   // Pre-render all explosion types into cached 2D spritesheets once at startup.
@@ -185,16 +169,9 @@ async function init(): Promise<void> {
   const safeH = canvas.height - TOP_UI_H - BOTTOM_UI_H;
 
   // ── Ship layout ─────────────────────────────────────────────────────────────
-  // kestrel_a bounding box: 7 tiles wide (rooms span x=0..6), 3 tiles tall.
-  // rebel_a   bounding box: 3 tiles wide, 2 tiles tall.
-  const PLAYER_GRID_W = 7;
-  const PLAYER_GRID_H = 3;
+  // rebel_a bounding box: 3 tiles wide, 2 tiles tall.
   const ENEMY_GRID_W  = 3;
   const ENEMY_GRID_H  = 2;
-
-  // Player ship centre at 25% of safe zone width, vertically centred.
-  const playerShipX = Math.round(safeX + safeW * 0.25 - (PLAYER_GRID_W * TILE_SIZE) / 2);
-  const playerShipY = Math.round(safeY + safeH * 0.5  - (PLAYER_GRID_H * TILE_SIZE) / 2);
 
   // Enemy ship centre at 75% of safe zone width, vertically centred.
   const enemyShipX  = Math.round(safeX + safeW * 0.75 - (ENEMY_GRID_W  * TILE_SIZE) / 2);
@@ -202,18 +179,15 @@ async function init(): Promise<void> {
 
   // ── Entity setup ────────────────────────────────────────────────────────────
 
-  // Player ship only — enemy is spawned on each combat entry.
-  ShipFactory.spawnShip(world, 'kestrel_a', playerShipX, playerShipY, 'PLAYER');
-
-  // ── Pathfinder (player ship only) ────────────────────────────────────────────
+  // Pathfinder — initialized to kestrel_a as placeholder; updated by startNewRun.
   const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships');
   if (allShips === undefined) throw new Error('main: ships JSON missing after load.');
-  const template = allShips.find((s) => s.id === 'kestrel_a');
-  if (template === undefined) throw new Error('main: kestrel_a template not found.');
-  const pathfinder = new Pathfinder(template.rooms, template.doors);
+  const kestrelTpl = allShips.find((s) => s.id === 'kestrel_a');
+  if (kestrelTpl === undefined) throw new Error('main: kestrel_a template not found.');
+  let pathfinder = new Pathfinder(kestrelTpl.rooms, kestrelTpl.doors);
 
   // ── State machine ────────────────────────────────────────────────────────────
-  let currentState: GameState = 'STAR_MAP';
+  let currentState: GameState = 'HANGAR';
 
   function enterCombat(shipTemplateId = 'rebel_a'): void {
     // Clean up any lingering enemy ship from a previous encounter (e.g., after FTL escape).
@@ -407,6 +381,76 @@ async function init(): Promise<void> {
     currentState = 'STAR_MAP';
   }
 
+  /**
+   * Initializes a fresh run with the given player ship.
+   * Called when the player clicks LAUNCH in the Hangar.
+   */
+  function startNewRun(shipId: string): void {
+    // Destroy any existing player ship and owned entities.
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      for (const owned of world.query(['Owner'])) {
+        const owner = world.getComponent<OwnerComponent>(owned, 'Owner');
+        if (owner?.shipEntity === entity) world.destroyEntity(owned);
+      }
+      world.destroyEntity(entity);
+      break;
+    }
+
+    // Reset narrative state.
+    GameStateData.narrativeFlags         = [];
+    GameStateData.jumpsInCurrentSector   = 0;
+    GameStateData.sectorNumber           = 1;
+    GameStateData.distanceToExit         = 99;
+    GameStateData.currentSectorNodeId    = 0;
+
+    // Random story selection.
+    const storyPool = [
+      'story_quarantine', 'story_baddies', 'story_simulation', 'story_relativity',
+      'story_trojan',     'story_bait',    'story_omelas',     'story_paradox',
+      'story_zoo',        'story_amnesia',
+    ];
+    GameStateData.currentStoryId =
+      storyPool[Math.floor(Math.random() * storyPool.length)];
+
+    // Sector tree.
+    const sectorsForRun = AssetLoader.getJSON<SectorTemplate[]>('sectors') ?? [];
+    GameStateData.sectorTree = SectorGenerator.generate(sectorsForRun);
+
+    // Planet.
+    randomPlanet();
+
+    // Rebuild pathfinder for the chosen ship and update MovementSystem.
+    const allShipsForRun = AssetLoader.getJSON<ShipTemplate[]>('ships') ?? [];
+    const shipTpl = allShipsForRun.find((s) => s.id === shipId);
+    if (shipTpl !== undefined) {
+      pathfinder = new Pathfinder(shipTpl.rooms, shipTpl.doors);
+      movementSystem.setPathfinder(pathfinder);
+    }
+
+    // Compute player ship spawn position.
+    const { width: cw, height: ch } = renderer.getCanvasSize();
+    const LEFT_UI_W2 = 250; const TOP_UI_H2 = 50; const BOTTOM_UI_H2 = 120;
+    const safeX2 = LEFT_UI_W2;
+    const safeY2 = TOP_UI_H2;
+    const safeW2 = cw - LEFT_UI_W2;
+    const safeH2 = ch - TOP_UI_H2 - BOTTOM_UI_H2;
+    const gridW  = shipTpl?.rooms.reduce((m, r) => Math.max(m, r.x + r.width),  0) ?? 7;
+    const gridH  = shipTpl?.rooms.reduce((m, r) => Math.max(m, r.y + r.height), 0) ?? 3;
+    const spawnX = Math.round(safeX2 + safeW2 * 0.25 - (gridW * TILE_SIZE) / 2);
+    const spawnY = Math.round(safeY2 + safeH2 * 0.5  - (gridH * TILE_SIZE) / 2);
+
+    // Spawn the player ship.
+    ShipFactory.spawnShip(world, shipId, spawnX, spawnY, 'PLAYER');
+
+    // Reset combat state.
+    victorySystem.reset();
+    isPaused = false;
+
+    currentState = 'STAR_MAP';
+  }
+
   // ── Systems ─────────────────────────────────────────────────────────────────
 
   const targetingSystem      = new TargetingSystem(input, renderer);
@@ -440,6 +484,7 @@ async function init(): Promise<void> {
   const augmentSystem      = new AugmentSystem();
   const hazardSystem       = new HazardSystem(mapSystem);
   const droneControlSystem = new DroneControlSystem(input);
+  const hangarSystem       = new HangarSystem();
 
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
@@ -469,7 +514,14 @@ async function init(): Promise<void> {
     }
     lastTimestamp = timestamp;
 
-    if (currentState === 'STAR_MAP') {
+    if (currentState === 'HANGAR') {
+      // ── Hangar (main menu / ship selection) ──────────────────────────────
+      renderer.clear('#000814');
+      hangarSystem.draw(renderer, input, (shipId) => {
+        startNewRun(shipId);
+      });
+
+    } else if (currentState === 'STAR_MAP') {
       // ── Star Map ─────────────────────────────────────────────────────────────
       const { width } = renderer.getCanvasSize();
       renderer.clear('#00000f');

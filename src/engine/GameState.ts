@@ -1,5 +1,6 @@
 /** The top-level game screens. main.ts switches between them. */
 export type GameState =
+  | 'HANGAR'
   | 'STAR_MAP'
   | 'SECTOR_MAP_SELECTION'
   | 'COMBAT'

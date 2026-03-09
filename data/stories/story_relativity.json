@@ -1,0 +1,14 @@
+{
+  "id": "story_relativity",
+  "introEvent": "sr_intro",
+  "beats": [
+    { "sectorLevel": 1, "eventId": "sr_beat_1", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 2, "eventId": "sr_beat_2", "condition": { "type": "JUMP_COUNT", "jumps": 4 } },
+    { "sectorLevel": 3, "eventId": "sr_beat_3", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 4, "eventId": "sr_beat_4", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+    { "sectorLevel": 5, "eventId": "sr_beat_5", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+    { "sectorLevel": 6, "eventId": "sr_beat_6", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+    { "sectorLevel": 7, "eventId": "sr_beat_7", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } }
+  ],
+  "finaleEvent": "sr_finale"
+}

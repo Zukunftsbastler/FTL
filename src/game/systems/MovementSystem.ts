@@ -31,10 +31,15 @@ const CREW_SPEED = 80;
  */
 export class MovementSystem {
   private readonly input: IInput;
-  private readonly pathfinder: Pathfinder;
+  private pathfinder: Pathfinder;
 
   constructor(input: IInput, pathfinder: Pathfinder) {
     this.input      = input;
+    this.pathfinder = pathfinder;
+  }
+
+  /** Updates the pathfinder when a different player ship is selected at the Hangar. */
+  setPathfinder(pathfinder: Pathfinder): void {
     this.pathfinder = pathfinder;
   }
 

@@ -9,6 +9,7 @@ export interface ShipTemplate {
   id: string;
   name: string;
   playable: boolean;
+  isPlayerShip?: boolean;
 
   /** Maximum hull hit points. Hull at 0 = game over. */
   maxHull: number;

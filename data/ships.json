@@ -3,6 +3,7 @@
     "id": "kestrel_a",
     "name": "Kestrel Cruiser (Type A)",
     "playable": true,
+    "isPlayerShip": true,
     "maxHull": 30,
     "startingReactorPower": 8,
     "startingResources": {
@@ -216,7 +217,8 @@
   {
     "id": "slug_cruiser",
     "name": "Slug Cruiser",
-    "playable": false,
+    "playable": true,
+    "isPlayerShip": true,
     "maxHull": 18,
     "startingReactorPower": 6,
     "startingResources": {
