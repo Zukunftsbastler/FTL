@@ -1,11 +1,20 @@
 [
   {
-    "id": "test_story",
+    "id": "story_quarantine",
+    "introEvent": "sq_intro",
     "beats": [
-      {
-        "eventId": "story_test_jump2",
-        "condition": { "type": "JUMP_COUNT", "jumps": 2 }
-      }
-    ]
+      { "sectorLevel": 1, "eventId": "sq_beat_1", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+      { "sectorLevel": 2, "eventId": "sq_beat_2", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+      { "sectorLevel": 2, "eventId": "sq_beat_3", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+      { "sectorLevel": 3, "eventId": "sq_beat_4", "condition": { "type": "JUMP_COUNT", "jumps": 4 } },
+      { "sectorLevel": 4, "eventId": "sq_beat_5", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+      { "sectorLevel": 4, "eventId": "sq_beat_6", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } },
+      { "sectorLevel": 5, "eventId": "sq_beat_7", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+      { "sectorLevel": 6, "eventId": "sq_beat_8", "condition": { "type": "JUMP_COUNT", "jumps": 3 } },
+      { "sectorLevel": 6, "eventId": "sq_beat_9", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 2 } },
+      { "sectorLevel": 7, "eventId": "sq_beat_10", "condition": { "type": "JUMP_COUNT", "jumps": 2 } },
+      { "sectorLevel": 7, "eventId": "sq_beat_11", "condition": { "type": "DISTANCE_TO_EXIT", "distance": 1 } }
+    ],
+    "finaleEvent": "sq_finale"
   }
 ]

@@ -773,6 +773,9 @@ export class MapSystem {
     this.currentNodeId = nodeId;
     node.visibility    = 'VISITED';
 
+    // Update distance-to-exit for DISTANCE_TO_EXIT narrative beats.
+    GameStateData.distanceToExit = this.computeDistanceToExit(nodeId);
+
     // Reveal neighbours from the new position.
     this.revealAdjacent(nodeId);
 
@@ -847,6 +850,34 @@ export class MapSystem {
       }
     }
     return null;
+  }
+
+  /**
+   * BFS to find the shortest hop-count from `fromNodeId` to the EXIT node.
+   * Returns 99 if the exit is unreachable (e.g. disconnected graph).
+   * Stored in GameStateData.distanceToExit for the Narrative Director.
+   */
+  private computeDistanceToExit(fromNodeId: number): number {
+    const exitNode = this.nodes.find((n) => n.isExit);
+    if (exitNode === undefined) return 99;
+    if (exitNode.id === fromNodeId) return 0;
+
+    const visited = new Set<number>();
+    const queue: Array<{ id: number; dist: number }> = [{ id: fromNodeId, dist: 0 }];
+
+    while (queue.length > 0) {
+      const { id, dist } = queue.shift()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      for (const [a, b] of this.edges) {
+        const neighbor = a === id ? b : b === id ? a : -1;
+        if (neighbor < 0 || visited.has(neighbor)) continue;
+        if (neighbor === exitNode.id) return dist + 1;
+        queue.push({ id: neighbor, dist: dist + 1 });
+      }
+    }
+    return 99;
   }
 
   private deductFuel(world: IWorld): void {

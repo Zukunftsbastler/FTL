@@ -29,6 +29,18 @@ export const GameStateData: {
   narrativeFlags:         string[];
   /** Number of jumps completed in the current sector. Reset at each sector start. */
   jumpsInCurrentSector:   number;
+  /**
+   * ID of the currently active story arc (matches `StoryTemplate.id`).
+   * The Narrative Director uses this to focus on the correct story's beats.
+   * Null disables story injection.
+   */
+  currentStoryId:         string | null;
+  /**
+   * BFS hop-count from the current map node to the EXIT node.
+   * Updated after every jump by MapSystem. Used by DISTANCE_TO_EXIT beats.
+   * 99 = unreachable / unknown.
+   */
+  distanceToExit:         number;
 } = {
   cachedPlanet:           null,
   sectorNumber:           1,
@@ -38,4 +50,6 @@ export const GameStateData: {
   currentStore:           null,
   narrativeFlags:         [],
   jumpsInCurrentSector:   0,
+  currentStoryId:         'story_quarantine',
+  distanceToExit:         99,
 };
