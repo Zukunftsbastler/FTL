@@ -258,6 +258,10 @@ export class Renderer implements IRenderer {
     }
   }
 
+  drawCanvas(canvas: HTMLCanvasElement, x: number, y: number): void {
+    this.ctx.drawImage(canvas, x, y);
+  }
+
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
   }

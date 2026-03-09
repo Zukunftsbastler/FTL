@@ -1,6 +1,8 @@
 import { AssetLoader } from '../../utils/AssetLoader';
 import { GameStateData } from '../../engine/GameState';
 import { getPlanetNodeColor } from '../world/PlanetGenerator';
+import { BackgroundGenerator } from '../world/BackgroundGenerator';
+import type { MapTheme } from '../world/BackgroundGenerator';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -105,7 +107,7 @@ const ADJACENT_LABEL_COLOR = '#3a5060';
 const EXIT_LABEL_COLOR     = '#ffee88';
 const TAG_FONT             = '9px monospace';
 
-const REBEL_FILL           = 'rgba(180,20,20,0.22)';
+const REBEL_FILL           = 'rgba(180,20,20,0.40)';
 const REBEL_EDGE_COLOR     = '#cc2222';
 const REBEL_LABEL_FONT     = '13px monospace';
 const REBEL_LABEL_COLOR    = '#ff4444';
@@ -184,12 +186,14 @@ interface MapNode {
  *     show "[SHIP DETECTED]" and ADJACENT hazard nodes show "[HAZARD]".
  */
 export class MapSystem {
-  private nodes:          MapNode[] = [];
-  private edges:          Array<[number, number]> = [];
-  private currentNodeId:  number = 0;
-  private rebelFleetX:    number = REBEL_START_X;
-  private generated:      boolean = false;
-  private sectorTemplate: SectorTemplate | null = null;
+  private nodes:            MapNode[] = [];
+  private edges:            Array<[number, number]> = [];
+  private currentNodeId:    number = 0;
+  private rebelFleetX:      number = REBEL_START_X;
+  private generated:        boolean = false;
+  private sectorTemplate:   SectorTemplate | null = null;
+  /** Cached procedural background canvas — generated once per sector in generate(). */
+  private backgroundCanvas: HTMLCanvasElement | null = null;
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -222,6 +226,11 @@ export class MapSystem {
         .map(([a, b]) => a === this.currentNodeId ? b : a)
         .filter(id => this.nodes[id].visibility !== 'HIDDEN'),
     );
+
+    // ── Layer -1: Procedural space background ────────────────────────────────
+    if (this.backgroundCanvas !== null) {
+      renderer.drawCanvas(this.backgroundCanvas, 0, 0);
+    }
 
     // ── Layer 0: Rebel Fleet red zone ────────────────────────────────────────
     if (this.rebelFleetX > 0) {
@@ -431,6 +440,13 @@ export class MapSystem {
     } else {
       this.sectorTemplate = null;
     }
+
+    // Generate and cache the procedural background for this sector.
+    const bgTheme: MapTheme = this.sectorTemplate?.type === 'NEBULA' ? 'NEBULA' : 'STANDARD';
+    this.backgroundCanvas = BackgroundGenerator.generate(
+      bgTheme, canvasW, canvasH,
+      Math.floor(Math.random() * 99991),
+    );
 
     const hazardChance  = this.sectorTemplate?.hazardChance  ?? 0.15;
     const hostileChance = this.sectorTemplate?.hostileChance ?? 0.25;

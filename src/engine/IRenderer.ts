@@ -128,6 +128,12 @@ export interface IRenderer {
   ): void;
 
   /**
+   * Draws a pre-rendered HTMLCanvasElement (e.g. a WebGL offscreen canvas) at (x, y).
+   * Used to blit cached procedural backgrounds in a single GPU call per frame.
+   */
+  drawCanvas(canvas: HTMLCanvasElement, x: number, y: number): void;
+
+  /**
    * Returns the underlying raw Canvas 2D context.
    * Required by UIRenderer for gradient fills and custom clipped paths.
    * Must only be passed to trusted rendering utilities — never to game logic.
