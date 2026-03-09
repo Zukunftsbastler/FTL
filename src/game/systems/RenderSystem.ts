@@ -113,9 +113,7 @@ const CROSSHAIR_GAP   = 6;
 const CROSSHAIR_LEN   = 14;
 
 // ── Weapon UI ─────────────────────────────────────────────────────────────────
-const WEAPON_BOX_FILL         = '#0d1520';
-const WEAPON_BOX_BORDER       = '#334455';
-const WEAPON_BOX_SELECTED_COL = '#ffdd00';
+// WEAPON_BOX_FILL / _BORDER / _SELECTED_COL replaced by UIRenderer.drawSciFiPanel styling.
 const WEAPON_NAME_FONT        = '11px monospace';
 const WEAPON_NAME_COLOR       = '#ccddff';
 const WEAPON_CHARGE_FILL_COL  = '#33aaff';
@@ -1128,12 +1126,21 @@ export class RenderSystem {
         this.renderer.drawRect(SYSPANEL_X, rowY, SYSPANEL_W, SYSPANEL_ROW_H - 1, 'rgba(80,120,200,0.18)', true);
       }
 
-      // System name.
-      const nameColor = sys.currentPower > 0 ? '#aaccff' : '#446688';
-      this.renderer.drawText(
-        sys.type.slice(0, 9), // truncate to fit
-        SYSPANEL_X + 3, rowY + 14, '11px monospace', nameColor, 'left',
-      );
+      // System name — pill background when powered, dim text when offline.
+      const sysCtx = this.renderer.getContext();
+      if (sys.currentPower > 0) {
+        const nameLabel = sys.type.slice(0, 9);
+        sysCtx.font = '11px monospace';
+        const namePillW = sysCtx.measureText(nameLabel).width + 14;
+        UIRenderer.drawPill(sysCtx, SYSPANEL_X + 3, rowY + 2, namePillW, 16, '#00ccdd');
+        sysCtx.font = '11px monospace'; sysCtx.fillStyle = '#001820'; sysCtx.textAlign = 'left';
+        sysCtx.fillText(nameLabel, SYSPANEL_X + 10, rowY + 14);
+      } else {
+        this.renderer.drawText(
+          sys.type.slice(0, 9),
+          SYSPANEL_X + 3, rowY + 14, '11px monospace', '#446688', 'left',
+        );
+      }
 
       // Power pips: total = level, green = active, grey = empty-but-working, red = damaged.
       // Drawing `level` bars ensures the pristine slot count is always visible.
@@ -1167,20 +1174,28 @@ export class RenderSystem {
     const chargeBarY     = boxBaseY + WEAPON_BOX_H - WEAPON_UI_PAD - WEAPON_CHARGE_H;
     const chargeBarW     = WEAPON_BOX_W - WEAPON_UI_PAD * 2;
 
+    const ctx2 = this.renderer.getContext();
+
     for (let i = 0; i < playerWeapons.length; i++) {
       const [entity, weapon] = playerWeapons[i];
       const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       const by = boxBaseY;
 
-      this.renderer.drawRect(bx, by, WEAPON_BOX_W, WEAPON_BOX_H, WEAPON_BOX_FILL, true);
+      const isSelected  = entity === selectedEntity;
+      const isPowered   = weapon.isPowered;
 
-      const borderColor = entity === selectedEntity ? WEAPON_BOX_SELECTED_COL : WEAPON_BOX_BORDER;
-      this.renderer.drawRect(bx, by, WEAPON_BOX_W, WEAPON_BOX_H, borderColor, false);
+      // Beveled panel — cyan background when powered, selected gets cyan border.
+      UIRenderer.drawSciFiPanel(ctx2, bx, by, WEAPON_BOX_W, WEAPON_BOX_H, {
+        lightBg:     isPowered,
+        borderColor: isSelected ? '#00ddff' : '#ffffff',
+        alpha:       isPowered ? 0.95 : 0.80,
+      });
 
+      const textColor = isPowered ? '#001830' : WEAPON_NAME_COLOR;
       const name = this.getWeaponName(weapon.templateId);
-      this.renderer.drawText(name, bx + WEAPON_UI_PAD, by + 16, WEAPON_NAME_FONT, WEAPON_NAME_COLOR, 'left');
+      this.renderer.drawText(name, bx + WEAPON_UI_PAD, by + 16, WEAPON_NAME_FONT, textColor, 'left');
 
-      // Power toggle indicator — small square top-right corner of each box.
+      // Power toggle indicator — small pill top-right corner.
       const piqSize = 10;
       const piqX = bx + WEAPON_BOX_W - WEAPON_UI_PAD - piqSize;
       const piqY = by + WEAPON_UI_PAD;
@@ -1188,7 +1203,7 @@ export class RenderSystem {
       this.renderer.drawRect(piqX, piqY, piqSize, piqSize, piqColor, true);
       this.renderer.drawRect(piqX, piqY, piqSize, piqSize, weapon.userPowered ? '#aaffaa' : '#664444', false);
 
-      const powColor = weapon.isPowered ? WEAPON_POWERED_COLOR : WEAPON_UNPOWERED_COLOR;
+      const powColor = isPowered ? WEAPON_POWERED_COLOR : WEAPON_UNPOWERED_COLOR;
       const dots = '●'.repeat(weapon.powerRequired);
       this.renderer.drawText(dots, bx + WEAPON_UI_PAD, by + 32, WEAPON_NAME_FONT, powColor, 'left');
 

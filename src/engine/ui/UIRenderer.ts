@@ -138,6 +138,39 @@ export class UIRenderer {
     }
   }
 
+  // ── Beveled button ────────────────────────────────────────────────────────
+
+  /**
+   * Draws a self-contained beveled button using the same angular panel style.
+   *
+   * Active / hovered state → cyan background (`#00ccdd`) with dark navy text.
+   * Inactive state         → dark transparent background with white text.
+   *
+   * Use this for any interactive button in the combat or map UI so every
+   * clickable element looks consistent with the beveled panel system.
+   */
+  static drawBeveledButton(
+    ctx:       CanvasRenderingContext2D,
+    x:         number,
+    y:         number,
+    width:     number,
+    height:    number,
+    text:      string,
+    isActive   = false,
+    isHovered  = false,
+  ): void {
+    const lit = isActive || isHovered;
+    UIRenderer.drawSciFiPanel(ctx, x, y, width, height, {
+      lightBg:     lit,
+      borderColor: lit ? '#00ccdd' : '#ffffff',
+      alpha:       lit ? 0.97 : 0.85,
+    });
+    ctx.font      = 'bold 13px monospace';
+    ctx.fillStyle = lit ? '#001830' : '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, x + width / 2, y + height / 2 + 5);
+  }
+
   // ── Pill / tag renderer ───────────────────────────────────────────────────
 
   /**

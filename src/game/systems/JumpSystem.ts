@@ -1,6 +1,7 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { ENEMY_PANEL_W } from './RenderSystem';
+import { UIRenderer } from '../../engine/ui/UIRenderer';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -170,28 +171,20 @@ export class JumpSystem {
 
   private drawButton(ftlCharge: number): void {
     const { width } = this.renderer.getCanvasSize();
-    // Position the button immediately to the left of the enemy-panel with a small gap.
-    const bx = width - ENEMY_PANEL_W - FTL_BTN_GAP - FTL_BTN_W;
-    const by = FTL_BTN_TOP;
+    const bx    = width - ENEMY_PANEL_W - FTL_BTN_GAP - FTL_BTN_W;
+    const by    = FTL_BTN_TOP;
+    const ctx   = this.renderer.getContext();
+    const isReady = ftlCharge >= 1.0;
+    const label   = isReady ? 'FTL ESCAPE' : 'FTL CHARGING';
 
-    const isReady     = ftlCharge >= 1.0;
-    const bgColor     = isReady ? '#2a2200' : '#161616';
-    const fillColor   = isReady ? '#ffee00' : '#886600';
-    const borderColor = isReady ? '#eecc00' : '#444444';
-    const textColor   = isReady ? '#ffee44' : '#888888';
-    const label       = isReady ? 'FTL ESCAPE' : 'FTL CHARGING';
+    // Beveled button — cyan when ready, dark when charging.
+    UIRenderer.drawBeveledButton(ctx, bx, by, FTL_BTN_W, FTL_BTN_H, label, isReady);
 
-    // 1. Dark background.
-    this.renderer.drawRect(bx, by, FTL_BTN_W, FTL_BTN_H, bgColor, true);
-    // 2. Yellow charge fill (grows left-to-right inside the button).
-    if (ftlCharge > 0) {
-      this.renderer.drawRect(bx, by, Math.round(FTL_BTN_W * ftlCharge), FTL_BTN_H,
-        fillColor + '55', true);   // semi-transparent fill
+    // Yellow charge bar drawn inside the button over the panel (semi-transparent).
+    if (ftlCharge > 0 && !isReady) {
+      const fillColor = '#886600';
+      this.renderer.drawRect(bx, by,
+        Math.round(FTL_BTN_W * ftlCharge), FTL_BTN_H, fillColor + '44', true);
     }
-    // 3. Border.
-    this.renderer.drawRect(bx, by, FTL_BTN_W, FTL_BTN_H, borderColor, false);
-    // 4. Label text.
-    this.renderer.drawText(label, bx + FTL_BTN_W / 2, by + FTL_BTN_H / 2 + 5,
-      '13px monospace', textColor, 'center');
   }
 }
