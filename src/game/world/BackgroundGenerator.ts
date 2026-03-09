@@ -94,30 +94,41 @@ void main() {
     color = mix(color, mix(u_cloudA, u_cloudB, n), cloudStrength);
 
   } else {
-    // ── STANDARD: seeded spiral galaxy ────────────────────────────────────
-    vec2  p    = v_uv;                              // [-1, 1] NDC
-    p.x *= u_resolution.x / u_resolution.y;        // correct for aspect ratio
+    // ── STANDARD: photorealistic galaxy (domain warping + dust lanes) ─────
+    vec2  p    = v_uv;
+    p.x *= u_resolution.x / u_resolution.y;  // aspect-ratio correction
     float dist  = length(p);
-    float angle = atan(p.y, p.x);
 
-    // Seed-derived galaxy parameters so every sector looks unique.
-    float arms  = floor(2.0 + fract(s * 0.0013) * 3.0);  // 2, 3 or 4 arms
-    float twist = 3.0 + fract(s * 0.0037) * 8.0;          // spiral tightness
+    // 1. Organic swirl via domain warping — stronger twist near the core.
+    float swirl = (2.5 + fract(s * 0.1) * 2.0) * exp(-dist * 1.5);
+    float s_sin = sin(swirl), s_cos = cos(swirl);
+    mat2  rot   = mat2(s_cos, -s_sin, s_sin, s_cos);
+    vec2  p_rot = rot * p;
 
-    // Arm signal: brightest along the spiral arms, 0 between them.
-    float armSignal = max(0.0, sin(angle * arms + dist * twist));
+    // 2. Base galactic gas — two FBM layers; second one domain-warped by n1.
+    vec3  noiseP = vec3(p_rot * 3.0 + s, s * 0.001);
+    float n1     = fbm(noiseP);
+    float n2     = fbm(noiseP * 2.0 + n1);
 
-    // Exponential falloff from the galactic core (bright centre, dark edges).
-    float falloff = exp(-dist * 2.0);
+    // 3. Dense, glowing central bulge.
+    float core = exp(-dist * 8.0) * 1.5;
 
-    // FBM noise adds fine-grained dust structure to the disk.
-    vec3 noiseP = vec3(p * 3.5 + vec2(s * 0.002, s * 0.003), s * 0.001);
-    float n = fbm(noiseP);
+    // 4. Subtractive dust lanes — sharpened FBM.
+    float dust = fbm(vec3(p_rot * 4.5 - n2, s * 0.002));
+    dust = pow(dust, 2.0);
 
-    // Blend arm structure with noise for a natural-looking disk.
-    float galaxyBright = (armSignal * 0.65 + n * 0.35) * falloff;
-    vec3  galaxyColor  = mix(u_cloudA, u_cloudB, armSignal);
-    color = mix(color, galaxyColor, galaxyBright * 0.80);
+    // 5. Multichromatic coloring: blue-to-pink gas, bright white/blue knots.
+    vec3 gasColor = mix(vec3(0.05, 0.2, 0.4), vec3(0.8, 0.4, 0.5), n1);
+    gasColor = mix(gasColor, vec3(0.9, 0.95, 1.0), n2 * 0.8);
+
+    // Combine: gas disk + core glow, then subtract dust lanes.
+    float diskMask = smoothstep(1.2, 0.0, dist);
+    vec3  galaxy   = gasColor * n2 * diskMask * 1.8;
+    galaxy += vec3(1.0, 0.95, 0.8) * core;
+    galaxy -= dust * 1.2 * diskMask;
+    galaxy  = max(galaxy, vec3(0.0));
+
+    color = mix(color, galaxy, 0.9);
   }
 
   // ── Stars: pixel-coordinate hash for crisp, resolution-independent dots ──
