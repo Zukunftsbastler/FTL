@@ -21,6 +21,7 @@ import { CloakingSystem } from './game/systems/CloakingSystem';
 import { TeleportSystem } from './game/systems/TeleportSystem';
 import { EnemyAISystem } from './game/systems/EnemyAISystem';
 import { VictorySystem } from './game/systems/VictorySystem';
+import { JumpSystem } from './game/systems/JumpSystem';
 import { UpgradeSystem } from './game/systems/UpgradeSystem';
 import { EventSystem } from './game/systems/EventSystem';
 import { MapSystem } from './game/systems/MapSystem';
@@ -183,7 +184,18 @@ async function init(): Promise<void> {
   let currentState: GameState = 'STAR_MAP';
 
   function enterCombat(shipTemplateId = 'rebel_a'): void {
+    // Clean up any lingering enemy ship from a previous encounter (e.g., after FTL escape).
+    victorySystem.destroyEnemyShip(world);
     victorySystem.reset();
+
+    // Reset player FTL charge so each encounter starts fresh.
+    for (const entity of world.query(['Ship', 'Faction'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+      if (ship !== undefined) ship.ftlCharge = 0;
+      break;
+    }
 
     // Scale the enemy template based on the current sector.
     const allShipsData   = AssetLoader.getJSON<ShipTemplate[]>('ships');
@@ -373,6 +385,7 @@ async function init(): Promise<void> {
   const explosionRenderSystem   = new ExplosionRenderSystem(renderer);
   const projectileRenderSystem  = new ProjectileRenderSystem(renderer);
   const victorySystem      = new VictorySystem();
+  const jumpSystem         = new JumpSystem(input, renderer, () => { currentState = 'STAR_MAP'; });
   const upgradeSystem      = new UpgradeSystem();
   const eventSystem        = new EventSystem();
   const mapSystem          = new MapSystem();
@@ -491,6 +504,8 @@ async function init(): Promise<void> {
       explosionRenderSystem.update(world);
       // Render particle bursts on top of the world scene.
       particleSystem.update();
+      // FTL drive charging + escape button overlay (always visible during combat).
+      jumpSystem.update(world);
 
       // Draw pause overlay on top of the scene when paused.
       if (isPaused) {

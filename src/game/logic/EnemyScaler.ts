@@ -23,8 +23,8 @@ export class EnemyScaler {
     // Deep copy — never mutate the cached JSON template.
     const t = JSON.parse(JSON.stringify(template)) as ShipTemplate;
 
-    // ── Hull scaling: base 8 HP in sector 1, +2 HP per sector ─────────────
-    t.maxHull = 8 + (sector - 1) * 2;
+    // ── Hull scaling: +1 HP per sector above sector 1 (authentic FTL pacing) ─
+    t.maxHull = t.maxHull + (sector - 1);
 
     // ── Reactor ────────────────────────────────────────────────────────────
     t.startingReactorPower += (sector - 1) * 2;

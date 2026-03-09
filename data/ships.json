@@ -70,7 +70,7 @@
     "id": "rebel_a",
     "name": "Rebel Fighter",
     "playable": false,
-    "maxHull": 20,
+    "maxHull": 10,
     "startingReactorPower": 6,
     "startingResources": {
       "scrap": 0,
