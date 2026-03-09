@@ -35,9 +35,9 @@ export class UIRenderer {
     height: number,
     options: SciFiPanelOptions = {},
   ): void {
-    const chamfer     = options.chamfer     ?? 10;
+    const chamfer     = options.chamfer     ?? 20;
     const alpha       = options.alpha       ?? 0.92;
-    const borderColor = options.borderColor ?? '#4c5866';
+    const borderColor = options.borderColor ?? '#ffffff';
     const w = width;
     const h = height;
 
@@ -61,7 +61,7 @@ export class UIRenderer {
 
     // ── Border stroke ────────────────────────────────────────────────────────
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth   = 2;
+    ctx.lineWidth   = 3;
     ctx.stroke();
 
     // ── Optional title header ────────────────────────────────────────────────
@@ -111,6 +111,36 @@ export class UIRenderer {
       ctx.textAlign = 'center';
       ctx.fillText(options.title.toUpperCase(), x + w / 2, y + HEADER_H / 2 + 5);
     }
+  }
+
+  // ── Pill / tag renderer ───────────────────────────────────────────────────
+
+  /**
+   * Draws a rounded-rectangle "pill" filled with `fillColor`.
+   * Use this as a backdrop before rendering label text for high-contrast readability.
+   */
+  static drawPill(
+    ctx:       CanvasRenderingContext2D,
+    x:         number,
+    y:         number,
+    w:         number,
+    h:         number,
+    fillColor: string,
+  ): void {
+    const r = Math.min(h / 2, 10);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h,     x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y,         x + r, y);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
   }
 
   // ── Declarative tree renderer ─────────────────────────────────────────────

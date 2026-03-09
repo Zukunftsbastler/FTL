@@ -112,9 +112,7 @@ const REBEL_EDGE_COLOR     = '#cc2222';
 const REBEL_LABEL_FONT     = '13px monospace';
 const REBEL_LABEL_COLOR    = '#ff4444';
 
-const HUD_FONT             = '13px monospace';
-const HUD_MARGIN_X         = 14;
-const HUD_MARGIN_Y         = 24;
+// HUD_FONT / HUD_MARGIN_X / HUD_MARGIN_Y removed — resource panel now uses inline layout.
 
 /** How many pixels the rebel fleet advances per jump. */
 const REBEL_ADVANCE        = 70;
@@ -208,6 +206,7 @@ export class MapSystem {
       onEvent:  (eventId?: string) => void;
       onStore:  () => void;
       onExit:   () => void;
+      onShip?:  () => void;
     },
   ): void {
     const { width, height } = renderer.getCanvasSize();
@@ -394,13 +393,66 @@ export class MapSystem {
       );
     }
 
-    // ── Fuel HUD ─────────────────────────────────────────────────────────────
-    const fuel = this.getPlayerFuel(world);
-    renderer.drawText(
-      `FUEL: ${fuel}`,
-      HUD_MARGIN_X + width / 2, HUD_MARGIN_Y,
-      HUD_FONT, fuel > 0 ? '#ffaa44' : '#ff3333', 'center',
-    );
+    // ── Top-left resource panel with cyan pills ───────────────────────────────
+    {
+      const ctx        = renderer.getContext();
+      const ship       = this.getPlayerShip(world);
+      const PILL_H     = 24;
+      const PILL_PAD_X = 9;
+      const PILL_GAP   = 6;
+      const PANEL_PAD  = 10;
+      const PANEL_X    = 10;
+      const PANEL_Y    = 10;
+      const FONT       = '12px monospace';
+
+      ctx.font = FONT;
+      const items = ship !== null ? [
+        `FUEL  ${ship.fuel}`,
+        `MSL  ${ship.missiles}`,
+        `DRONES  ${ship.droneParts}`,
+        `SCRAP  ${ship.scrap}`,
+      ] : [];
+
+      // Dynamically calculate panel width from pill widths.
+      const pillWidths = items.map((t) => ctx.measureText(t).width + PILL_PAD_X * 2);
+      const panelW     = pillWidths.reduce((s, w2) => s + w2, 0)
+        + Math.max(0, items.length - 1) * PILL_GAP
+        + PANEL_PAD * 2;
+      const panelH     = PILL_H + PANEL_PAD * 2;
+
+      UIRenderer.drawSciFiPanel(ctx, PANEL_X, PANEL_Y, panelW, panelH,
+        { chamfer: 12, borderColor: '#ffffff', alpha: 0.93 });
+
+      let px2 = PANEL_X + PANEL_PAD;
+      const py2 = PANEL_Y + PANEL_PAD;
+      items.forEach((label, i) => {
+        const pw = pillWidths[i];
+        UIRenderer.drawPill(ctx, px2, py2, pw, PILL_H, '#00ccdd');
+        ctx.font      = FONT;
+        ctx.fillStyle = '#001820';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, px2 + PILL_PAD_X, py2 + PILL_H / 2 + 5);
+        px2 += pw + PILL_GAP;
+      });
+
+      // ── SHIP button below the resource panel ────────────────────────────────
+      const BTN_W = 110;
+      const BTN_H = 34;
+      const BTN_X = PANEL_X;
+      const BTN_Y = PANEL_Y + panelH + 6;
+      UIRenderer.drawSciFiPanel(ctx, BTN_X, BTN_Y, BTN_W, BTN_H,
+        { chamfer: 8, borderColor: '#44aaff', alpha: 0.95 });
+      renderer.drawText('⚙ SHIP', BTN_X + BTN_W / 2, BTN_Y + BTN_H / 2 + 6,
+        'bold 12px monospace', '#88ddff', 'center');
+
+      if (input.isMouseJustPressed(0)) {
+        const m = input.getMousePosition();
+        if (m.x >= BTN_X && m.x <= BTN_X + BTN_W &&
+            m.y >= BTN_Y && m.y <= BTN_Y + BTN_H) {
+          callbacks.onShip?.();
+        }
+      }
+    }
 
     // ── Input: click jumpable nodes ───────────────────────────────────────────
     if (input.isMouseJustPressed(0)) {
@@ -760,14 +812,18 @@ export class MapSystem {
     return false;
   }
 
-  private getPlayerFuel(world: IWorld): number {
+  private getPlayerShip(
+    world: IWorld,
+  ): { fuel: number; missiles: number; scrap: number; droneParts: number } | null {
     for (const entity of world.query(['Ship', 'Faction'])) {
       const faction = world.getComponent<FactionComponent>(entity, 'Faction');
       if (faction?.id !== 'PLAYER') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
-      if (ship !== undefined) return ship.fuel;
+      if (ship !== undefined) {
+        return { fuel: ship.fuel, missiles: ship.missiles, scrap: ship.scrap, droneParts: ship.droneParts };
+      }
     }
-    return 0;
+    return null;
   }
 
   private deductFuel(world: IWorld): void {

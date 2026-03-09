@@ -605,10 +605,33 @@ export class RenderSystem {
       if (faction?.id !== 'PLAYER') continue;
       const ship = world.getComponent<ShipComponent>(entity, 'Ship');
       if (ship === undefined) break;
-      this.renderer.drawText(`HULL ${ship.currentHull}/${ship.maxHull}`, px,       y, DASH_FONT, '#44ff44', 'left');
-      this.renderer.drawText(`FUEL ${ship.fuel}`,                        px + 148, y, DASH_FONT, '#ffaa44', 'left');
-      this.renderer.drawText(`MISSILES ${ship.missiles}`,                px + 248, y, DASH_FONT, '#ff8844', 'left');
-      this.renderer.drawText(`SCRAP ${ship.scrap}`,                      px + 355, y, DASH_FONT, '#ddbb44', 'left');
+
+      // Render each resource as a cyan pill for readability and overflow safety.
+      const ctx2      = this.renderer.getContext();
+      const PILL_H    = 22;
+      const PILL_PAD  = 8;
+      const PILL_GAP  = 5;
+      const PILL_FONT = DASH_FONT;
+      const pillY     = Math.round((TOP_BAR_H - PILL_H) / 2);
+      ctx2.font       = PILL_FONT;
+
+      const resources = [
+        `HULL ${ship.currentHull}/${ship.maxHull}`,
+        `FUEL ${ship.fuel}`,
+        `MSL ${ship.missiles}`,
+        `SCRAP ${ship.scrap}`,
+      ];
+      let pillX = px;
+      for (const label of resources) {
+        const tw   = ctx2.measureText(label).width;
+        const pw   = tw + PILL_PAD * 2;
+        UIRenderer.drawPill(ctx2, pillX, pillY, pw, PILL_H, '#00ccdd');
+        ctx2.font      = PILL_FONT;
+        ctx2.fillStyle = '#001820';
+        ctx2.textAlign = 'left';
+        ctx2.fillText(label, pillX + PILL_PAD, pillY + PILL_H / 2 + 5);
+        pillX += pw + PILL_GAP;
+      }
       break;
     }
 

@@ -467,6 +467,7 @@ async function init(): Promise<void> {
           currentState = 'EVENT';
         },
         onStore: () => { currentState = 'STORE'; },
+        onShip:  () => { currentState = 'UPGRADE'; },
         onExit: () => {
           // Transition to sector selection instead of jumping directly.
           currentState = 'SECTOR_MAP_SELECTION';
