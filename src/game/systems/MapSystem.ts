@@ -474,7 +474,11 @@ export class MapSystem {
     } else {
       const sectors = AssetLoader.getJSON<SectorTemplate[]>('sectors');
       if (sectors !== undefined && sectors.length > 0) {
-        this.sectorTemplate = sectors[Math.floor(Math.random() * sectors.length)];
+        // Never randomly assign the BOSS sector — it is reserved for level 8
+        // and only ever set via nextSectorWithTemplate() from the sector tree.
+        const pool = sectors.filter((s) => s.type !== 'BOSS');
+        const src  = pool.length > 0 ? pool : sectors;
+        this.sectorTemplate = src[Math.floor(Math.random() * src.length)];
       } else {
         this.sectorTemplate = null;
       }
