@@ -48,10 +48,11 @@ uniform vec3  u_cloudB;
 
 // ── Hash / noise (shared with PlanetGenerator) ────────────────────────────────
 
+// Dave Hoskins Hash13 — avoids integer-alignment artifacts from decimal multipliers.
 float hash(vec3 p) {
-  p  = fract(p * vec3(127.1, 311.7, 74.7));
-  p += dot(p, p.yxz + 19.19);
-  return fract((p.x + p.y) * p.z);
+  vec3 p3  = fract(p * .1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
 float valueNoise(vec3 p) {
@@ -94,8 +95,9 @@ void main() {
 
   } else {
     // ── STANDARD: seeded spiral galaxy ────────────────────────────────────
-    vec2  p    = v_uv;                   // [-1, 1] NDC
-    float dist = length(p);
+    vec2  p    = v_uv;                              // [-1, 1] NDC
+    p.x *= u_resolution.x / u_resolution.y;        // correct for aspect ratio
+    float dist  = length(p);
     float angle = atan(p.y, p.x);
 
     // Seed-derived galaxy parameters so every sector looks unique.
