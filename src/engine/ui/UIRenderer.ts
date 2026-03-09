@@ -48,7 +48,7 @@ export class UIRenderer {
     height: number,
     options: SciFiPanelOptions = {},
   ): void {
-    const chamfer  = options.chamfer        ?? Math.floor(height * 2 / 3);
+    const chamfer  = options.chamfer        ?? Math.min(Math.floor(width * 0.05), Math.floor(height * 0.05), 20);
     const alpha    = options.alpha          ?? 0.92;
     const border   = options.borderColor    ?? '#ffffff';
     const noLeft   = options.noLeftChamfer  ?? false;

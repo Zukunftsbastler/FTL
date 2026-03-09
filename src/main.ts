@@ -575,13 +575,25 @@ async function init(): Promise<void> {
       });
 
     } else if (currentState === 'UPGRADE') {
-      // ── Upgrade screen ────────────────────────────────────────────────────
+      // ── Ship overview — star map visible behind translucent overlay ───────
+      const { width: uw, height: uh } = renderer.getCanvasSize();
+      renderer.clear('#00000f');
+      mapSystem.drawStarMap(renderer, input, world, {
+        onCombat: () => {}, onEvent: () => {}, onStore: () => {}, onExit: () => {},
+      });
+      renderer.drawRect(0, 0, uw, uh, 'rgba(0,0,0,0.65)', true);
       upgradeSystem.drawUpgradeScreen(world, renderer, input, () => {
         currentState = 'STAR_MAP';
       });
 
     } else if (currentState === 'STORE') {
-      // ── Store screen ──────────────────────────────────────────────────────
+      // ── Store — star map visible behind translucent overlay ───────────────
+      const { width: sw, height: sh } = renderer.getCanvasSize();
+      renderer.clear('#00000f');
+      mapSystem.drawStarMap(renderer, input, world, {
+        onCombat: () => {}, onEvent: () => {}, onStore: () => {}, onExit: () => {},
+      });
+      renderer.drawRect(0, 0, sw, sh, 'rgba(0,0,0,0.65)', true);
       upgradeSystem.drawStoreScreen(
         world, renderer, input,
         () => { GameStateData.currentStore = null; currentState = 'STAR_MAP'; },

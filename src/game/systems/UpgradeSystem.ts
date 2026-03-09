@@ -17,11 +17,9 @@ import type { StoreItem } from '../data/StoreInventory';
 // (Upgrade cost constants are store-only; managed inside drawStoreScreen.)
 
 // ── Shared style constants ────────────────────────────────────────────────────
-const BG_COLOR       = '#020810';
 const TITLE_F        = '20px monospace';
 const HEADER_F       = '13px monospace';
 const ROW_F          = '12px monospace';
-const TEXT_COLOR     = '#aabbcc';
 const DIM_COLOR      = '#445566';
 
 // Upgrade button — cannot afford.
@@ -75,9 +73,8 @@ export class UpgradeSystem {
     input: IInput,
     onBack: () => void,
   ): void {
+    // Background (star map + dark overlay) is rendered by main.ts before this call.
     const { width, height } = renderer.getCanvasSize();
-    renderer.clear(BG_COLOR);
-
     const hitboxes: Hitbox[] = [];
     const ctx = renderer.getContext();
 
@@ -85,118 +82,124 @@ export class UpgradeSystem {
     if (playerData === null) { onBack(); return; }
     const { shipEntity, ship, reactor } = playerData;
 
-    // ── Title panel (left-anchored) ───────────────────────────────────────────
-    const TITLE_W = Math.min(520, width - 20);
-    UIRenderer.drawSciFiPanel(ctx, 0, 0, TITLE_W, 56,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
-    renderer.drawText('SHIP OVERVIEW', TITLE_W / 2, 36, TITLE_F, '#001830', 'center');
-
-    renderer.drawText(
-      'Upgrades and weapon swaps are available in stores only.',
-      16, 76, ROW_F, DIM_COLOR, 'left',
-    );
-
-    // ── Pill helper ───────────────────────────────────────────────────────────
-    const PILL_H   = 28;
-    const PILL_PAD = 10;
-    const PILL_GAP = 6;
+    // ── Shared pill helper ────────────────────────────────────────────────────
+    const PILL_H   = 24;
+    const PILL_PAD = 9;
+    const PILL_GAP = 5;
     const FONT     = '12px monospace';
 
-    const drawPillRow = (label: string, x: number, y: number): void => {
+    const pill = (label: string, x: number, y: number, maxW = 9999): void => {
       ctx.font = FONT;
-      const tw = ctx.measureText(label).width;
-      const pw = tw + PILL_PAD * 2;
+      const pw = Math.min(ctx.measureText(label).width + PILL_PAD * 2, maxW);
       UIRenderer.drawPill(ctx, x, y, pw, PILL_H, '#00ccdd');
-      ctx.font      = FONT;
-      ctx.fillStyle = '#001820';
-      ctx.textAlign = 'left';
+      ctx.font = FONT; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
       ctx.fillText(label, x + PILL_PAD, y + PILL_H / 2 + 5);
     };
 
-    // ── Left column: Systems ──────────────────────────────────────────────────
-    const COL_X = 20;
-    let   ly    = 100;
+    // ── Header (floating text over the map) ───────────────────────────────────
+    renderer.drawText('SHIP OVERVIEW', width / 2, 28, TITLE_F, '#ffffff', 'center');
+    renderer.drawText('Read-only  ·  upgrades available in stores',
+      width / 2, 48, ROW_F, '#888888', 'center');
 
-    UIRenderer.drawSciFiPanel(ctx, 0, ly, Math.round(width / 2) - 20, height - ly - 70,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.92 });
+    // ── Three floating panels ─────────────────────────────────────────────────
+    const PY = 60;
+    const PH = height - PY - 60;
+    const PAD = 14;
 
-    ly += 14;
-    renderer.drawText('SYSTEMS', COL_X + 4, ly + 12, HEADER_F, '#001830', 'left');
-    ly += 32;
+    const LP_X = 10;  const LP_W = 260;
+    const CP_X = LP_X + LP_W + 8;  const CP_W = 290;
+    const RP_X = CP_X + CP_W + 8;  const RP_W = Math.max(180, width - RP_X - 10);
 
+    // ── Left: Systems + Reactor ───────────────────────────────────────────────
+    UIRenderer.drawSciFiPanel(ctx, LP_X, PY, LP_W, PH,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+    renderer.drawText('SYSTEMS', LP_X + LP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+    renderer.drawLine(LP_X + 8, PY + 25, LP_X + LP_W - 8, PY + 25, '#bbccdd', 1);
+
+    let ly = PY + 32;
     const systems = this.collectPlayerSystems(world, shipEntity);
     for (const { system } of systems) {
-      drawPillRow(`${system.type.padEnd(14)} Lv ${system.maxCapacity}`, COL_X, ly);
+      pill(`${system.type.padEnd(12)} Lv ${system.maxCapacity}`, LP_X + PAD, ly, LP_W - PAD * 2);
       ly += PILL_H + PILL_GAP;
     }
-
-    // Reactor row.
     ly += 4;
-    drawPillRow(`REACTOR   Power ${reactor.totalPower}`, COL_X, ly);
+    pill(`REACTOR  P${reactor.totalPower}`, LP_X + PAD, ly, LP_W - PAD * 2);
 
-    // ── Right column: Weapons ─────────────────────────────────────────────────
-    const RIGHT_X = Math.round(width / 2) + 10;
-    const RIGHT_W = width - RIGHT_X - 20;
-    let   ry      = 100;
+    // ── Center: Weapons ───────────────────────────────────────────────────────
+    UIRenderer.drawSciFiPanel(ctx, CP_X, PY, CP_W, PH,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+    renderer.drawText('WEAPONS', CP_X + CP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+    renderer.drawLine(CP_X + 8, PY + 25, CP_X + CP_W - 8, PY + 25, '#bbccdd', 1);
 
-    UIRenderer.drawSciFiPanel(ctx, RIGHT_X, ry, RIGHT_W, height - ry - 70,
-      { lightBg: true, borderColor: '#ffffff', alpha: 0.92 });
-
-    ry += 14;
-    renderer.drawText('EQUIPPED WEAPONS', RIGHT_X + 10, ry + 12, HEADER_F, '#001830', 'left');
-    ry += 32;
-
-    const allWeapons      = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
-    const equippedWeapons = this.collectPlayerWeapons(world, shipEntity);
-
-    if (equippedWeapons.length === 0) {
-      renderer.drawText('(none equipped)', RIGHT_X + 14, ry + 14, ROW_F, DIM_COLOR, 'left');
-      ry += PILL_H + PILL_GAP;
+    const allWeapons = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
+    const equipped   = this.collectPlayerWeapons(world, shipEntity);
+    let wy = PY + 32;
+    renderer.drawText('EQUIPPED', CP_X + PAD, wy + 10, ROW_F, '#556677', 'left'); wy += 22;
+    if (equipped.length === 0) {
+      renderer.drawText('(none)', CP_X + PAD, wy + 12, ROW_F, DIM_COLOR, 'left'); wy += 22;
     } else {
-      for (const [, wComp] of equippedWeapons) {
-        const tpl  = allWeapons.find((t) => t.id === wComp.templateId);
-        const name = tpl?.name ?? wComp.templateId;
-        drawPillRow(name, RIGHT_X + 10, ry);
-        ry += PILL_H + PILL_GAP;
+      for (const [, wc] of equipped) {
+        const name = allWeapons.find((t) => t.id === wc.templateId)?.name ?? wc.templateId;
+        pill(name, CP_X + PAD, wy, CP_W - PAD * 2);
+        wy += PILL_H + PILL_GAP;
       }
     }
-
-    // Cargo weapons.
-    ry += 8;
-    renderer.drawText('CARGO', RIGHT_X + 10, ry + 12, HEADER_F, '#001830', 'left');
-    ry += 28;
-
+    wy += 6;
+    renderer.drawText('CARGO', CP_X + PAD, wy + 10, ROW_F, '#556677', 'left'); wy += 22;
     if (ship.cargoWeapons.length === 0) {
-      renderer.drawText('(empty)', RIGHT_X + 14, ry + 14, ROW_F, DIM_COLOR, 'left');
+      renderer.drawText('(empty)', CP_X + PAD, wy + 12, ROW_F, DIM_COLOR, 'left');
     } else {
-      for (const weaponId of ship.cargoWeapons) {
-        const tpl  = allWeapons.find((t) => t.id === weaponId);
-        const name = tpl?.name ?? weaponId;
-        drawPillRow(name, RIGHT_X + 10, ry);
-        ry += PILL_H + PILL_GAP;
+      for (const wId of ship.cargoWeapons) {
+        const name = allWeapons.find((t) => t.id === wId)?.name ?? wId;
+        pill(name, CP_X + PAD, wy, CP_W - PAD * 2);
+        wy += PILL_H + PILL_GAP;
       }
     }
 
-    // ── Back button ───────────────────────────────────────────────────────────
-    const BACK_W = 180;
-    const BACK_H = 40;
-    const backX  = 0;
-    const backY  = height - BACK_H - 14;
-    UIRenderer.drawSciFiPanel(ctx, backX, backY, BACK_W, BACK_H,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
-    renderer.drawText('← Back to Map', backX + BACK_W / 2, backY + BACK_H / 2 + 6,
-      'bold 12px monospace', '#001830', 'center');
-    hit(hitboxes, backX, backY, BACK_W, BACK_H, onBack);
+    // ── Right: Crew ───────────────────────────────────────────────────────────
+    if (RP_X + RP_W <= width) {
+      UIRenderer.drawSciFiPanel(ctx, RP_X, PY, RP_W, PH,
+        { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+      renderer.drawText('CREW', RP_X + RP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+      renderer.drawLine(RP_X + 8, PY + 25, RP_X + RP_W - 8, PY + 25, '#bbccdd', 1);
 
-    // ── Process clicks ────────────────────────────────────────────────────────
+      let ry2 = PY + 32;
+      let foundCrew = false;
+      for (const entity of world.query(['Crew', 'Owner'])) {
+        const ownerComp = world.getComponent(entity, 'Owner') as { shipEntity: number } | undefined;
+        if (ownerComp?.shipEntity !== shipEntity) continue;
+        const crew = world.getComponent(entity, 'Crew') as
+          { name: string; race: string; health: number; maxHealth: number } | undefined;
+        if (crew === undefined) continue;
+        foundCrew = true;
+        pill(`${crew.name}  (${crew.race})`, RP_X + PAD, ry2, RP_W - PAD * 2);
+        ry2 += PILL_H + 3;
+        const bw2 = RP_W - PAD * 2;
+        renderer.drawRect(RP_X + PAD, ry2, bw2, 4, '#224422', true);
+        const filled = Math.round(bw2 * Math.max(0, crew.health) / Math.max(crew.maxHealth, 1));
+        renderer.drawRect(RP_X + PAD, ry2, filled, 4, '#44cc44', true);
+        ry2 += 4 + PILL_GAP + 4;
+      }
+      if (!foundCrew) {
+        renderer.drawText('(no crew)', RP_X + PAD, PY + 46, ROW_F, DIM_COLOR, 'left');
+      }
+    }
+
+    // ── Back button (floating, centred) ───────────────────────────────────────
+    const BW = 180; const BH = 38;
+    const BX = width / 2 - BW / 2;
+    const BY = height - BH - 10;
+    UIRenderer.drawSciFiPanel(ctx, BX, BY, BW, BH,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('← Back to Map', BX + BW / 2, BY + BH / 2 + 6,
+      'bold 12px monospace', '#001830', 'center');
+    hit(hitboxes, BX, BY, BW, BH, onBack);
+
     if (input.isMouseJustPressed(0)) {
       const mouse = input.getMousePosition();
       for (const hb of hitboxes) {
         if (mouse.x >= hb.x && mouse.x <= hb.x + hb.w &&
-            mouse.y >= hb.y && mouse.y <= hb.y + hb.h) {
-          hb.action();
-          break;
-        }
+            mouse.y >= hb.y && mouse.y <= hb.y + hb.h) { hb.action(); break; }
       }
     }
   }
@@ -210,8 +213,8 @@ export class UpgradeSystem {
     onLeave: () => void,
     _onUpgrade?: () => void,
   ): void {
+    // Background (star map + dark overlay) is rendered by main.ts before this call.
     const { width, height } = renderer.getCanvasSize();
-    renderer.clear(BG_COLOR);
     const ctx = renderer.getContext();
 
     const hitboxes: Hitbox[] = [];
@@ -223,144 +226,126 @@ export class UpgradeSystem {
     const inventory = GameStateData.currentStore;
     if (inventory === null) { onLeave(); return; }
 
-    // ── Title panel (left-anchored) ───────────────────────────────────────────
-    const TITLE_W = Math.min(600, width - 20);
-    UIRenderer.drawSciFiPanel(ctx, 0, 0, TITLE_W, 56,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
-    renderer.drawText('STORE', TITLE_W / 2, 36, TITLE_F, '#001830', 'center');
-
-    // ── Player resources as pills ─────────────────────────────────────────────
+    // ── Shared helpers ────────────────────────────────────────────────────────
     const PILL_H   = 24;
     const PILL_PAD = 9;
-    const PILL_GAP = 6;
+    const PILL_GAP = 5;
     const FONT     = '12px monospace';
-    ctx.font = FONT;
+    const PAD      = 12;
 
+    const pill = (label: string, x: number, y: number, maxW: number, color = '#00ccdd'): void => {
+      ctx.font = FONT;
+      const pw = Math.min(ctx.measureText(label).width + PILL_PAD * 2, maxW);
+      UIRenderer.drawPill(ctx, x, y, pw, PILL_H, color);
+      ctx.font = FONT; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
+      ctx.fillText(label, x + PILL_PAD, y + PILL_H / 2 + 5);
+    };
+
+    // ── Header: title + player resources pills (floating) ─────────────────────
+    renderer.drawText('STORE', width / 2, 26, TITLE_F, '#ffffff', 'center');
     const resPills = [
-      `SCRAP  ${ship.scrap}`,
-      `FUEL  ${ship.fuel}`,
-      `MSL  ${ship.missiles}`,
-      `HULL  ${ship.currentHull}/${ship.maxHull}`,
+      `SCRAP  ${ship.scrap}`, `FUEL  ${ship.fuel}`,
+      `MSL  ${ship.missiles}`, `HULL  ${ship.currentHull}/${ship.maxHull}`,
     ];
+    ctx.font = FONT;
     const resWidths = resPills.map((t) => ctx.measureText(t).width + PILL_PAD * 2);
-    const resPanelW = resWidths.reduce((s, w2) => s + w2, 0) + (resPills.length - 1) * PILL_GAP + 20;
-    const resPanelH = PILL_H + 16;
-    UIRenderer.drawSciFiPanel(ctx, 0, 62, resPanelW, resPanelH,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.90 });
-    {
-      let px2 = 10;
-      const py2 = 62 + 8;
-      resPills.forEach((label, i) => {
-        const pw = resWidths[i];
-        UIRenderer.drawPill(ctx, px2, py2, pw, PILL_H, '#00ccdd');
-        ctx.font = FONT; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
-        ctx.fillText(label, px2 + PILL_PAD, py2 + PILL_H / 2 + 5);
-        px2 += pw + PILL_GAP;
-      });
-    }
+    let rpx = width - resWidths.reduce((s, w2) => s + w2, 0) - (resPills.length - 1) * PILL_GAP - 10;
+    resPills.forEach((label, i) => {
+      const pw = resWidths[i];
+      UIRenderer.drawPill(ctx, rpx, 6, pw, PILL_H, '#00ccdd');
+      ctx.font = FONT; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
+      ctx.fillText(label, rpx + PILL_PAD, 6 + PILL_H / 2 + 5);
+      rpx += pw + PILL_GAP;
+    });
 
-    // ── Category layout ───────────────────────────────────────────────────────
-    const CARD_W   = 190;
-    const CARD_H   = 72;
-    const CARD_GAP = 10;
-    const SECT_PAD = 16;
-    const CONTENT_X = 10;
-    let   cy        = 62 + resPanelH + 12;
+    // ── Three floating panels ─────────────────────────────────────────────────
+    const PY = 42;
+    const PH = height - PY - 58;
 
-    const categories: Array<{ label: string; cat: StoreItem['category'] }> = [
-      { label: 'RESOURCES', cat: 'RESOURCE' },
-      { label: 'WEAPONS',   cat: 'WEAPON'   },
-      { label: 'SYSTEMS',   cat: 'SYSTEM'   },
-    ];
+    const resourceItems = inventory.items.filter((it) => it.category === 'RESOURCE');
+    const weaponItems   = inventory.items.filter((it) => it.category === 'WEAPON');
+    const systemItems   = inventory.items.filter((it) => it.category === 'SYSTEM');
 
-    for (const { label, cat } of categories) {
-      const catItems = inventory.items.filter((it) => it.category === cat);
-      if (catItems.length === 0) continue;
+    const LP_W = 210;
+    const LP_X = 10;
+    const CP_W = weaponItems.length > 0  ? 320 : 0;
+    const CP_X = LP_X + LP_W + (CP_W > 0 ? 8 : 0);
+    const RP_W = systemItems.length > 0  ? Math.max(200, width - CP_X - CP_W - 18) : 0;
+    const RP_X = CP_X + CP_W + (RP_W > 0 ? 8 : 0);
 
-      // Section header.
-      renderer.drawText(label, CONTENT_X + 4, cy + 14, HEADER_F, TEXT_COLOR, 'left');
-      cy += 22;
-
-      // Cards row.
-      let cx2 = CONTENT_X;
-      for (const item of catItems) {
-        const canAfford = ship.scrap >= item.price;
-        const isSold    = item.sold;
-
-        UIRenderer.drawSciFiPanel(ctx, cx2, cy, CARD_W, CARD_H,
-          { lightBg: true, borderColor: isSold ? '#aaaaaa' : '#ffffff', alpha: isSold ? 0.6 : 0.93 });
-
-        // Item name.
-        renderer.drawText(
-          item.label, cx2 + CARD_W / 2, cy + 18,
-          '11px monospace', isSold ? '#888888' : '#001830', 'center',
-        );
-
-        if (isSold) {
-          renderer.drawText('SOLD OUT', cx2 + CARD_W / 2, cy + CARD_H / 2 + 10,
-            '10px monospace', '#888888', 'center');
-        } else {
-          // Price pill.
-          const priceLabel = `${item.price} scrap`;
-          ctx.font = '11px monospace';
-          const priceW = ctx.measureText(priceLabel).width + 12;
-          const priceX = cx2 + CARD_W / 2 - priceW / 2;
-          const priceY = cy + 26;
-          UIRenderer.drawPill(ctx, priceX, priceY, priceW, 18, canAfford ? '#00ccdd' : '#cc4444');
-          ctx.font = '11px monospace'; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
-          ctx.fillText(priceLabel, priceX + 6, priceY + 13);
-
-          // Buy button.
-          const BUY_W = 80; const BUY_H = 22;
-          const bx2   = cx2 + CARD_W / 2 - BUY_W / 2;
-          const by2   = cy + CARD_H - BUY_H - 6;
-          btn(renderer, 'BUY',
-            bx2, by2, BUY_W, BUY_H,
-            canAfford ? BTN_BUY_BG : BTN_NO_BG,
-            canAfford ? BTN_BUY_BORDER : BTN_NO_BORDER,
-            canAfford ? BTN_BUY_TEXT : BTN_NO_TEXT,
-          );
-
-          if (canAfford) {
-            const capturedItem = item;
-            hit(hitboxes, bx2, by2, BUY_W, BUY_H, () => {
-              ship.scrap -= capturedItem.price;
-              capturedItem.sold = true;
-              this.applyPurchase(world, capturedItem, shipEntity, ship);
-            });
-          }
-        }
-
-        cx2 += CARD_W + CARD_GAP;
-        // Wrap to next row if needed.
-        if (cx2 + CARD_W > width - SECT_PAD) {
-          cx2  = CONTENT_X;
-          cy  += CARD_H + CARD_GAP;
+    // Draw an item row with buy button; returns the new y.
+    const itemRow = (item: StoreItem, ix: number, iy: number, iw: number): number => {
+      const canAfford = ship.scrap >= item.price;
+      pill(item.label, ix, iy, iw - 66 - PAD, item.sold ? '#aaaaaa' : '#00ccdd');
+      if (item.sold) {
+        renderer.drawText('SOLD', ix + iw - PAD - 40, iy + PILL_H / 2 + 5, '10px monospace', '#888888', 'left');
+      } else {
+        const priceLabel = `${item.price}⚙`;
+        ctx.font = '11px monospace';
+        const priceW = ctx.measureText(priceLabel).width + 10;
+        const priceX  = ix + iw - PAD - priceW - 48;
+        UIRenderer.drawPill(ctx, priceX, iy + 3, priceW, 18, canAfford ? '#00bbaa' : '#aa3333');
+        ctx.font = '11px monospace'; ctx.fillStyle = '#001820'; ctx.textAlign = 'left';
+        ctx.fillText(priceLabel, priceX + 5, iy + 15);
+        const bx2 = ix + iw - PAD - 44; const by2 = iy + 2; const bw2 = 42; const bh2 = 20;
+        btn(renderer, 'BUY', bx2, by2, bw2, bh2,
+          canAfford ? BTN_BUY_BG : BTN_NO_BG,
+          canAfford ? BTN_BUY_BORDER : BTN_NO_BORDER,
+          canAfford ? BTN_BUY_TEXT : BTN_NO_TEXT);
+        if (canAfford) {
+          const cap = item;
+          hit(hitboxes, bx2, by2, bw2, bh2, () => {
+            ship.scrap -= cap.price; cap.sold = true;
+            this.applyPurchase(world, cap, shipEntity, ship);
+          });
         }
       }
+      return iy + PILL_H + PILL_GAP;
+    };
 
-      cy += CARD_H + 18;
+    // ── Left: Resources ───────────────────────────────────────────────────────
+    UIRenderer.drawSciFiPanel(ctx, LP_X, PY, LP_W, PH,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+    renderer.drawText('RESOURCES', LP_X + LP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+    renderer.drawLine(LP_X + 6, PY + 25, LP_X + LP_W - 6, PY + 25, '#bbccdd', 1);
+    let ly = PY + 32;
+    for (const item of resourceItems) { ly = itemRow(item, LP_X, ly, LP_W); }
+
+    // ── Center: Weapons ───────────────────────────────────────────────────────
+    if (CP_W > 0) {
+      UIRenderer.drawSciFiPanel(ctx, CP_X, PY, CP_W, PH,
+        { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+      renderer.drawText('WEAPONS', CP_X + CP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+      renderer.drawLine(CP_X + 6, PY + 25, CP_X + CP_W - 6, PY + 25, '#bbccdd', 1);
+      let wy = PY + 32;
+      for (const item of weaponItems) { wy = itemRow(item, CP_X, wy, CP_W); }
+    }
+
+    // ── Right: Systems ────────────────────────────────────────────────────────
+    if (RP_W > 0 && RP_X + RP_W <= width) {
+      UIRenderer.drawSciFiPanel(ctx, RP_X, PY, RP_W, PH,
+        { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
+      renderer.drawText('SYSTEMS', RP_X + RP_W / 2, PY + 18, HEADER_F, '#001830', 'center');
+      renderer.drawLine(RP_X + 6, PY + 25, RP_X + RP_W - 6, PY + 25, '#bbccdd', 1);
+      let sy = PY + 32;
+      for (const item of systemItems) { sy = itemRow(item, RP_X, sy, RP_W); }
     }
 
     // ── Leave button ──────────────────────────────────────────────────────────
-    const LEAVE_W = 180;
-    const LEAVE_H = 40;
-    const LEAVE_Y = height - LEAVE_H - 14;
-    UIRenderer.drawSciFiPanel(ctx, 0, LEAVE_Y, LEAVE_W, LEAVE_H,
-      { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
-    renderer.drawText('← Leave Store', LEAVE_W / 2, LEAVE_Y + LEAVE_H / 2 + 6,
+    const LW = 180; const LH = 38;
+    const LX = width / 2 - LW / 2;
+    const LY = height - LH - 10;
+    UIRenderer.drawSciFiPanel(ctx, LX, LY, LW, LH,
+      { lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
+    renderer.drawText('← Leave Store', LX + LW / 2, LY + LH / 2 + 6,
       'bold 12px monospace', '#001830', 'center');
-    hit(hitboxes, 0, LEAVE_Y, LEAVE_W, LEAVE_H, onLeave);
+    hit(hitboxes, LX, LY, LW, LH, onLeave);
 
-    // ── Click handling ────────────────────────────────────────────────────────
     if (input.isMouseJustPressed(0)) {
       const mouse = input.getMousePosition();
       for (const hb of hitboxes) {
         if (mouse.x >= hb.x && mouse.x <= hb.x + hb.w &&
-            mouse.y >= hb.y && mouse.y <= hb.y + hb.h) {
-          hb.action();
-          break;
-        }
+            mouse.y >= hb.y && mouse.y <= hb.y + hb.h) { hb.action(); break; }
       }
     }
   }
