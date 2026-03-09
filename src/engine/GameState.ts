@@ -50,6 +50,6 @@ export const GameStateData: {
   currentStore:           null,
   narrativeFlags:         [],
   jumpsInCurrentSector:   0,
-  currentStoryId:         'story_quarantine',
+  currentStoryId:         null, // set to a random story ID in main.ts after assets load
   distanceToExit:         99,
 };

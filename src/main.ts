@@ -121,9 +121,30 @@ async function init(): Promise<void> {
     AssetLoader.loadJSON<CrewRaceStats[]>('crew_stats', '/data/crew_stats.json'),
     AssetLoader.loadJSON<AugmentTemplate[]>('augments', '/data/augments.json'),
     AssetLoader.loadJSON<DroneTemplate[]>('drones',     '/data/drones.json'),
-    AssetLoader.loadJSON<SectorTemplate[]>('sectors',   '/data/sectors.json'),
-    AssetLoader.loadJSON<StoryTemplate[]>('stories',    '/data/stories.json'),
+    AssetLoader.loadJSON<SectorTemplate[]>('sectors',           '/data/sectors.json'),
+    // ── Narrative campaigns (one file per story) ──────────────────────────────
+    AssetLoader.loadJSON<StoryTemplate>('story_quarantine',   '/data/stories/story_quarantine.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_baddies',      '/data/stories/story_baddies.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_simulation',   '/data/stories/story_simulation.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_relativity',   '/data/stories/story_relativity.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_trojan',       '/data/stories/story_trojan.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_bait',         '/data/stories/story_bait.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_omelas',       '/data/stories/story_omelas.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_paradox',      '/data/stories/story_paradox.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_zoo',          '/data/stories/story_zoo.json'),
+    AssetLoader.loadJSON<StoryTemplate>('story_amnesia',      '/data/stories/story_amnesia.json'),
   ]);
+
+  // ── Random story selection for this run ───────────────────────────────────────
+  {
+    const availableStories = [
+      'story_quarantine', 'story_baddies', 'story_simulation', 'story_relativity',
+      'story_trojan',     'story_bait',    'story_omelas',     'story_paradox',
+      'story_zoo',        'story_amnesia',
+    ];
+    GameStateData.currentStoryId =
+      availableStories[Math.floor(Math.random() * availableStories.length)];
+  }
 
   // ── Planet generation ─────────────────────────────────────────────────────────
   const PLANET_THEMES: PlanetTheme[] = ['TERRA', 'LAVA', 'ICE', 'DESERT', 'GAS'];

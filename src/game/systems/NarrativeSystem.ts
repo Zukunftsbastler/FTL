@@ -2,6 +2,20 @@ import { AssetLoader }   from '../../utils/AssetLoader';
 import { GameStateData } from '../../engine/GameState';
 import type { StoryBeat, StoryTemplate } from '../data/StoryTemplate';
 
+/** All story IDs available in the game.  Each maps to a key in AssetLoader. */
+export const ALL_STORY_IDS: readonly string[] = [
+  'story_quarantine',
+  'story_baddies',
+  'story_simulation',
+  'story_relativity',
+  'story_trojan',
+  'story_bait',
+  'story_omelas',
+  'story_paradox',
+  'story_zoo',
+  'story_amnesia',
+] as const;
+
 /**
  * Intercepts player jumps and dynamically injects story events based on pacing.
  *
@@ -14,22 +28,20 @@ export class NarrativeSystem {
    * Priority order:
    *   1. Intro event (active story, sector 1, first jump, not yet seen).
    *   2. Active story beats (filtered by sectorLevel + condition).
-   *   3. General stories pool (data/stories.json entries without currentStoryId).
+   *   3. General pool (all other loaded stories, for ambient/shared beats).
    *
    * @returns An event ID to inject, or null to proceed with normal dispatch.
    */
   static intercept(): string | null {
-    const stories = AssetLoader.getJSON<StoryTemplate[]>('stories') ?? [];
-
-    // Resolve the active story (set by currentStoryId).
-    const activeStory = GameStateData.currentStoryId !== null
-      ? stories.find((s) => s.id === GameStateData.currentStoryId) ?? null
+    const storyId     = GameStateData.currentStoryId;
+    const activeStory = storyId !== null
+      ? AssetLoader.getJSON<StoryTemplate>(storyId) ?? null
       : null;
 
-    // ── 1. introEvent — fires once at the very start of a run ────────────────
+    // ── 1. introEvent ────────────────────────────────────────────────────────
     if (
       activeStory?.introEvent !== undefined &&
-      GameStateData.sectorNumber === 1 &&
+      GameStateData.sectorNumber      === 1 &&
       GameStateData.jumpsInCurrentSector === 1
     ) {
       const introFlag = `__intro_${activeStory.id}`;
@@ -45,9 +57,11 @@ export class NarrativeSystem {
       if (result !== null) return result;
     }
 
-    // ── 3. General pool (all other loaded stories) ────────────────────────────
-    for (const story of stories) {
-      if (story.id === GameStateData.currentStoryId) continue; // already checked
+    // ── 3. General story pool ─────────────────────────────────────────────────
+    for (const id of ALL_STORY_IDS) {
+      if (id === storyId) continue; // already checked
+      const story = AssetLoader.getJSON<StoryTemplate>(id);
+      if (story === undefined) continue;
       const result = NarrativeSystem.checkStory(story);
       if (result !== null) return result;
     }
@@ -55,7 +69,7 @@ export class NarrativeSystem {
     return null;
   }
 
-  /** Reset the sector jump counter. Call this at the start of every new sector. */
+  /** Reset per-sector tracking. Call this at the start of every new sector. */
   static onSectorStart(): void {
     GameStateData.jumpsInCurrentSector = 0;
     GameStateData.distanceToExit       = 99;
@@ -63,23 +77,15 @@ export class NarrativeSystem {
 
   // ── Private helpers ──────────────────────────────────────────────────────────
 
-  /**
-   * Checks a single story's beats against the current game state.
-   * Returns the first matching unseen beat's eventId, or null.
-   */
   private static checkStory(story: StoryTemplate): string | null {
     const jumps    = GameStateData.jumpsInCurrentSector;
     const sector   = GameStateData.sectorNumber;
     const distance = GameStateData.distanceToExit;
 
     for (const beat of story.beats) {
-      // Filter by sector level when specified.
       if (beat.sectorLevel !== undefined && beat.sectorLevel !== sector) continue;
-
-      // Evaluate trigger condition.
       if (!NarrativeSystem.conditionMet(beat, jumps, distance)) continue;
 
-      // Gate with a per-run seen-flag.
       const seenFlag = `__beat_${story.id}_${beat.eventId}`;
       if (GameStateData.narrativeFlags.includes(seenFlag)) continue;
 
@@ -96,9 +102,9 @@ export class NarrativeSystem {
   ): boolean {
     const { condition } = beat;
     switch (condition.type) {
-      case 'JUMP_COUNT':       return jumps    === condition.jumps;
-      case 'DISTANCE_TO_EXIT': return distance === condition.distance;
-      case 'RANDOM_MAP_INJECT': return false; // handled during map generation
+      case 'JUMP_COUNT':        return jumps    === condition.jumps;
+      case 'DISTANCE_TO_EXIT':  return distance === condition.distance;
+      case 'RANDOM_MAP_INJECT': return false;
     }
   }
 }
