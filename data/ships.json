@@ -154,19 +154,27 @@
   {
     "id": "auto_scout",
     "name": "Auto-Scout",
-    "layout": "Enemy",
-    "startingHull": 10,
-    "reactorPower": 5,
-    "startingResources": { "scrap": 0, "fuel": 0, "missiles": 5, "droneParts": 0 },
-    "startingCrew": [],
-    "weapons": ["burst_laser_1", "leto_missile"],
-    "systems": [
-      { "id": "sys_shields", "type": "SHIELDS", "level": 2, "maxLevel": 8, "x": 1, "y": 1, "width": 2, "height": 1 },
-      { "id": "sys_engines", "type": "ENGINES", "level": 2, "maxLevel": 8, "x": 1, "y": 2, "width": 2, "height": 1 },
-      { "id": "sys_weapons", "type": "WEAPONS", "level": 3, "maxLevel": 8, "x": 3, "y": 1, "width": 2, "height": 2 },
-      { "id": "sys_piloting", "type": "PILOTING", "level": 1, "maxLevel": 3, "x": 5, "y": 1, "width": 1, "height": 2 }
+    "playable": false,
+    "maxHull": 10,
+    "startingReactorPower": 6,
+    "startingResources": { "scrap": 0, "fuel": 0, "missiles": 3, "droneParts": 0 },
+    "rooms": [
+      { "roomId": 0, "x": 0, "y": 0, "width": 2, "height": 1, "system": "SHIELDS" },
+      { "roomId": 1, "x": 0, "y": 1, "width": 2, "height": 1, "system": "ENGINES" },
+      { "roomId": 2, "x": 2, "y": 0, "width": 2, "height": 2, "system": "WEAPONS" }
     ],
-    "doors": []
+    "doors": [
+      { "roomA": 0, "roomB": 2, "x": 2, "y": 0, "vertical": true  },
+      { "roomA": 1, "roomB": 2, "x": 2, "y": 1, "vertical": true  },
+      { "roomA": 0, "roomB": 1, "x": 0, "y": 1, "vertical": false }
+    ],
+    "systems": [
+      { "type": "SHIELDS", "level": 2 },
+      { "type": "ENGINES", "level": 1 },
+      { "type": "WEAPONS", "level": 3 }
+    ],
+    "startingWeapons": ["burst_laser_1", "artemis_missile"],
+    "startingCrew": []
   },
   {
     "id": "rebel_fighter",
