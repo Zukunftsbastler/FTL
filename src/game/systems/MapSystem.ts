@@ -89,9 +89,8 @@ const NODE_REACHABLE_RING  = '#44aaff';
 
 /** Node fill colours by visibility / type. */
 const NODE_VISITED_FILL    = '#1a2e3e';
-const NODE_VISITED_BORDER  = '#2a4a60';
-const NODE_ADJACENT_FILL   = '#1e2d3a';
-const NODE_ADJACENT_BORDER = '#3a5570';
+// NODE_VISITED_BORDER removed — all beacons now use a white polygon border.
+// NODE_ADJACENT_FILL / NODE_ADJACENT_BORDER replaced by inline dim-yellow diamond.
 const NODE_EVENT_FILL      = '#aaddff';
 const NODE_COMBAT_FILL     = '#cc4433';
 const NODE_STORE_FILL      = '#44cc77';
@@ -264,28 +263,37 @@ export class MapSystem {
     }
 
     // ── Layer 2: Nodes ────────────────────────────────────────────────────────
+    // Returns the four vertices of a diamond (rotated square) centred at (cx, cy).
+    const dmnd = (cx: number, cy: number, r: number) => [
+      { x: cx,     y: cy - r },
+      { x: cx + r, y: cy     },
+      { x: cx,     y: cy + r },
+      { x: cx - r, y: cy     },
+    ];
+
     for (const node of this.nodes) {
       const isCurrent  = node.id === this.currentNodeId;
       const isJumpable = jumpableIds.has(node.id);
 
-      // HIDDEN nodes: render as a tiny dim star dot — no labels, no rings, no tags.
+      // HIDDEN nodes: small dim diamond — no labels, no rings, no shadow.
       if (node.visibility === 'HIDDEN') {
-        renderer.drawCircle(node.x, node.y, NODE_HIDDEN_RADIUS, NODE_HIDDEN_FILL,   true);
-        renderer.drawCircle(node.x, node.y, NODE_HIDDEN_RADIUS, NODE_HIDDEN_BORDER, false, 1);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_HIDDEN_RADIUS), NODE_HIDDEN_FILL,   true);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_HIDDEN_RADIUS), NODE_HIDDEN_BORDER, false, 1);
         continue;
       }
 
-      // Outer rings (only for non-hidden nodes).
+      // Outer selection ring (only for non-hidden nodes).
       if (isCurrent) {
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS + 6, NODE_CURRENT_RING, false, 2);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS + 6), NODE_CURRENT_RING,  false, 2);
       } else if (isJumpable) {
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS + 4, NODE_REACHABLE_RING, false, 1);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS + 4), NODE_REACHABLE_RING, false, 1);
       }
 
       if (node.visibility === 'ADJACENT') {
-        // Unknown node — show dim circle and "???" label.
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS, NODE_ADJACENT_FILL, true);
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS, NODE_ADJACENT_BORDER, false, 1);
+        // Unknown node — dim yellow diamond + "???" label.
+        renderer.drawPolygon(dmnd(node.x + 3, node.y + 4, NODE_RADIUS), 'rgba(0,0,0,0.45)', true);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS), '#554400', true);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS), '#ffffff', false, 1.5);
         renderer.drawText('???', node.x, node.y + 5, LABEL_FONT, ADJACENT_LABEL_COLOR, 'center');
 
         // Long-Range Scanner leak: show ship/hazard tags for adjacent nodes.
@@ -320,14 +328,10 @@ export class MapSystem {
                   ? NODE_DISTRESS_FILL
                   : eventFill;
 
-        const borderColor = node.isExit
-          ? '#aa8800'
-          : node.visibility === 'VISITED'
-            ? NODE_VISITED_BORDER
-            : '#224466';
-
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS, fillColor, true);
-        renderer.drawCircle(node.x, node.y, NODE_RADIUS, borderColor, false, 1);
+        // Drop shadow → filled diamond → white border.
+        renderer.drawPolygon(dmnd(node.x + 3, node.y + 4, NODE_RADIUS), 'rgba(0,0,0,0.45)', true);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS), fillColor, true);
+        renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS), '#ffffff', false, 1.5);
 
         const labelColor = node.isExit ? EXIT_LABEL_COLOR : LABEL_COLOR;
         renderer.drawText(
