@@ -1,4 +1,5 @@
 import { AssetLoader } from '../../utils/AssetLoader';
+import { GameStateData } from '../../engine/GameState';
 import { generateCombatReward } from '../logic/RewardGenerator';
 import type { Reward } from '../logic/RewardGenerator';
 import type { IInput } from '../../engine/IInput';
@@ -44,14 +45,16 @@ const GO_BTN_TEXT   = '#ff4444';
 export class VictorySystem {
   private triggered      = false;
   private pendingReward: Reward | null = null;
+  private victoryIsCrewKill = false;
 
   /** Returns the reward generated when the VICTORY condition was met. */
   getReward(): Reward | null { return this.pendingReward; }
 
   /** Clears trigger state. Call before each new combat encounter. */
   reset(): void {
-    this.triggered     = false;
-    this.pendingReward = null;
+    this.triggered          = false;
+    this.pendingReward      = null;
+    this.victoryIsCrewKill  = false;
   }
 
   // ── Combat-phase detection ────────────────────────────────────────────────
@@ -68,10 +71,23 @@ export class VictorySystem {
       return 'GAME_OVER';
     }
 
-    if (!this.isEnemyAlive(world)) {
-      this.triggered = true;
+    // Crew Kill: all enemy crew are dead (requires at least one enemy crew to have existed).
+    if (this.isEnemyCrewDead(world)) {
+      this.triggered          = true;
+      this.victoryIsCrewKill  = true;
       const weaponIds = this.collectWeaponIds();
-      this.pendingReward = generateCombatReward(1, weaponIds);
+      this.pendingReward = generateCombatReward(
+        GameStateData.sectorNumber, weaponIds, 'CREW_KILL',
+      );
+      return 'VICTORY';
+    }
+
+    // Hull Destruction: enemy hull reaches 0.
+    if (!this.isEnemyAlive(world)) {
+      this.triggered         = true;
+      this.victoryIsCrewKill = false;
+      const weaponIds = this.collectWeaponIds();
+      this.pendingReward = generateCombatReward(GameStateData.sectorNumber, weaponIds, 'HULL');
       return 'VICTORY';
     }
 
@@ -102,7 +118,8 @@ export class VictorySystem {
 
     // Title.
     renderer.drawText('VICTORY', width / 2, my + 36, '22px monospace', TITLE_COLOR, 'center');
-    renderer.drawText('Enemy ship destroyed', width / 2, my + 58, '13px monospace', TEXT_COLOR, 'center');
+    const subText = this.victoryIsCrewKill ? 'Enemy crew eliminated  (+25% scrap)' : 'Enemy ship destroyed';
+    renderer.drawText(subText, width / 2, my + 58, '13px monospace', TEXT_COLOR, 'center');
 
     // Divider.
     renderer.drawLine(mx + 12, my + 66, mx + MODAL_W - 12, my + 66, '#334466', 1);
@@ -271,5 +288,20 @@ export class VictorySystem {
   private collectWeaponIds(): string[] {
     const templates = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
     return templates?.map((t) => t.id) ?? [];
+  }
+
+  private isEnemyCrewDead(world: IWorld): boolean {
+    let totalEnemyCrew = 0;
+    let deadEnemyCrew  = 0;
+    for (const entity of world.query(['Crew', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+      const faction = this.getShipFaction(world, ownerComp.shipEntity);
+      if (faction !== 'ENEMY') continue;
+      totalEnemyCrew++;
+      const crew = world.getComponent(entity, 'Crew') as { health: number } | undefined;
+      if (crew !== undefined && crew.health <= 0) deadEnemyCrew++;
+    }
+    return totalEnemyCrew > 0 && deadEnemyCrew >= totalEnemyCrew;
   }
 }

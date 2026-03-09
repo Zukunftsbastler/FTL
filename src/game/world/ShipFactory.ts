@@ -99,6 +99,7 @@ export class ShipFactory {
       cargoWeapons: [],
       evasion: 0,
       augments: [],
+      ftlCharge: 0,
       hullSprite: ShipGenerator.generateShipSprite(template.rooms, faction, startX, startY),
     };
     const factionComp: FactionComponent = {

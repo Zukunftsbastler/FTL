@@ -40,19 +40,24 @@ function pick<T>(arr: T[]): T {
  *
  * @param sectorLevel       Current sector depth (1–8); scales scrap amount.
  * @param availableWeaponIds Weapon IDs eligible for the drop pool (from weapons.json).
+ * @param victoryType       'HULL' (default) or 'CREW_KILL' — crew kill grants +25% scrap and higher weapon chance.
  */
 export function generateCombatReward(
   sectorLevel: number,
   availableWeaponIds: string[],
+  victoryType: 'HULL' | 'CREW_KILL' = 'HULL',
 ): Reward {
+  const isCrewKill   = victoryType === 'CREW_KILL';
+  const scrapBase    = 10 + sectorLevel * 5 + Math.floor(Math.random() * 11);
   const reward: Reward = {
-    scrap:      10 + sectorLevel * 5 + Math.floor(Math.random() * 11),
+    scrap:      isCrewKill ? Math.round(scrapBase * 1.25) : scrapBase,
     fuel:       Math.random() < 0.70 ? 1 + Math.floor(Math.random() * 2) : 0,
     missiles:   Math.random() < 0.60 ? 1 + Math.floor(Math.random() * 2) : 0,
     droneParts: Math.random() < 0.30 ? 1 : 0,
   };
 
-  if (availableWeaponIds.length > 0 && Math.random() < 0.10) {
+  const weaponChance = isCrewKill ? 0.18 : 0.10;
+  if (availableWeaponIds.length > 0 && Math.random() < weaponChance) {
     reward.weaponId = pick(availableWeaponIds);
   }
 

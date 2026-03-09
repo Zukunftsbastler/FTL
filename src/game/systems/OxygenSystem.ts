@@ -9,6 +9,7 @@ import type { OxygenComponent } from '../components/OxygenComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PositionComponent } from '../components/PositionComponent';
 import type { RoomComponent } from '../components/RoomComponent';
+import type { ShipComponent } from '../components/ShipComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 
 /** Cap dt to prevent huge simulation jumps if the tab was backgrounded. */
@@ -25,6 +26,11 @@ const FIRE_O2_DRAIN_RATE = 10;
  * same ship that does not already have fire.
  */
 const FIRE_SPREAD_CHANCE_PER_SEC = 0.04;
+
+/** Hull damage per second dealt by active fire. */
+const FIRE_HULL_DAMAGE_RATE = 0.5;
+/** System damage per second dealt by active fire. */
+const FIRE_SYSTEM_DAMAGE_RATE = 0.5;
 
 /** Starting fireHealth assigned when fire first appears in a room. */
 export const FIRE_HEALTH_INITIAL   = 15;
@@ -94,6 +100,16 @@ export class OxygenSystem {
         // Fire drains O2 independently of breach.
         if (room.hasFire) {
           oxygen.level = Math.max(0, oxygen.level - FIRE_O2_DRAIN_RATE * dt);
+
+          // Fire deals damage to the room's system and the ship's hull.
+          const sys = world.getComponent<SystemComponent>(entity, 'System');
+          if (sys !== undefined) {
+            sys.damageAmount = Math.min(sys.level, sys.damageAmount + FIRE_SYSTEM_DAMAGE_RATE * dt);
+          }
+          const shipComp = world.getComponent<ShipComponent>(ownerComp.shipEntity, 'Ship');
+          if (shipComp !== undefined) {
+            shipComp.currentHull = Math.max(0, shipComp.currentHull - FIRE_HULL_DAMAGE_RATE * dt);
+          }
 
           // Fire extinguishes itself when the room runs out of oxygen.
           if (oxygen.level <= 0) {

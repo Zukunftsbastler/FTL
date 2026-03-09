@@ -633,6 +633,7 @@ export class RenderSystem {
 
   private drawRooms(world: IWorld): void {
     const flashSet = this.projectileSystem.getImpactedRooms();
+    const playerRoomsWithCrew = this.buildPlayerRoomsWithCrew(world);
 
     // Pre-build a set of cloaked ship entities for O(1) lookup per room.
     const cloakedShips = new Set<number>();
@@ -696,6 +697,19 @@ export class RenderSystem {
               '⚠ DMG', pos.x + pw / 2, pos.y + ph - 6,
               '9px monospace', '#ff4444', 'center',
             );
+
+            // Repair progress bar — green bar at the bottom when player crew is repairing.
+            if (playerRoomsWithCrew.has(entity)) {
+              const fracPart  = system.damageAmount - Math.floor(system.damageAmount);
+              const repairFrac = fracPart > 0 ? (1.0 - fracPart) : 0;
+              const barX = pos.x + 3;
+              const barY = pos.y + ph - 20;
+              const barW = pw - 6;
+              const barH = 4;
+              this.renderer.drawRect(barX, barY, barW, barH, '#1a2a1a', true);
+              this.renderer.drawRect(barX, barY, Math.max(1, Math.round(barW * repairFrac)), barH, '#33cc44', true);
+              this.renderer.drawRect(barX, barY, barW, barH, '#226622', false);
+            }
           }
         }
       }
@@ -1318,5 +1332,40 @@ export class RenderSystem {
     const templates = AssetLoader.getJSON<WeaponTemplate[]>('weapons');
     const tpl       = templates?.find((t) => t.id === templateId);
     return tpl?.name ?? templateId;
+  }
+
+  /** Returns a Set of room entity IDs currently occupied by at least one player crew member. */
+  private buildPlayerRoomsWithCrew(world: IWorld): Set<number> {
+    const crewPositions: Array<{ x: number; y: number }> = [];
+    for (const entity of world.query(['Crew', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+      const faction = world.getComponent<FactionComponent>(ownerComp.shipEntity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const pos = world.getComponent<PositionComponent>(entity, 'Position');
+      if (pos !== undefined) crewPositions.push({ x: pos.x, y: pos.y });
+    }
+
+    const result = new Set<number>();
+    if (crewPositions.length === 0) return result;
+
+    for (const entity of world.query(['Room', 'Position', 'Owner'])) {
+      const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+      if (ownerComp === undefined) continue;
+      const faction = world.getComponent<FactionComponent>(ownerComp.shipEntity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      const pos  = world.getComponent<PositionComponent>(entity, 'Position');
+      const room = world.getComponent<RoomComponent>(entity, 'Room');
+      if (pos === undefined || room === undefined) continue;
+      const rw = room.width  * TILE_SIZE;
+      const rh = room.height * TILE_SIZE;
+      for (const cp of crewPositions) {
+        if (cp.x >= pos.x && cp.x < pos.x + rw && cp.y >= pos.y && cp.y < pos.y + rh) {
+          result.add(entity);
+          break;
+        }
+      }
+    }
+    return result;
   }
 }

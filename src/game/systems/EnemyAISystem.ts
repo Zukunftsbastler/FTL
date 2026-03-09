@@ -305,8 +305,8 @@ export class EnemyAISystem {
   }
 
   /**
-   * Returns the room entity with the highest `damageAmount` among SHIELDS and WEAPONS
-   * rooms on the given ship. Returns null if all systems are pristine.
+   * Returns the room entity with the highest `damageAmount` among all system rooms
+   * on the given ship. Returns null if all systems are pristine.
    */
   private findMostDamagedRoom(world: IWorld, shipEntity: number): number | null {
     let worstEntity: number | null = null;
@@ -317,7 +317,6 @@ export class EnemyAISystem {
       if (ownerComp?.shipEntity !== shipEntity) continue;
       const sys = world.getComponent<SystemComponent>(roomEntity, 'System');
       if (sys === undefined) continue;
-      if (sys.type !== 'SHIELDS' && sys.type !== 'WEAPONS') continue;
       if (sys.damageAmount > worstDamage) {
         worstDamage = sys.damageAmount;
         worstEntity = roomEntity;

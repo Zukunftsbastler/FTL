@@ -35,4 +35,10 @@ export interface ShipComponent extends Component {
    * RenderSystem draws this as the outermost visual layer each combat frame.
    */
   hullSprite?: HTMLCanvasElement;
+  /**
+   * FTL drive charge level (0.0 to 1.0).
+   * Increases during combat based on ENGINES power and PILOTING status.
+   * When >= 1.0, the player may activate the FTL drive to escape combat.
+   */
+  ftlCharge: number;
 }
