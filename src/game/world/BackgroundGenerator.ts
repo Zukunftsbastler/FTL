@@ -5,8 +5,8 @@ export type MapTheme = 'NEBULA' | 'STANDARD';
 type RGB = [number, number, number];
 
 interface ThemePalette {
-  cloudA: RGB;   // deep cloud colour
-  cloudB: RGB;   // highlight cloud colour
+  cloudA: RGB;   // deep cloud / inner galaxy colour
+  cloudB: RGB;   // highlight cloud / outer arm colour
 }
 
 const THEMES: Record<MapTheme, ThemePalette> = {
@@ -27,10 +27,10 @@ void main() {
 /**
  * Fragment shader — renders a procedural full-screen star-map background.
  *
- * Stars:   crisp per-cell hash dots (each cell has ~0.5 % star probability).
- * Nebula:  6-octave FBM value noise, mixed between two cloud colours.
- *          NEBULA theme → vivid purple/magenta clouds at 50 % alpha.
- *          STANDARD theme → barely-visible dark-blue dust at 7 % alpha.
+ * Stars:    crisp 1-pixel dots using pixel-coordinate hashing via u_resolution.
+ * NEBULA:   dense 6-octave FBM clouds covering the whole screen.
+ * STANDARD: seed-randomised spiral galaxy (polar coords + sin arm signal)
+ *           with exponential falloff from the galactic core.
  *
  * Reuses the same hash / valueNoise / fbm functions as PlanetGenerator.ts.
  */
@@ -42,6 +42,7 @@ out vec4 outColor;
 
 uniform float u_seed;
 uniform float u_isNebula;
+uniform vec2  u_resolution;
 uniform vec3  u_cloudA;
 uniform vec3  u_cloudB;
 
@@ -79,29 +80,53 @@ float fbm(vec3 p) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 void main() {
-  // Near-black deep space base colour.
-  vec3 color = vec3(0.005, 0.005, 0.010);
+  // Slightly lifted base to prevent fully crushed blacks.
+  vec3 color = vec3(0.02, 0.02, 0.04);
 
-  // ── FBM nebula clouds ──────────────────────────────────────────────────────
-  float s     = u_seed;
-  vec3 noiseP = vec3(v_uv * 2.5 + vec2(s * 0.003, s * 0.002), s * 0.001);
-  float n     = fbm(noiseP);
+  float s = u_seed;
 
-  float cloudStrength = u_isNebula > 0.5
-    ? smoothstep(0.35, 0.65, n) * 0.50   // NEBULA: vivid
-    : smoothstep(0.30, 0.70, n) * 0.25;  // STANDARD: visible galaxy dust
+  if (u_isNebula > 0.5) {
+    // ── NEBULA: dense FBM clouds covering the whole screen ────────────────
+    vec3 noiseP = vec3(v_uv * 2.5 + vec2(s * 0.003, s * 0.002), s * 0.001);
+    float n = fbm(noiseP);
+    float cloudStrength = smoothstep(0.30, 0.65, n) * 0.72;
+    color = mix(color, mix(u_cloudA, u_cloudB, n), cloudStrength);
 
-  vec3 cloudColor = mix(u_cloudA, u_cloudB, n);
-  color = mix(color, cloudColor, cloudStrength);
+  } else {
+    // ── STANDARD: seeded spiral galaxy ────────────────────────────────────
+    vec2  p    = v_uv;                   // [-1, 1] NDC
+    float dist = length(p);
+    float angle = atan(p.y, p.x);
 
-  // ── Stars (per-cell hash threshold) ───────────────────────────────────────
-  // v_uv ∈ [-1, 1]; scaling by 200 gives ~800 × 800 cells across NDC space.
-  vec2  cell = floor(v_uv * 200.0 + vec2(s * 47.3, s * 31.7));
-  float h    = hash(vec3(cell, s * 0.01));
-  if (h > 0.995) {
-    // Scale brightness within the top 0.5 % band for varied star sizes.
-    float br = (h - 0.995) / 0.005;
-    color = mix(color, vec3(1.0, 0.97, 0.88), 0.25 + br * 0.75);
+    // Seed-derived galaxy parameters so every sector looks unique.
+    float arms  = floor(2.0 + fract(s * 0.0013) * 3.0);  // 2, 3 or 4 arms
+    float twist = 3.0 + fract(s * 0.0037) * 8.0;          // spiral tightness
+
+    // Arm signal: brightest along the spiral arms, 0 between them.
+    float armSignal = max(0.0, sin(angle * arms + dist * twist));
+
+    // Exponential falloff from the galactic core (bright centre, dark edges).
+    float falloff = exp(-dist * 2.0);
+
+    // FBM noise adds fine-grained dust structure to the disk.
+    vec3 noiseP = vec3(p * 3.5 + vec2(s * 0.002, s * 0.003), s * 0.001);
+    float n = fbm(noiseP);
+
+    // Blend arm structure with noise for a natural-looking disk.
+    float galaxyBright = (armSignal * 0.65 + n * 0.35) * falloff;
+    vec3  galaxyColor  = mix(u_cloudA, u_cloudB, armSignal);
+    color = mix(color, galaxyColor, galaxyBright * 0.80);
+  }
+
+  // ── Stars: pixel-coordinate hash for crisp, resolution-independent dots ──
+  // Map NDC [-1,1] → pixel coordinates, floor to integer cell, then hash.
+  vec2  pixel = (v_uv * 0.5 + 0.5) * u_resolution;
+  float h     = hash(vec3(floor(pixel), s * 0.01));
+  if (h > 0.994) {
+    float br = (h - 0.994) / 0.006;
+    // Additive blend so stars always punch through the background.
+    color += vec3(0.4 + br * 0.6) * vec3(1.0, 0.97, 0.88);
+    color  = min(color, vec3(1.0));
   }
 
   outColor = vec4(color, 1.0);
@@ -111,10 +136,10 @@ void main() {
 
 /**
  * Generates a full-screen procedural star-map background via an offscreen
- * WebGL2 canvas.  The result is cached by the caller (MapSystem.generate)
- * and drawn with a single drawImage call every frame.
+ * WebGL2 canvas.  The result is cached by MapSystem.generate() and drawn
+ * with a single drawCanvas call every frame.
  *
- * Falls back to a solid dark fill if WebGL2 is unavailable.
+ * Falls back to a solid fill + 400 random star dots if WebGL2 is unavailable.
  */
 export class BackgroundGenerator {
   static generate(
@@ -172,16 +197,21 @@ export class BackgroundGenerator {
       const loc = gl.getUniformLocation(prog, name);
       if (loc !== null) gl.uniform1f(loc, v);
     };
+    const setV2 = (name: string, x: number, y: number): void => {
+      const loc = gl.getUniformLocation(prog, name);
+      if (loc !== null) gl.uniform2f(loc, x, y);
+    };
     const setV3 = (name: string, v: RGB): void => {
       const loc = gl.getUniformLocation(prog, name);
       if (loc !== null) gl.uniform3fv(loc, v);
     };
 
     const palette = THEMES[theme];
-    setF('u_seed',     seed);
-    setF('u_isNebula', theme === 'NEBULA' ? 1.0 : 0.0);
-    setV3('u_cloudA',  palette.cloudA);
-    setV3('u_cloudB',  palette.cloudB);
+    setF('u_seed',       seed);
+    setF('u_isNebula',   theme === 'NEBULA' ? 1.0 : 0.0);
+    setV2('u_resolution', width, height);
+    setV3('u_cloudA',    palette.cloudA);
+    setV3('u_cloudB',    palette.cloudB);
 
     // ── Render ─────────────────────────────────────────────────────────────
     gl.viewport(0, 0, width, height);
@@ -218,12 +248,24 @@ export class BackgroundGenerator {
     return shader;
   }
 
-  /** Minimal Canvas 2D fallback — solid dark fill if WebGL2 is unavailable. */
+  /**
+   * Canvas 2D fallback when WebGL2 is unavailable.
+   * Fills a dark background then draws ~400 random 1×1 star pixels.
+   */
   private static cpuFallback(canvas: HTMLCanvasElement, theme: MapTheme): HTMLCanvasElement {
     const ctx2 = canvas.getContext('2d');
     if (ctx2 === null) return canvas;
-    ctx2.fillStyle = theme === 'NEBULA' ? '#0a0015' : '#000009';
+    ctx2.fillStyle = theme === 'NEBULA' ? '#0a0015' : '#000a18';
     ctx2.fillRect(0, 0, canvas.width, canvas.height);
+    // Draw 400 random crisp stars.
+    ctx2.fillStyle = 'rgba(255, 250, 230, 0.9)';
+    for (let i = 0; i < 400; i++) {
+      ctx2.fillRect(
+        Math.floor(Math.random() * canvas.width),
+        Math.floor(Math.random() * canvas.height),
+        1, 1,
+      );
+    }
     return canvas;
   }
 }
