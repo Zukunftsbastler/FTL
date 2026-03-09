@@ -1,0 +1,11 @@
+[
+  {
+    "id": "test_story",
+    "beats": [
+      {
+        "eventId": "story_test_jump2",
+        "condition": { "type": "JUMP_COUNT", "jumps": 2 }
+      }
+    ]
+  }
+]

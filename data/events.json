@@ -378,5 +378,24 @@
     "choices": [
       { "text": "Prepare for combat!", "triggerCombatWithShipId": "auto_scout", "reward": { "fleetAdvancement": 1 } }
     ]
+  },
+  {
+    "id": "story_test_jump2",
+    "text": "On your second jump through this sector, you intercept a distress ping from a disabled science vessel. Their crew has survived but they need immediate assistance.",
+    "choices": [
+      {
+        "text": "Ignore the ping and move on."
+      },
+      {
+        "text": "[TELEPORTER] Beam your crew aboard to assist and salvage.",
+        "requirement": { "system": { "type": "TELEPORTER", "minLevel": 1 } },
+        "reward": { "scrap": 35, "fuel": 2 },
+        "setFlag": "helped_science_vessel"
+      },
+      {
+        "text": "Dock and offer what supplies you can spare.",
+        "reward": { "scrap": 12, "fuel": 1 }
+      }
+    ]
   }
 ]

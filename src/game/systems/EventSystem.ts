@@ -1,9 +1,10 @@
 import { AssetLoader } from '../../utils/AssetLoader';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
+import { GameStateData } from '../../engine/GameState';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
-import type { EventChoice, EventReward, EventTemplate } from '../data/EventTemplate';
+import type { ChoiceRequirement, EventChoice, EventReward, EventTemplate } from '../data/EventTemplate';
 import type { CrewComponent } from '../components/CrewComponent';
 import type { SystemComponent } from '../components/SystemComponent';
 import type { ShipComponent } from '../components/ShipComponent';
@@ -104,8 +105,9 @@ export class EventSystem {
 
     // Pre-filter choices that are visible (requirements met or no requirement).
     const visibleChoices = event.choices.filter((c) => {
-      if (c.requirementId === undefined) return true;
-      return this.checkRequirement(c.requirementId, world);
+      if (c.requirementId !== undefined && !this.checkRequirement(c.requirementId, world)) return false;
+      if (c.requirement   !== undefined && !this.checkStructuredRequirement(c.requirement, world)) return false;
+      return true;
     });
 
     // ── Compute modal height ────────────────────────────────────────────────
@@ -177,7 +179,10 @@ export class EventSystem {
       );
 
       // Blue text for choices that have a (met) requirement — FTL-style "blue options".
-      const textColor = choice.requirementId !== undefined ? CHOICE_TEXT_BLUE : CHOICE_TEXT_NORMAL;
+      const isBlue = choice.requirementId !== undefined
+        || choice.requirement?.system   !== undefined
+        || choice.requirement?.crewRace !== undefined;
+      const textColor = isBlue ? CHOICE_TEXT_BLUE : CHOICE_TEXT_NORMAL;
 
       renderer.drawRect(bx, by, bw, bh, CHOICE_BG, true);
       renderer.drawRect(bx, by, bw, bh, isHovered ? CHOICE_HOVER_BORDER : CHOICE_BORDER, false);
@@ -228,6 +233,12 @@ export class EventSystem {
       onContinue:      () => void;
     },
   ): void {
+    // Record narrative flag if this choice sets one.
+    if (choice.setFlag !== undefined &&
+        !GameStateData.narrativeFlags.includes(choice.setFlag)) {
+      GameStateData.narrativeFlags.push(choice.setFlag);
+    }
+
     if (choice.triggerCombatWithShipId !== undefined) {
       // Apply inline reward effects (e.g. system damage) before entering combat.
       if (choice.reward !== undefined) callbacks.onInstantReward(choice.reward);
@@ -301,6 +312,74 @@ export class EventSystem {
     }
 
     return false;
+  }
+
+  /**
+   * Checks all fields of a structured ChoiceRequirement simultaneously.
+   * Returns true only when every specified condition is satisfied.
+   */
+  private checkStructuredRequirement(req: ChoiceRequirement, world: IWorld): boolean {
+    // ── Narrative flags ───────────────────────────────────────────────────────
+    if (req.flags !== undefined) {
+      for (const flag of req.flags) {
+        if (!GameStateData.narrativeFlags.includes(flag)) return false;
+      }
+    }
+
+    // ── Installed system ──────────────────────────────────────────────────────
+    if (req.system !== undefined) {
+      const { type, minLevel } = req.system;
+      const has = world.query(['System']).some((e) => {
+        const sys = world.getComponent<SystemComponent>(e, 'System');
+        return sys !== undefined && sys.type === type && sys.maxCapacity >= minLevel;
+      });
+      if (!has) return false;
+    }
+
+    // ── Crew race ─────────────────────────────────────────────────────────────
+    if (req.crewRace !== undefined) {
+      const race = req.crewRace;
+      const has  = world.query(['Crew']).some((e) => {
+        const crew = world.getComponent<CrewComponent>(e, 'Crew');
+        return crew?.race === race;
+      });
+      if (!has) return false;
+    }
+
+    // ── Resources ─────────────────────────────────────────────────────────────
+    if (req.resource !== undefined) {
+      const r = req.resource;
+      let playerShip: ShipComponent | undefined;
+      for (const entity of world.query(['Ship', 'Faction'])) {
+        const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+        if (faction?.id === 'PLAYER') {
+          playerShip = world.getComponent<ShipComponent>(entity, 'Ship');
+          break;
+        }
+      }
+      if (playerShip === undefined) return false;
+      if (r.scrap      !== undefined && playerShip.scrap      < r.scrap)      return false;
+      if (r.fuel       !== undefined && playerShip.fuel       < r.fuel)       return false;
+      if (r.missiles   !== undefined && playerShip.missiles   < r.missiles)   return false;
+      if (r.droneParts !== undefined && playerShip.droneParts < r.droneParts) return false;
+    }
+
+    // ── Max hull percent ──────────────────────────────────────────────────────
+    if (req.maxHullPercent !== undefined) {
+      let playerShip: ShipComponent | undefined;
+      for (const entity of world.query(['Ship', 'Faction'])) {
+        const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+        if (faction?.id === 'PLAYER') {
+          playerShip = world.getComponent<ShipComponent>(entity, 'Ship');
+          break;
+        }
+      }
+      if (playerShip === undefined) return false;
+      const hullPct = (playerShip.currentHull / Math.max(playerShip.maxHull, 1)) * 100;
+      if (hullPct > req.maxHullPercent) return false;
+    }
+
+    return true;
   }
 
   /** Builds a short inline text summarising a choice's reward for display. */

@@ -1,5 +1,6 @@
 import { AssetLoader } from '../../utils/AssetLoader';
 import { GameStateData } from '../../engine/GameState';
+import { NarrativeSystem } from './NarrativeSystem';
 import { getPlanetNodeColor } from '../world/PlanetGenerator';
 import { BackgroundGenerator } from '../world/BackgroundGenerator';
 import type { MapTheme } from '../world/BackgroundGenerator';
@@ -660,6 +661,9 @@ export class MapSystem {
     this.currentNodeId = 0;
     this.rebelFleetX   = REBEL_START_X;
 
+    // Reset narrative jump counter for the new sector.
+    NarrativeSystem.onSectorStart();
+
     // ── Build planar edge set ─────────────────────────────────────────────────
     const edgeSet = new Set<string>();
     const edges: Array<[number, number]> = [];
@@ -763,6 +767,9 @@ export class MapSystem {
     this.deductFuel(world);
     this.rebelFleetX += REBEL_ADVANCE;
 
+    // Track jumps for the Narrative Director.
+    GameStateData.jumpsInCurrentSector += 1;
+
     this.currentNodeId = nodeId;
     node.visibility    = 'VISITED';
 
@@ -783,6 +790,13 @@ export class MapSystem {
     // Rebel fleet check (only for unvisited nodes): forced combat if caught up.
     if (node.x <= this.rebelFleetX) {
       callbacks.onCombat('rebel_a');
+      return;
+    }
+
+    // Narrative Director: override the node event if a story beat condition fires.
+    const narrativeEvent = NarrativeSystem.intercept();
+    if (narrativeEvent !== null) {
+      callbacks.onEvent(narrativeEvent);
       return;
     }
 

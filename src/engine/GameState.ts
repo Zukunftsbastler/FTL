@@ -15,18 +15,27 @@ import type { StoreInventory } from '../game/data/StoreInventory';
 
 /** Mutable runtime data shared across systems. */
 export const GameStateData: {
-  cachedPlanet:         HTMLCanvasElement | null;
-  sectorNumber:         number;
-  planetTheme:          PlanetTheme | null;
-  sectorTree:           SectorNode[];
-  currentSectorNodeId:  number;
+  cachedPlanet:           HTMLCanvasElement | null;
+  sectorNumber:           number;
+  planetTheme:            PlanetTheme | null;
+  sectorTree:             SectorNode[];
+  currentSectorNodeId:    number;
   /** Persistent store inventory for the current store node. Null outside a store. */
-  currentStore:         StoreInventory | null;
+  currentStore:           StoreInventory | null;
+  /**
+   * Narrative flags set during this run (e.g. story-beat seen-markers, player choices).
+   * Used by the Narrative Director and EventSystem blue-option requirements.
+   */
+  narrativeFlags:         string[];
+  /** Number of jumps completed in the current sector. Reset at each sector start. */
+  jumpsInCurrentSector:   number;
 } = {
-  cachedPlanet:         null,
-  sectorNumber:         1,
-  planetTheme:          null,
-  sectorTree:           [],
-  currentSectorNodeId:  0,
-  currentStore:         null,
+  cachedPlanet:           null,
+  sectorNumber:           1,
+  planetTheme:            null,
+  sectorTree:             [],
+  currentSectorNodeId:    0,
+  currentStore:           null,
+  narrativeFlags:         [],
+  jumpsInCurrentSector:   0,
 };

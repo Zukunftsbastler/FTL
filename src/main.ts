@@ -54,6 +54,7 @@ import type { AugmentTemplate } from './game/data/AugmentTemplate';
 import type { CrewRaceStats } from './game/data/CrewRaceStats';
 import type { DroneTemplate } from './game/data/DroneTemplate';
 import type { SectorTemplate } from './game/data/SectorTemplate';
+import type { StoryTemplate } from './game/data/StoryTemplate';
 import type { EventReward } from './game/data/EventTemplate';
 import type { CrewRace } from './game/data/CrewRace';
 import type { CrewClass } from './game/data/CrewClass';
@@ -121,6 +122,7 @@ async function init(): Promise<void> {
     AssetLoader.loadJSON<AugmentTemplate[]>('augments', '/data/augments.json'),
     AssetLoader.loadJSON<DroneTemplate[]>('drones',     '/data/drones.json'),
     AssetLoader.loadJSON<SectorTemplate[]>('sectors',   '/data/sectors.json'),
+    AssetLoader.loadJSON<StoryTemplate[]>('stories',    '/data/stories.json'),
   ]);
 
   // ── Planet generation ─────────────────────────────────────────────────────────
