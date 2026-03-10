@@ -47,6 +47,16 @@ export const GameStateData: {
   distanceToExit:         number;
   /** Player-chosen difficulty for the current run. Set in the Hangar. */
   difficulty:             Difficulty;
+  /**
+   * Dynamic map markers placed by event choices via `addQuest`.
+   * `nodeId = null` means MapSystem has not yet assigned a node (resolved lazily).
+   */
+  activeQuests: Array<{
+    nodeId:     number | null;
+    eventId:    string;
+    markerType: 'QUEST' | 'DISTRESS';
+    jumpsAway:  number;
+  }>;
 } = {
   cachedPlanet:           null,
   sectorNumber:           1,
@@ -59,4 +69,5 @@ export const GameStateData: {
   currentStoryId:         null, // set to a random story ID in main.ts after assets load
   difficulty:             'NORMAL' as Difficulty,
   distanceToExit:         99,
+  activeQuests:           [],
 };

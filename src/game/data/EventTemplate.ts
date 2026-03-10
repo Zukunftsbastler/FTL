@@ -60,6 +60,16 @@ export interface EventChoice {
   reward?: EventReward;
   triggerCombatWithShipId?: string;
   openStore?: boolean;
+  /**
+   * Dynamically places a future map marker when this choice is selected.
+   * MapSystem assigns the nearest unvisited node at `jumpsAway` BFS hops
+   * and overrides its event with `targetEventId` when the player jumps there.
+   */
+  addQuest?: {
+    targetEventId: string;
+    jumpsAway:     number;
+    markerType:    'QUEST' | 'DISTRESS';
+  };
 }
 
 /** A narrative encounter loaded from data/events.json. */
@@ -67,5 +77,11 @@ export interface EventTemplate {
   id:       string;
   text:     string;
   hazard?:  'SOLAR_FLARE' | 'ASTEROIDS' | 'ION_STORM';
+  /**
+   * Thematic type — controls the event modal border colour.
+   *   HOSTILE / DISTRESS → red   |  FRIENDLY → green
+   *   STORY / QUEST → cyan        |  NEUTRAL / undefined → default white
+   */
+  type?:    'HOSTILE' | 'NEUTRAL' | 'FRIENDLY' | 'STORY' | 'DISTRESS' | 'QUEST';
   choices:  EventChoice[];
 }

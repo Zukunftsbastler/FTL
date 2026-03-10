@@ -229,6 +229,14 @@ export class MapSystem {
         .filter(id => this.nodes[id].visibility !== 'HIDDEN'),
     );
 
+    // ── Lazy quest-node assignment ────────────────────────────────────────────
+    // For any unresolved quest (nodeId === null), find a node at the requested
+    // BFS distance from the current position and bind it.
+    for (const quest of GameStateData.activeQuests) {
+      if (quest.nodeId !== null) continue;
+      quest.nodeId = this.findNodeAtDistance(this.currentNodeId, quest.jumpsAway);
+    }
+
     // ── Layer -1: Procedural space background ────────────────────────────────
     if (this.backgroundCanvas !== null) {
       renderer.drawCanvas(this.backgroundCanvas, 0, 0);
@@ -362,6 +370,17 @@ export class MapSystem {
           );
         }
       }
+    }
+
+    // ── Quest / Distress markers drawn above their assigned nodes ────────────
+    for (const quest of GameStateData.activeQuests) {
+      if (quest.nodeId === null) continue;
+      const node = this.nodes[quest.nodeId];
+      if (node === undefined) continue;
+      const markerColor = quest.markerType === 'DISTRESS' ? '#ff4444' : '#ffee00';
+      const markerLabel = quest.markerType === 'DISTRESS' ? '⚠ DISTRESS' : '★ QUEST';
+      renderer.drawText(markerLabel, node.x, node.y - NODE_RADIUS - 6,
+        'bold 10px monospace', markerColor, 'center');
     }
 
     // ── Bottom HUD panel (sector + type as pills, anchored to left edge) ────────
@@ -799,6 +818,15 @@ export class MapSystem {
       return;
     }
 
+    // Quest marker override: if this node has an active quest, fire it and clean up.
+    const questIdx = GameStateData.activeQuests.findIndex((q) => q.nodeId === nodeId);
+    if (questIdx !== -1) {
+      const quest = GameStateData.activeQuests[questIdx];
+      GameStateData.activeQuests.splice(questIdx, 1);
+      callbacks.onEvent(quest.eventId);
+      return;
+    }
+
     // Narrative Director: override the node event if a story beat condition fires.
     const narrativeEvent = NarrativeSystem.intercept();
     if (narrativeEvent !== null) {
@@ -853,6 +881,43 @@ export class MapSystem {
       }
     }
     return null;
+  }
+
+  /**
+   * BFS to find a random unvisited node at exactly `targetDistance` hops from `fromNodeId`.
+   * Falls back to any nearest unvisited node if no exact match exists.
+   */
+  private findNodeAtDistance(fromNodeId: number, targetDistance: number): number | null {
+    const visited = new Set<number>();
+    const queue: Array<{ id: number; dist: number }> = [{ id: fromNodeId, dist: 0 }];
+    const candidates: number[] = [];
+
+    while (queue.length > 0) {
+      const { id, dist } = queue.shift()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      if (dist === targetDistance && id !== fromNodeId) {
+        candidates.push(id);
+      }
+      if (dist >= targetDistance) continue;
+
+      for (const [a, b] of this.edges) {
+        const neighbor = a === id ? b : b === id ? a : -1;
+        if (neighbor >= 0 && !visited.has(neighbor)) {
+          queue.push({ id: neighbor, dist: dist + 1 });
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    // Fallback: any unvisited non-current node.
+    const fallback = this.nodes.find(
+      (n) => n.id !== fromNodeId && n.visibility !== 'VISITED',
+    );
+    return fallback?.id ?? null;
   }
 
   /**

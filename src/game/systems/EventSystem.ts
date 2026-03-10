@@ -126,10 +126,22 @@ export class EventSystem {
     const mx = Math.round((width  - MODAL_W) / 2);
     const my = Math.round((height - MODAL_H) / 2);
 
-    // ── Modal background ────────────────────────────────────────────────────
+    // ── Modal background — border colour reflects event type ────────────────
+    const typeColors: Record<string, string> = {
+      HOSTILE:  '#ff4444',
+      DISTRESS: '#ff4444',
+      FRIENDLY: '#44ff44',
+      STORY:    '#00ffff',
+      QUEST:    '#4488ff',
+      NEUTRAL:  MODAL_BORDER,
+    };
+    const borderColor = event.type !== undefined
+      ? (typeColors[event.type] ?? MODAL_BORDER)
+      : MODAL_BORDER;
+
     UIRenderer.drawSciFiPanel(renderer.getContext(), mx, my, MODAL_W, MODAL_H, {
       chamfer:     12,
-      borderColor: MODAL_BORDER,
+      borderColor,
       alpha:       0.97,
     });
 
@@ -237,6 +249,16 @@ export class EventSystem {
     if (choice.setFlag !== undefined &&
         !GameStateData.narrativeFlags.includes(choice.setFlag)) {
       GameStateData.narrativeFlags.push(choice.setFlag);
+    }
+
+    // Place a dynamic quest marker on the map if requested.
+    if (choice.addQuest !== undefined) {
+      GameStateData.activeQuests.push({
+        nodeId:     null,   // MapSystem assigns the actual node lazily
+        eventId:    choice.addQuest.targetEventId,
+        markerType: choice.addQuest.markerType,
+        jumpsAway:  choice.addQuest.jumpsAway,
+      });
     }
 
     if (choice.triggerCombatWithShipId !== undefined) {

@@ -400,6 +400,7 @@ async function init(): Promise<void> {
 
     // Reset narrative state.
     GameStateData.narrativeFlags         = [];
+    GameStateData.activeQuests           = [];
     GameStateData.jumpsInCurrentSector   = 0;
     GameStateData.sectorNumber           = 1;
     GameStateData.distanceToExit         = 99;
