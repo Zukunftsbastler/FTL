@@ -180,6 +180,16 @@ export class JumpSystem {
     // Beveled button — cyan when ready, dark when charging.
     UIRenderer.drawBeveledButton(ctx, bx, by, FTL_BTN_W, FTL_BTN_H, label, isReady);
 
+    // Tooltip on hover.
+    const mouse = this.input.getMousePosition();
+    if (mouse.x >= bx && mouse.x <= bx + FTL_BTN_W &&
+        mouse.y >= by && mouse.y <= by + FTL_BTN_H) {
+      const tip = isReady
+        ? 'Click to escape combat via FTL jump.'
+        : `FTL drive charging. Requires crew in Piloting room and engine power. ${Math.round(ftlCharge * 100)}% charged.`;
+      this.renderer.drawTooltip(mouse.x, mouse.y, tip);
+    }
+
     // Yellow charge bar drawn inside the button over the panel (semi-transparent).
     if (ftlCharge > 0 && !isReady) {
       const fillColor = '#886600';

@@ -556,6 +556,11 @@ async function init(): Promise<void> {
 
     } else if (currentState === 'STAR_MAP') {
       // ── Star Map ─────────────────────────────────────────────────────────────
+      // Oxygen equalization and crew suffocation still apply on the map
+      // so that open airlocks or fire-damaged rooms continue to affect crew.
+      oxygenSystem.update(world);
+      crewSystem.update(world);
+
       const { width } = renderer.getCanvasSize();
       renderer.clear('#00000f');
 

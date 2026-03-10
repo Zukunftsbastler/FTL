@@ -452,6 +452,13 @@ export class MapSystem {
       UIRenderer.drawSciFiPanel(ctx, PANEL_X, PANEL_Y, panelW, panelH,
         { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
 
+      const resourceTips = [
+        'Fuel: Required for interstellar jumps.',
+        'Missiles: Ammo consumed by missile and bomb weapons.',
+        'Drone Parts: Required to deploy active drones.',
+        'Scrap: Currency used in stores and for upgrades.',
+      ];
+      const mapMouse = input.getMousePosition();
       let px2 = PANEL_X + PANEL_PAD;
       const py2 = PANEL_Y + PANEL_PAD;
       items.forEach((label, i) => {
@@ -461,6 +468,10 @@ export class MapSystem {
         ctx.fillStyle = '#001820';
         ctx.textAlign = 'left';
         ctx.fillText(label, px2 + PILL_PAD_X, py2 + PILL_H / 2 + 5);
+        if (mapMouse.x >= px2 && mapMouse.x <= px2 + pw &&
+            mapMouse.y >= py2 && mapMouse.y <= py2 + PILL_H) {
+          renderer.drawTooltip(mapMouse.x, mapMouse.y, resourceTips[i]);
+        }
         px2 += pw + PILL_GAP;
       });
 
@@ -473,6 +484,10 @@ export class MapSystem {
         { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
       renderer.drawText('⚙  SHIP', BTN_X + BTN_W / 2, BTN_Y + BTN_H / 2 + 6,
         'bold 12px monospace', '#001830', 'center');
+      if (mapMouse.x >= BTN_X && mapMouse.x <= BTN_X + BTN_W &&
+          mapMouse.y >= BTN_Y && mapMouse.y <= BTN_Y + BTN_H) {
+        renderer.drawTooltip(mapMouse.x, mapMouse.y, 'View your ship\'s systems and weapons.');
+      }
 
       if (input.isMouseJustPressed(0)) {
         const m = input.getMousePosition();

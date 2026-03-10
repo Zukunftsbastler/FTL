@@ -220,7 +220,8 @@ export class ShipFactory {
         _type: 'Door',
         roomA: doorData.roomA,
         roomB: doorData.roomB,
-        isOpen: true,
+        // Airlock doors (connected to SPACE) start closed to prevent O2 venting at run start.
+        isOpen: doorData.roomA !== 'SPACE' && doorData.roomB !== 'SPACE',
         isVertical: doorData.vertical,
       };
       const posComp: PositionComponent = {

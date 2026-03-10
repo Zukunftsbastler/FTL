@@ -60,6 +60,13 @@ export class HangarSystem {
       let dx = width / 2 - totalW / 2;
       const dy = 78;
 
+      const diffTips: Record<Difficulty, string> = {
+        EASY:   'More starting resources. Increased scrap rewards. Slower Rebel Fleet. Weaker enemies.',
+        NORMAL: 'The standard experience. A balanced challenge.',
+        HARD:   'Zero starting scrap. Reduced rewards. Faster Rebel pursuit. Enemies are heavily armed.',
+      };
+      const mouse = input.getMousePosition();
+
       for (const lvl of levels) {
         const isActive = GameStateData.difficulty === lvl;
         const pillColor = isActive
@@ -72,6 +79,13 @@ export class HangarSystem {
         const capLvl = lvl;
         hitboxes.push({ x: dx, y: dy, w: PILL_W, h: PILL_H,
           action: () => { GameStateData.difficulty = capLvl; } });
+
+        // Tooltip on hover.
+        if (mouse.x >= dx && mouse.x <= dx + PILL_W &&
+            mouse.y >= dy && mouse.y <= dy + PILL_H) {
+          renderer.drawTooltip(dx + PILL_W / 2, dy, diffTips[lvl]);
+        }
+
         dx += PILL_W + GAP;
       }
     }
