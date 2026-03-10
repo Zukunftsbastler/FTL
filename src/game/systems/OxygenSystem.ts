@@ -1,6 +1,6 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
-import { calculateO2Change, equalizeO2, SPACE_EQ_RATE } from '../logic/OxygenMath';
+import { calculateO2Change, equalizeO2, ROOM_EQ_RATE, SPACE_EQ_RATE } from '../logic/OxygenMath';
 import type { Entity } from '../../engine/Entity';
 import type { IWorld } from '../../engine/IWorld';
 import type { CrewComponent } from '../components/CrewComponent';
@@ -143,6 +143,8 @@ export class OxygenSystem {
       this.applyLaniusDrain(world, shipEntity, oxygenMap, dt);
 
       // Equalize O2 through open doors owned by this ship.
+      // Doors connecting to (or adjacent to) a venting room use SPACE_EQ_RATE so
+      // the drain outpaces OXYGEN system regeneration and propagates visibly.
       const doorEntities = world.query(['Door', 'Owner']);
       for (const entity of doorEntities) {
         const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
@@ -158,7 +160,12 @@ export class OxygenSystem {
           const oxyB = oxygenMap.get(keyB);
           if (oxyA === undefined || oxyB === undefined) continue;
 
-          const [newA, newB] = equalizeO2(oxyA.level, oxyB.level, true, dt);
+          // Use the faster space-rate if either side is connected to vacuum so that
+          // the drain propagates faster than the OXYGEN system can compensate.
+          const rate = (ventingRooms.has(keyA) || ventingRooms.has(keyB))
+            ? SPACE_EQ_RATE
+            : ROOM_EQ_RATE;
+          const [newA, newB] = equalizeO2(oxyA.level, oxyB.level, true, dt, rate);
           oxyA.level = newA;
           oxyB.level = newB;
 

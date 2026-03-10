@@ -41,9 +41,10 @@ export class Pathfinder {
 
   /**
    * Set of "roomIdA:roomIdB" keys (both orderings) for pairs of rooms
-   * connected by at least one interior door.
+   * connected by at least one interior door that is currently OPEN.
+   * Updated each time `updateOpenDoors()` is called.
    */
-  private readonly connectedRooms: Set<string> = new Set();
+  private openConnections: Set<string> = new Set();
 
   constructor(rooms: RoomTemplate[], doors: DoorTemplate[]) {
     // Build tile → room lookup.
@@ -55,14 +56,24 @@ export class Pathfinder {
       }
     }
 
-    // Build connected-rooms set, ignoring space-vent doors.
+    // Seed with all template doors open so the first frame before any door state
+    // is applied still produces valid paths.
     for (const door of doors) {
       if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
-      const a = door.roomA;
-      const b = door.roomB;
-      this.connectedRooms.add(`${a}:${b}`);
-      this.connectedRooms.add(`${b}:${a}`);
+      this.openConnections.add(`${door.roomA}:${door.roomB}`);
+      this.openConnections.add(`${door.roomB}:${door.roomA}`);
     }
+  }
+
+  /**
+   * Rebuilds the set of passable room–room connections from live ECS door states.
+   * Call this once per frame in MovementSystem before any pathfinding requests.
+   *
+   * @param openDoorPairs  Set of "roomIdA:roomIdB" strings for every OPEN door
+   *                       (both orderings). Build this from DoorComponent queries.
+   */
+  updateOpenDoors(openDoorPairs: Set<string>): void {
+    this.openConnections = openDoorPairs;
   }
 
   /**
@@ -151,7 +162,7 @@ export class Pathfinder {
     if (fromRoom === undefined || toRoom === undefined) return false;
     if (fromRoom === toRoom) return true;
 
-    return this.connectedRooms.has(`${fromRoom}:${toRoom}`);
+    return this.openConnections.has(`${fromRoom}:${toRoom}`);
   }
 
   private manhattan(ax: number, ay: number, bx: number, by: number): number {

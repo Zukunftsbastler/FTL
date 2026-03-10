@@ -9,6 +9,7 @@ import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
 import type { PathfindingComponent } from '../components/PathfindingComponent';
 import type { PositionComponent } from '../components/PositionComponent';
+import type { DoorComponent } from '../components/DoorComponent';
 import type { RoomComponent } from '../components/RoomComponent';
 import type { SelectableComponent } from '../components/SelectableComponent';
 
@@ -44,8 +45,27 @@ export class MovementSystem {
   }
 
   update(world: IWorld): void {
+    // Sync the pathfinder with current runtime door states so crew cannot
+    // walk through closed doors or teleport through walls.
+    this.syncDoorStates(world);
     this.handleRightClick(world);
     this.advanceCrewAlongPaths(world);
+  }
+
+  /**
+   * Rebuilds the pathfinder's open-door graph from live ECS door states.
+   * Only interior (non-airlock) open doors contribute passable room connections.
+   */
+  private syncDoorStates(world: IWorld): void {
+    const openPairs = new Set<string>();
+    for (const entity of world.query(['Door', 'Owner'])) {
+      const door = world.getComponent<DoorComponent>(entity, 'Door');
+      if (door === undefined || !door.isOpen) continue;
+      if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
+      openPairs.add(`${door.roomA}:${door.roomB}`);
+      openPairs.add(`${door.roomB}:${door.roomA}`);
+    }
+    this.pathfinder.updateOpenDoors(openPairs);
   }
 
   // ── Right-click: compute and assign A* path ──────────────────────────────────
