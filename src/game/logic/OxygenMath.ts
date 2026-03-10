@@ -19,7 +19,7 @@ export const O2_BREACH_RATE = 20;
  * Fraction of the O2 difference closed per second when equalizing two adjacent rooms.
  * Higher = faster equalization.
  */
-export const ROOM_EQ_RATE  = 0.4;
+export const ROOM_EQ_RATE  = 1.5;
 
 /**
  * Fraction of the O2 difference closed per second when a room vents into space.

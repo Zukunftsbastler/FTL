@@ -59,18 +59,35 @@ export class OxygenSystem {
     // Collect unique ship entities from all rooms that have an Owner.
     const shipEntities = this.collectShipEntities(world);
 
-    // Build a set of "venting" room keys: rooms connected to an open SPACE door.
-    // These rooms suppress O2 regen (powered life support can't fight a hull vent).
+    // Build a flood-filled set of venting room keys.
+    // Seed: every room directly touching an open airlock door.
+    // Expand: propagate through all open interior doors so that any room
+    // reachable from an open airlock (however indirectly) is also treated
+    // as venting — preventing the OXYGEN system from counteracting the drain.
     const ventingRooms = new Set<string>();
+    const allDoors: Array<{ door: DoorComponent; sid: number }> = [];
     for (const doorEntity of world.query(['Door', 'Owner'])) {
       const door      = world.getComponent<DoorComponent>(doorEntity, 'Door');
       const ownerComp = world.getComponent<OwnerComponent>(doorEntity, 'Owner');
       if (door === undefined || ownerComp === undefined || !door.isOpen) continue;
-      const sid = ownerComp.shipEntity;
+      allDoors.push({ door, sid: ownerComp.shipEntity });
+      // Direct airlock seeds.
       if (door.roomA === 'SPACE' && door.roomB !== 'SPACE') {
-        ventingRooms.add(`${sid}:${door.roomB}`);
+        ventingRooms.add(`${ownerComp.shipEntity}:${door.roomB}`);
       } else if (door.roomB === 'SPACE' && door.roomA !== 'SPACE') {
-        ventingRooms.add(`${sid}:${door.roomA}`);
+        ventingRooms.add(`${ownerComp.shipEntity}:${door.roomA}`);
+      }
+    }
+    // Flood-fill through open interior doors.
+    let flooded = true;
+    while (flooded) {
+      flooded = false;
+      for (const { door, sid } of allDoors) {
+        if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
+        const keyA = `${sid}:${door.roomA}`;
+        const keyB = `${sid}:${door.roomB}`;
+        if (ventingRooms.has(keyA) && !ventingRooms.has(keyB)) { ventingRooms.add(keyB); flooded = true; }
+        if (ventingRooms.has(keyB) && !ventingRooms.has(keyA)) { ventingRooms.add(keyA); flooded = true; }
       }
     }
 
