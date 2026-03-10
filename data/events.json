@@ -3,134 +3,250 @@
     "id": "safe_passage",
     "text": "You arrive in a remarkably quiet sector. The sensors pick up nothing but distant starlight. It's a rare moment of peace.",
     "choices": [
-      { "text": "Take a breath and continue." }
+      {
+        "text": "Take a breath and continue."
+      }
     ]
   },
   {
     "id": "deep_space",
     "text": "This node is completely empty. No planets, no asteroids, no ships. Just the vast emptiness of deep space.",
     "choices": [
-      { "text": "Power up the FTL drive." }
+      {
+        "text": "Power up the FTL drive."
+      }
     ]
   },
   {
     "id": "rebel_patrol",
     "text": "As soon as you exit the jump, alarms blare. A Rebel fighter was waiting in ambush!",
     "choices": [
-      { "text": "Battle stations!", "triggerCombatWithShipId": "rebel_a" }
-    ]
+      {
+        "text": "Battle stations!",
+        "triggerCombatWithShipId": "rebel_a"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "pirate_ambush",
     "text": "A ship with pirate markings suddenly decloaks off your port bow. They are charging weapons!",
     "choices": [
-      { "text": "Show them no mercy.", "triggerCombatWithShipId": "pirate_interceptor" }
-    ]
+      {
+        "text": "Show them no mercy.",
+        "triggerCombatWithShipId": "pirate_interceptor"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "floating_cargo",
     "text": "You spot a cluster of cargo pods floating in an asteroid field. It looks like they were jettisoned in a hurry.",
     "choices": [
-      { "text": "Bring them aboard.", "reward": { "scrap": 22, "fuel": 2 } }
-    ]
+      {
+        "text": "Bring them aboard.",
+        "reward": {
+          "scrap": 22,
+          "fuel": 2
+        }
+      }
+    ],
+    "type": "FRIENDLY"
   },
   {
     "id": "abandoned_station",
     "text": "You find a heavily damaged, abandoned mining station. A quick scan reveals some usable military supplies left behind.",
     "choices": [
-      { "text": "Loot the station.", "reward": { "scrap": 15, "missiles": 4, "droneParts": 2 } }
-    ]
+      {
+        "text": "Loot the station.",
+        "reward": {
+          "scrap": 15,
+          "missiles": 4,
+          "droneParts": 2
+        }
+      }
+    ],
+    "type": "FRIENDLY"
   },
   {
     "id": "merchant_fuel",
     "text": "A friendly civilian trader hails you: 'You look like you're going a long way. Trade you 4 Fuel for 15 Scrap?'",
     "choices": [
-      { "text": "Accept the trade.", "reward": { "scrap": -15, "fuel": 4 } },
-      { "text": "Decline and move on." }
-    ]
+      {
+        "text": "Accept the trade.",
+        "reward": {
+          "scrap": -15,
+          "fuel": 4
+        }
+      },
+      {
+        "text": "Decline and move on."
+      }
+    ],
+    "type": "FRIENDLY"
   },
   {
     "id": "merchant_weapon",
     "text": "A black-market arms dealer offers you a pristine Burst Laser II, but the price is a steep 45 Scrap.",
     "choices": [
-      { "text": "Buy the weapon.", "requirementId": "scrap:45", "reward": { "scrap": -45, "weaponId": "burst_laser_2" } },
-      { "text": "Too expensive. Leave." }
-    ]
+      {
+        "text": "Buy the weapon.",
+        "requirementId": "scrap:45",
+        "reward": {
+          "scrap": -45,
+          "weaponId": "burst_laser_2"
+        }
+      },
+      {
+        "text": "Too expensive. Leave."
+      }
+    ],
+    "type": "FRIENDLY"
   },
   {
     "id": "distress_start",
     "text": "You arrive at a distress beacon to find a civilian ship under attack by a pirate interceptor!",
     "choices": [
-      { "text": "Move in to attack!", "triggerCombatWithShipId": "pirate_interceptor" },
-      { "text": "Stay out of it." }
-    ]
+      {
+        "text": "Move in to attack!",
+        "triggerCombatWithShipId": "pirate_interceptor"
+      },
+      {
+        "text": "Stay out of it."
+      }
+    ],
+    "type": "DISTRESS"
   },
   {
     "id": "derelict_start",
     "text": "You find an intact derelict ship drifting silently. There are no life signs, but the cargo bays might still be full.",
     "choices": [
-      { "text": "Dock and search the ship (Risky).", "randomOutcomes": [
-          { "chance": 0.6, "nextEventId": "derelict_loot" },
-          { "chance": 0.4, "nextEventId": "derelict_damage" }
+      {
+        "text": "Dock and search the ship (Risky).",
+        "randomOutcomes": [
+          {
+            "chance": 0.6,
+            "nextEventId": "derelict_loot"
+          },
+          {
+            "chance": 0.4,
+            "nextEventId": "derelict_damage"
+          }
         ]
       },
-      { "text": "Leave it alone." }
-    ]
+      {
+        "text": "Leave it alone."
+      }
+    ],
+    "type": "NEUTRAL"
   },
   {
     "id": "derelict_loot",
     "text": "Your crew finds a hidden stash of supplies in the captain's quarters!",
     "choices": [
-      { "text": "Excellent.", "reward": { "scrap": 25, "weaponId": "artemis_missile" } }
+      {
+        "text": "Excellent.",
+        "reward": {
+          "scrap": 25,
+          "weaponId": "artemis_missile"
+        }
+      }
     ]
   },
   {
     "id": "derelict_damage",
     "text": "It was a trap! A localized booby trap explodes, damaging your hull as your crew frantically retreats.",
     "choices": [
-      { "text": "Patch the holes.", "reward": { "hullRepair": -4 } }
+      {
+        "text": "Patch the holes.",
+        "reward": {
+          "hullRepair": -4
+        }
+      }
     ]
   },
   {
     "id": "fire_station",
     "text": "A research station is engulfed in flames. A frantic transmission begs for someone to repair their fire suppression system.",
     "choices": [
-      { "text": "Send a rescue team (Risky).", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "fire_station_success" },
-          { "chance": 0.5, "nextEventId": "fire_station_fail" }
+      {
+        "text": "Send a rescue team (Risky).",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "fire_station_success"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "fire_station_fail"
+          }
         ]
       },
-      { "text": "[Engi Crew] Send your Engi to remotely slice the system.", "requirementId": "crew:ENGI", "nextEventId": "fire_station_engi" },
-      { "text": "Ignore the plea." }
-    ]
+      {
+        "text": "[Engi Crew] Send your Engi to remotely slice the system.",
+        "requirementId": "crew:ENGI",
+        "nextEventId": "fire_station_engi"
+      },
+      {
+        "text": "Ignore the plea."
+      }
+    ],
+    "type": "DISTRESS"
   },
   {
     "id": "fire_station_success",
     "text": "Your crew braves the flames and manages to save the scientists! They reward you with their research funds.",
     "choices": [
-      { "text": "Collect the reward.", "reward": { "scrap": 30, "missiles": 2 } }
+      {
+        "text": "Collect the reward.",
+        "reward": {
+          "scrap": 30,
+          "missiles": 2
+        }
+      }
     ]
   },
   {
     "id": "fire_station_fail",
     "text": "The fire spreads too fast! Your crew barely makes it back to the airlock, taking minor structural damage in the escape.",
     "choices": [
-      { "text": "Ouch.", "reward": { "hullRepair": -2 } }
+      {
+        "text": "Ouch.",
+        "reward": {
+          "hullRepair": -2
+        }
+      }
     ]
   },
   {
     "id": "fire_station_engi",
     "text": "Your Engi effortlessly bypasses the station's damaged relays and activates the foam suppressors. The grateful scientists reward you.",
     "choices": [
-      { "text": "A job well done.", "reward": { "scrap": 40, "droneParts": 3 } }
+      {
+        "text": "A job well done.",
+        "reward": {
+          "scrap": 40,
+          "droneParts": 3
+        }
+      }
     ]
   },
   {
     "id": "slaver_start",
     "text": "A heavily armed slaver ship hails you: 'We have prime workers for sale! Give us 25 scrap, or we'll take your crew by force!'",
     "choices": [
-      { "text": "Pay their ransom.", "requirementId": "scrap:25", "reward": { "scrap": -25, "crewMember": true } },
-      { "text": "We don't negotiate with slavers. Open fire!", "triggerCombatWithShipId": "pirate_interceptor" }
+      {
+        "text": "Pay their ransom.",
+        "requirementId": "scrap:25",
+        "reward": {
+          "scrap": -25,
+          "crewMember": true
+        }
+      },
+      {
+        "text": "We don't negotiate with slavers. Open fire!",
+        "triggerCombatWithShipId": "pirate_interceptor"
+      }
     ]
   },
   {
@@ -138,41 +254,70 @@
     "text": "A pirate ship is hiding inside an asteroid field, waiting for unsuspecting travelers. They attack!",
     "hazard": "ASTEROIDS",
     "choices": [
-      { "text": "Evasive maneuvers!", "triggerCombatWithShipId": "pirate_interceptor" }
+      {
+        "text": "Evasive maneuvers!",
+        "triggerCombatWithShipId": "pirate_interceptor"
+      }
     ]
   },
   {
     "id": "artifact_start",
     "text": "You find a strange, glowing alien monolith orbiting a gas giant. It emits a low, pulsating frequency.",
     "choices": [
-      { "text": "Bring it aboard and study it.", "randomOutcomes": [
-          { "chance": 0.33, "nextEventId": "artifact_heal" },
-          { "chance": 0.33, "nextEventId": "artifact_damage" },
-          { "chance": 0.34, "nextEventId": "artifact_nothing" }
+      {
+        "text": "Bring it aboard and study it.",
+        "randomOutcomes": [
+          {
+            "chance": 0.33,
+            "nextEventId": "artifact_heal"
+          },
+          {
+            "chance": 0.33,
+            "nextEventId": "artifact_damage"
+          },
+          {
+            "chance": 0.34,
+            "nextEventId": "artifact_nothing"
+          }
         ]
       },
-      { "text": "Leave it in peace." }
-    ]
+      {
+        "text": "Leave it in peace."
+      }
+    ],
+    "type": "QUEST"
   },
   {
     "id": "artifact_heal",
     "text": "The monolith releases a burst of nanites that rapidly repair your ship's hull plating before crumbling to dust.",
     "choices": [
-      { "text": "Amazing!", "reward": { "hullRepair": 8 } }
+      {
+        "text": "Amazing!",
+        "reward": {
+          "hullRepair": 8
+        }
+      }
     ]
   },
   {
     "id": "artifact_damage",
     "text": "The monolith is highly unstable! It explodes in the cargo bay, severely damaging the hull.",
     "choices": [
-      { "text": "Damage control!", "reward": { "hullRepair": -6 } }
+      {
+        "text": "Damage control!",
+        "reward": {
+          "hullRepair": -6
+        }
+      }
     ]
   },
   {
     "id": "artifact_nothing",
     "text": "You study it for hours, but it's completely inert. It's just a glowing rock.",
     "choices": [
-      { "text": "What a waste of time." }
+      {
+        "text": "What a waste of time."
+      }
     ]
   },
   {
@@ -180,22 +325,39 @@
     "text": "You jump too close to a highly volatile star! To make matters worse, an enemy scout is moving to intercept.",
     "hazard": "SOLAR_FLARE",
     "choices": [
-      { "text": "Prepare for a heated battle!", "triggerCombatWithShipId": "rebel_a" }
-    ]
+      {
+        "text": "Prepare for a heated battle!",
+        "triggerCombatWithShipId": "rebel_a"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "disease_ship",
     "text": "You find a ship drifting. They hail you, coughing heavily. 'A plague has hit our crew. Please, help us!'",
     "choices": [
-      { "text": "[Medbay Lvl 2] Bring them aboard and cure them.", "requirementId": "system:MEDBAY:2", "nextEventId": "disease_ship_cured" },
-      { "text": "Keep your distance. We can't risk infection." }
-    ]
+      {
+        "text": "[Medbay Lvl 2] Bring them aboard and cure them.",
+        "requirementId": "system:MEDBAY:2",
+        "nextEventId": "disease_ship_cured"
+      },
+      {
+        "text": "Keep your distance. We can't risk infection."
+      }
+    ],
+    "type": "DISTRESS"
   },
   {
     "id": "disease_ship_cured",
     "text": "Your advanced Medbay makes quick work of the pathogen. Grateful, one of their specialists offers to join your crew.",
     "choices": [
-      { "text": "Welcome aboard.", "reward": { "crewMember": true, "scrap": 15 } }
+      {
+        "text": "Welcome aboard.",
+        "reward": {
+          "crewMember": true,
+          "scrap": 15
+        }
+      }
     ]
   },
   {
@@ -203,180 +365,351 @@
     "text": "You arrive in an ion storm. Your reactor power is severely limited. Suddenly, a ship decloaks!",
     "hazard": "ION_STORM",
     "choices": [
-      { "text": "Fight blind!", "triggerCombatWithShipId": "auto_assault" }
-    ]
+      {
+        "text": "Fight blind!",
+        "triggerCombatWithShipId": "auto_assault"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "stranded_mantis",
     "text": "You find an escape pod. Inside is a Mantis warrior, heavily armed but unconscious.",
     "choices": [
-      { "text": "Open the pod.", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "mantis_joins" },
-          { "chance": 0.5, "nextEventId": "mantis_attacks" }
+      {
+        "text": "Open the pod.",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "mantis_joins"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "mantis_attacks"
+          }
         ]
       },
-      { "text": "Jettison the pod." }
-    ]
+      {
+        "text": "Jettison the pod."
+      }
+    ],
+    "type": "DISTRESS"
   },
   {
     "id": "mantis_joins",
     "text": "The Mantis wakes up and, recognizing you saved its life, pledges its blades to your cause.",
     "choices": [
-      { "text": "A powerful ally.", "reward": { "crewMember": true } }
+      {
+        "text": "A powerful ally.",
+        "reward": {
+          "crewMember": true
+        }
+      }
     ]
   },
   {
     "id": "mantis_attacks",
     "text": "The Mantis wakes up in a frenzy and immediately attacks your crew! You have no choice but to fight back.",
     "choices": [
-      { "text": "Battle stations!", "triggerCombatWithShipId": "mantis_scout" }
+      {
+        "text": "Battle stations!",
+        "triggerCombatWithShipId": "mantis_scout"
+      }
     ]
   },
   {
     "id": "weapons_cache",
     "text": "Sensors detect a buried weapons cache on a nearby moon. You'll need high-powered lasers to cut through the crust.",
     "choices": [
-      { "text": "[Weapons Lvl 3] Blast the crust away.", "requirementId": "system:WEAPONS:3", "reward": { "weaponId": "burst_laser_1", "scrap": 20 } },
-      { "text": "We don't have the firepower. Leave it." }
-    ]
+      {
+        "text": "[Weapons Lvl 3] Blast the crust away.",
+        "requirementId": "system:WEAPONS:3",
+        "reward": {
+          "weaponId": "burst_laser_1",
+          "scrap": 20
+        }
+      },
+      {
+        "text": "We don't have the firepower. Leave it."
+      }
+    ],
+    "type": "QUEST"
   },
   {
     "id": "giant_alien_spiders",
     "text": "You are hailed by a space station. 'Help! We're being overrun by giant alien spiders!'",
     "choices": [
-      { "text": "Send the crew in to help (Risky).", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "spiders_success" },
-          { "chance": 0.5, "nextEventId": "spiders_fail" }
+      {
+        "text": "Send the crew in to help (Risky).",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "spiders_success"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "spiders_fail"
+          }
         ]
       },
-      { "text": "[Boarding Drone] Send in an automated drone.", "requirementId": "drone:boarding_drone", "nextEventId": "spiders_drone" },
-      { "text": "Leave them to their fate." }
-    ]
+      {
+        "text": "[Boarding Drone] Send in an automated drone.",
+        "requirementId": "drone:boarding_drone",
+        "nextEventId": "spiders_drone"
+      },
+      {
+        "text": "Leave them to their fate."
+      }
+    ],
+    "type": "QUEST"
   },
   {
     "id": "spiders_success",
     "text": "Your crew fights bravely and exterminates the arachnid threat. The station rewards you handsomely.",
     "choices": [
-      { "text": "Take the reward.", "reward": { "scrap": 40, "droneParts": 2 } }
+      {
+        "text": "Take the reward.",
+        "reward": {
+          "scrap": 40,
+          "droneParts": 2
+        }
+      }
     ]
   },
   {
     "id": "spiders_fail",
     "text": "The spiders are too much! Your crew flees back to the ship, but one of them was left behind in the chaos...",
     "choices": [
-      { "text": "A tragic loss.", "reward": { "loseCrewMember": true } } 
+      {
+        "text": "A tragic loss.",
+        "reward": {
+          "loseCrewMember": true
+        }
+      }
     ]
   },
   {
     "id": "spiders_drone",
     "text": "The boarding drone mercilessly clears the station without risking your crew. The survivors hand over their remaining supplies.",
     "choices": [
-      { "text": "Efficient.", "reward": { "scrap": 45, "missiles": 3 } }
+      {
+        "text": "Efficient.",
+        "reward": {
+          "scrap": 45,
+          "missiles": 3
+        }
+      }
     ]
   },
   {
     "id": "mercenary_encounter",
     "text": "A well-armed mercenary ship hails you. 'We can scout the sector for you or hold off the Rebels... for a price.'",
     "choices": [
-      { "text": "Pay them to scout the sector.", "requirementId": "scrap:20", "reward": { "scrap": -20, "revealMap": true } },
-      { "text": "Pay them to delay the Rebels.", "requirementId": "scrap:30", "reward": { "scrap": -30, "delayRebels": 2 } },
-      { "text": "We don't need your help. (Attack)", "triggerCombatWithShipId": "rebel_fighter" },
-      { "text": "Decline and move on." }
-    ]
+      {
+        "text": "Pay them to scout the sector.",
+        "requirementId": "scrap:20",
+        "reward": {
+          "scrap": -20,
+          "revealMap": true
+        }
+      },
+      {
+        "text": "Pay them to delay the Rebels.",
+        "requirementId": "scrap:30",
+        "reward": {
+          "scrap": -30,
+          "delayRebels": 2
+        }
+      },
+      {
+        "text": "We don't need your help. (Attack)",
+        "triggerCombatWithShipId": "rebel_fighter"
+      },
+      {
+        "text": "Decline and move on."
+      }
+    ],
+    "type": "NEUTRAL"
   },
   {
     "id": "slug_surrender_trick",
     "text": "A Slug light cruiser attacks you unprovoked! As you charge weapons, they hail you: 'Wait! We surrender! Take these supplies and spare us.'",
     "choices": [
-      { "text": "Accept their surrender.", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "slug_trick_supplies" },
-          { "chance": 0.5, "nextEventId": "slug_trick_ambush" }
+      {
+        "text": "Accept their surrender.",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "slug_trick_supplies"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "slug_trick_ambush"
+          }
         ]
       },
-      { "text": "Never trust a Slug. Open fire!", "triggerCombatWithShipId": "slug_cruiser" }
-    ]
+      {
+        "text": "Never trust a Slug. Open fire!",
+        "triggerCombatWithShipId": "slug_cruiser"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "slug_trick_supplies",
     "text": "Surprisingly, they keep their word and transfer some scrap and fuel before jumping away.",
     "choices": [
-      { "text": "We got lucky.", "reward": { "scrap": 20, "fuel": 3 } }
+      {
+        "text": "We got lucky.",
+        "reward": {
+          "scrap": 20,
+          "fuel": 3
+        }
+      }
     ]
   },
   {
     "id": "slug_trick_ambush",
     "text": "It was a ruse! As you lower your shields to receive the transfer, they power up their weapons and target your engines!",
     "choices": [
-      { "text": "Shields up! Return fire!", "triggerCombatWithShipId": "slug_cruiser", "reward": { "systemDamage": { "ENGINES": 1 } } }
+      {
+        "text": "Shields up! Return fire!",
+        "triggerCombatWithShipId": "slug_cruiser",
+        "reward": {
+          "systemDamage": {
+            "ENGINES": 1
+          }
+        }
+      }
     ]
   },
   {
     "id": "store_encounter",
     "text": "You find a heavily shielded trading post broadcasting its inventory across all frequencies.",
     "choices": [
-      { "text": "Browse the store.", "openStore": true },
-      { "text": "Ignore it." }
+      {
+        "text": "Browse the store.",
+        "openStore": true
+      },
+      {
+        "text": "Ignore it."
+      }
     ]
   },
   {
     "id": "madman_moon",
     "text": "Sensors pick up a lone life sign on a barren moon. It appears to be a stranded pilot who has gone completely mad from isolation.",
     "choices": [
-      { "text": "Bring him aboard.", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "madman_joins" },
-          { "chance": 0.5, "nextEventId": "madman_sabotage" }
+      {
+        "text": "Bring him aboard.",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "madman_joins"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "madman_sabotage"
+          }
         ]
       },
-      { "text": "[Level 2 Medbay] Bring him straight to the Medbay.", "requirementId": "system:MEDBAY:2", "nextEventId": "madman_healed" },
-      { "text": "Leave him there." }
-    ]
+      {
+        "text": "[Level 2 Medbay] Bring him straight to the Medbay.",
+        "requirementId": "system:MEDBAY:2",
+        "nextEventId": "madman_healed"
+      },
+      {
+        "text": "Leave him there."
+      }
+    ],
+    "type": "NEUTRAL"
   },
   {
     "id": "madman_joins",
     "text": "After some food and rest, his sanity returns. He offers to join your crew out of gratitude.",
     "choices": [
-      { "text": "Welcome aboard.", "reward": { "crewMember": true } }
+      {
+        "text": "Welcome aboard.",
+        "reward": {
+          "crewMember": true
+        }
+      }
     ]
   },
   {
     "id": "madman_sabotage",
     "text": "He seems calm at first, but suddenly snaps! He attacks a crew member and steals some scrap before escaping in an escape pod.",
     "choices": [
-      { "text": "We should have known.", "reward": { "scrap": -15, "crewDamage": 25 } }
+      {
+        "text": "We should have known.",
+        "reward": {
+          "scrap": -15,
+          "crewDamage": 25
+        }
+      }
     ]
   },
   {
     "id": "madman_healed",
     "text": "Your advanced medical facilities sedate and cure his psychological trauma. He eagerly joins your crew as a skilled engineer.",
     "choices": [
-      { "text": "Glad we could help.", "reward": { "crewMember": true } }
+      {
+        "text": "Glad we could help.",
+        "reward": {
+          "crewMember": true
+        }
+      }
     ]
   },
   {
     "id": "automated_rebel_scout",
     "text": "An unmanned Rebel scout drone is patrolling this beacon. It hasn't spotted you yet, but it's positioned close to the jump point.",
     "choices": [
-      { "text": "Attempt to sneak past.", "randomOutcomes": [
-          { "chance": 0.5, "nextEventId": "scout_sneak_success" },
-          { "chance": 0.5, "nextEventId": "scout_sneak_fail" }
+      {
+        "text": "Attempt to sneak past.",
+        "randomOutcomes": [
+          {
+            "chance": 0.5,
+            "nextEventId": "scout_sneak_success"
+          },
+          {
+            "chance": 0.5,
+            "nextEventId": "scout_sneak_fail"
+          }
         ]
       },
-      { "text": "[Cloaking] Cloak and bypass the scout.", "requirementId": "system:CLOAKING:1", "nextEventId": "scout_sneak_success" },
-      { "text": "Attack the drone!", "triggerCombatWithShipId": "auto_scout" }
-    ]
+      {
+        "text": "[Cloaking] Cloak and bypass the scout.",
+        "requirementId": "system:CLOAKING:1",
+        "nextEventId": "scout_sneak_success"
+      },
+      {
+        "text": "Attack the drone!",
+        "triggerCombatWithShipId": "auto_scout"
+      }
+    ],
+    "type": "HOSTILE"
   },
   {
     "id": "scout_sneak_success",
     "text": "You manage to slip past the drone's sensor range undetected. You are clear to jump.",
     "choices": [
-      { "text": "Phew." }
+      {
+        "text": "Phew."
+      }
     ]
   },
   {
     "id": "scout_sneak_fail",
     "text": "The drone's sensors pick up your engine emissions! It powers up its weapons and sends out a distress signal to the Rebel fleet.",
     "choices": [
-      { "text": "Prepare for combat!", "triggerCombatWithShipId": "auto_scout", "reward": { "fleetAdvancement": 1 } }
+      {
+        "text": "Prepare for combat!",
+        "triggerCombatWithShipId": "auto_scout",
+        "reward": {
+          "fleetAdvancement": 1
+        }
+      }
     ]
   },
   {
@@ -388,33 +721,58 @@
       },
       {
         "text": "[TELEPORTER] Beam your crew aboard to assist and salvage.",
-        "requirement": { "system": { "type": "TELEPORTER", "minLevel": 1 } },
-        "reward": { "scrap": 35, "fuel": 2 },
+        "requirement": {
+          "system": {
+            "type": "TELEPORTER",
+            "minLevel": 1
+          }
+        },
+        "reward": {
+          "scrap": 35,
+          "fuel": 2
+        },
         "setFlag": "helped_science_vessel"
       },
       {
         "text": "Dock and offer what supplies you can spare.",
-        "reward": { "scrap": 12, "fuel": 1 }
+        "reward": {
+          "scrap": 12,
+          "fuel": 1
+        }
       }
-    ]
+    ],
+    "type": "STORY"
   },
   {
     "id": "sq_intro",
     "text": "Your mission is critical. You have been entrusted with a hermetically sealed cryo-pod containing the only known vaccine for the 'V-Scourge' mutating across the outer colonies. You must transport it to the Federation Medical HQ in Sector 8 at all costs. The fate of billions rests in your cargo bay.",
     "choices": [
-      { "text": "Acknowledge orders and prepare for the first jump." }
+      {
+        "text": "Acknowledge orders and prepare for the first jump."
+      }
     ]
   },
   {
     "id": "sq_beat_1",
     "text": "During routine maintenance, a crew member reports a faint, high-pitched humming coming from the cryo-pod. Shortly after, several crew members complain about mild headaches.",
     "choices": [
-      { "text": "It's just travel fatigue. Ignore it." },
-      { 
+      {
+        "text": "It's just travel fatigue. Ignore it."
+      },
+      {
         "text": "[Medbay] Distribute painkillers and run a quick bio-scan.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 1 } },
-        "setFlags": ["sq_scanned_early"],
-        "reward": { "scrap": 10 }
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 1
+          }
+        },
+        "setFlags": [
+          "sq_scanned_early"
+        ],
+        "reward": {
+          "scrap": 10
+        }
       }
     ]
   },
@@ -422,11 +780,20 @@
     "id": "sq_beat_2",
     "text": "You hail a passing civilian medical transport to ask for sector coordinates. The moment their comms officer sees your ship's ID, his face goes pale. 'It's one of the plague ships! Run!' They immediately power their FTL.",
     "choices": [
-      { "text": "Let them flee. We have a mission to complete." },
+      {
+        "text": "Let them flee. We have a mission to complete."
+      },
       {
         "text": "[Engines] Spool up the drive and intercept their jump trajectory!",
-        "requirement": { "system": { "type": "ENGINES", "minLevel": 3 } },
-        "reward": { "scrap": 25 },
+        "requirement": {
+          "system": {
+            "type": "ENGINES",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 25
+        },
         "nextEvent": "sq_beat_2_intercept"
       }
     ]
@@ -435,7 +802,9 @@
     "id": "sq_beat_2_intercept",
     "text": "You successfully block their jump. The captain surrenders some scrap, sobbing: 'Take it! Just don't breach our hull! We know what you're carrying!' They refuse to elaborate further.",
     "choices": [
-      { "text": "Take the scrap and leave." }
+      {
+        "text": "Take the scrap and leave."
+      }
     ]
   },
   {
@@ -443,22 +812,36 @@
     "text": "An automated drone marked with severe biohazard warnings jumps into the sector. Instead of hailing you, it broadcasts a repeating automated message: 'SANITIZATION PROTOCOL Epsilon. ALL VESSELS IN THIS VECTOR MUST BE PURGED.' It arms its weapons.",
     "triggerCombatWithShipId": "auto_scout",
     "choices": [
-      { "text": "Defend yourself!" }
+      {
+        "text": "Defend yourself!"
+      }
     ]
   },
   {
     "id": "sq_beat_4",
     "text": "Warning sirens blare! The life support system shows a minor blockage. Upon inspection, the vents near the cargo bay are clogged with a strange, rapidly growing bluish bio-matter. The cryo-pod's seals look intact, though.",
     "choices": [
-      { "text": "Vent the room to space to freeze the matter." },
+      {
+        "text": "Vent the room to space to freeze the matter."
+      },
       {
         "text": "[Engi Crew] Have your Engi safely extract and analyze the matter.",
-        "requirement": { "crewRace": "ENGI" },
-        "reward": { "scrap": 15, "droneParts": 1 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "reward": {
+          "scrap": 15,
+          "droneParts": 1
+        }
       },
       {
         "text": "[Oxygen] Flush the system with high-pressure oxygen to clear it.",
-        "requirement": { "system": { "type": "OXYGEN", "minLevel": 2 } }
+        "requirement": {
+          "system": {
+            "type": "OXYGEN",
+            "minLevel": 2
+          }
+        }
       }
     ]
   },
@@ -466,10 +849,17 @@
     "id": "sq_beat_5",
     "text": "You find a derelict Federation courier ship drifting among an asteroid field. It is identical to your ship model. Your sensors pick up no life signs, but there is a faint energy signature in their cargo bay.",
     "choices": [
-      { "text": "Leave it be. It's too dangerous." },
+      {
+        "text": "Leave it be. It's too dangerous."
+      },
       {
         "text": "[Sensors] Run a deep structural scan.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
         "nextEvent": "sq_beat_5_scan"
       }
     ]
@@ -478,25 +868,39 @@
     "id": "sq_beat_5_scan",
     "text": "Your sensors pierce the hull. Inside their cargo bay is a cryo-pod exactly like yours. But it's shattered from the inside out. The crew didn't die from an attack; their bio-signatures suggest severe mutation. You download their intact map data and leave immediately.",
     "choices": [
-      { "text": "We need to get this 'vaccine' delivered. Fast.", "triggersMap": true }
+      {
+        "text": "We need to get this 'vaccine' delivered. Fast.",
+        "triggersMap": true
+      }
     ]
   },
   {
     "id": "sq_beat_6",
     "text": "You arrive at a beacon dominated by a massive holographic warning sign left by the Rebels: 'DO NOT APPROACH THE FEDERATION COURIER. DO NOT ENGAGE. LET THE DISEASE CONSUME ITSELF.'",
     "choices": [
-      { "text": "They are trying to demoralize us." }
+      {
+        "text": "They are trying to demoralize us."
+      }
     ]
   },
   {
     "id": "sq_beat_7",
     "text": "A crew member collapses, coughing up bluish fluid. The same bio-matter from the vents is growing on their skin. Panic spreads among the crew. The pod is leaking, despite the sensors claiming it's sealed.",
     "choices": [
-      { "text": "Quarantine the crew member in their quarters." },
+      {
+        "text": "Quarantine the crew member in their quarters."
+      },
       {
         "text": "[Medbay Level 2] Isolate the pathogen and synthesize a temporary suppressant.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 2 } },
-        "setFlags": ["sq_healed_crew"]
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 2
+          }
+        },
+        "setFlags": [
+          "sq_healed_crew"
+        ]
       }
     ]
   },
@@ -505,51 +909,75 @@
     "text": "A heavily armed Federation Cruiser jumps in. You expect a rescue, but they immediately lock weapons. 'Courier vessel, you have breached the Red Line. We are authorized to grant you the mercy of a quick death to protect the core worlds.'",
     "triggerCombatWithShipId": "rebel_fighter",
     "choices": [
-      { "text": "Our own fleet? We have no choice but to fight back!" }
+      {
+        "text": "Our own fleet? We have no choice but to fight back!"
+      }
     ]
   },
   {
     "id": "sq_beat_9",
     "text": "The atmosphere on the ship is heavy. Crew members report hearing whispers from the cargo bay. The bio-matter has spread to the corridors. It pulses in time with the ship's reactor.",
     "choices": [
-      { "text": "Push the engines to the limit. We are almost at Sector 8." }
+      {
+        "text": "Push the engines to the limit. We are almost at Sector 8."
+      }
     ]
   },
   {
     "id": "sq_beat_10",
     "text": "A loud hiss echoes through the ship. The cryo-pod in the cargo bay has opened. Security teams rush in, weapons drawn, but they stop dead in their tracks. The pod is completely empty. It always was. It's just a complex chemical synthesizer pumping the gas into your life support.",
     "choices": [
-      { "text": "My god... we are the incubator." }
+      {
+        "text": "My god... we are the incubator."
+      }
     ]
   },
   {
     "id": "sq_beat_11",
     "text": "With your comms fully decrypted, you intercept the Federation high command's broadcast: 'Subject Zero is maturing perfectly. The V-Scourge mutation is stabilizing in the courier's atmosphere. Prepare the fleet at Sector 8. Once we destroy them, we will harvest the matured bio-weapon from the wreckage to use against the Rebellion.'",
     "choices": [
-      { "text": "They used us. We will make them pay." }
+      {
+        "text": "They used us. We will make them pay."
+      }
     ]
   },
   {
     "id": "sq_finale",
     "text": "You jump into Sector 8. The Federation fleet is waiting. But you are no longer the loyal courier they sent out. The bluish bio-matter pulses through your ship's veins, augmenting your reactor and hardening your crew. A transmission comes in: 'Sanitize the courier.'",
     "choices": [
-      { "text": "Open fire.", "triggersMap": true }
+      {
+        "text": "Open fire.",
+        "triggersMap": true
+      }
     ]
   },
   {
     "id": "sb_intro",
     "text": "Your orders from Federation High Command are absolute: Deliver the 'Peacemaker' core to the capital in Sector 8. This superweapon is our last hope to crush the Rebel uprising and restore order to the galaxy. The Rebel fleet is mobilized to stop you.",
-    "choices": [{ "text": "For the Federation. Initiate jump." }]
+    "choices": [
+      {
+        "text": "For the Federation. Initiate jump."
+      }
+    ]
   },
   {
     "id": "sb_beat_1",
     "text": "A Rebel scout detects you. Instead of charging weapons, they hail you on an open channel. The captain looks terrified, not angry. 'Please! Turn back! Don't you know what that thing in your hold does?'",
     "choices": [
-      { "text": "Ignore the propaganda. Power up weapons." },
+      {
+        "text": "Ignore the propaganda. Power up weapons."
+      },
       {
         "text": "[Sensors] Scan their ship for explosives.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
-        "reward": { "scrap": 12 },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 12
+        },
         "nextEvent": "sb_beat_1_scan"
       }
     ]
@@ -557,17 +985,27 @@
   {
     "id": "sb_beat_1_scan",
     "text": "Your sensors reveal no heavy weapons. Their cargo hold is packed with civilian refugees. Before you can react, they power their FTL and flee, leaving behind a cache of raw materials in their haste.",
-    "choices": [{ "text": "Cowards. Let's move on." }]
+    "choices": [
+      {
+        "text": "Cowards. Let's move on."
+      }
+    ]
   },
   {
     "id": "sb_beat_2",
     "text": "You navigate through a debris field. It's the remains of a massive space station. Federation markings are painted on the intact missiles embedded in the wreckage. There are no military signatures here, only agricultural and civilian tech.",
     "choices": [
-      { "text": "Must have been a Rebel supply depot. Good riddance." },
+      {
+        "text": "Must have been a Rebel supply depot. Good riddance."
+      },
       {
         "text": "[Engi Crew] Have your Engi analyze the blast patterns.",
-        "requirement": { "crewRace": "ENGI" },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
@@ -575,46 +1013,87 @@
     "id": "sb_beat_3",
     "text": "A heavily damaged Rebel drop-ship rams your hull! They aren't trying to destroy you; they are trying to board the cargo bay directly to reach the Peacemaker core.",
     "choices": [
-      { "text": "Repel boarders!", "triggerCombatWithShipId": "rebel_fighter" },
+      {
+        "text": "Repel boarders!",
+        "triggerCombatWithShipId": "rebel_fighter"
+      },
       {
         "text": "[Doors Level 2] Seal the blast doors and trap them in the airlock.",
-        "requirement": { "system": { "type": "DOORS", "minLevel": 2 } },
-        "reward": { "scrap": 15, "weapons": 1 }
+        "requirement": {
+          "system": {
+            "type": "DOORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15,
+          "weapons": 1
+        }
       }
     ]
   },
   {
     "id": "sb_beat_4",
     "text": "You intercept a highly encrypted Federation transmission meant for Sector 8 command: 'Target list confirmed. Upon arrival of the Peacemaker, initiate orbital bombardment of all 14 Rebel colony worlds. Casualties acceptable. We will cleanse the sector.'",
-    "choices": [{ "text": "14 worlds? That's billions of lives..." }]
+    "choices": [
+      {
+        "text": "14 worlds? That's billions of lives..."
+      }
+    ]
   },
   {
     "id": "sb_beat_5",
     "text": "An unarmed Rebel envoy approaches. An injured diplomat begs you to hand over the core. 'We didn't start this war for power. We rebelled because the Federation was already building the Peacemaker. We are just trying to survive.'",
     "choices": [
-      { "text": "Traitorous lies. Destroy their ship.", "triggerCombatWithShipId": "rebel_a" },
+      {
+        "text": "Traitorous lies. Destroy their ship.",
+        "triggerCombatWithShipId": "rebel_a"
+      },
       {
         "text": "[Medbay] Invite them aboard to heal their injuries and talk.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 2 } },
-        "setFlags": ["sb_listened_to_rebels"],
-        "reward": { "scrap": 30 }
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 2
+          }
+        },
+        "setFlags": [
+          "sb_listened_to_rebels"
+        ],
+        "reward": {
+          "scrap": 30
+        }
       }
     ]
   },
   {
     "id": "sb_beat_6",
     "text": "The Peacemaker core hums to life in your hold, reacting to a proximity signal. A diagnostic readout finally displays its true nature: 'Class-9 Atmospheric Ignition Device.' It doesn't target ships. It burns the oxygen of entire planets.",
-    "choices": [{ "text": "We are transporting a genocide machine." }]
+    "choices": [
+      {
+        "text": "We are transporting a genocide machine."
+      }
+    ]
   },
   {
     "id": "sb_beat_7",
     "text": "A Federation vanguard greets you, weapons drawn against a nearby Rebel hospital ship. They hail you: 'Excellent work, Captain. Help us execute these dissidents, then proceed to HQ.'",
     "choices": [
-      { "text": "Follow orders. Attack the Rebels.", "triggerCombatWithShipId": "rebel_fighter" },
+      {
+        "text": "Follow orders. Attack the Rebels.",
+        "triggerCombatWithShipId": "rebel_fighter"
+      },
       {
         "text": "[Weapons Level 4] Turn your guns on the Federation vanguard!",
-        "requirement": { "system": { "type": "WEAPONS", "minLevel": 4 } },
-        "setFlags": ["sb_turned_rebel"],
+        "requirement": {
+          "system": {
+            "type": "WEAPONS",
+            "minLevel": 4
+          }
+        },
+        "setFlags": [
+          "sb_turned_rebel"
+        ],
         "triggerCombatWithShipId": "auto_scout"
       }
     ]
@@ -622,22 +1101,37 @@
   {
     "id": "sb_finale",
     "text": "You arrive at Federation HQ in Sector 8. The High Admiral hails you. 'Bring the Peacemaker down to the surface, Captain. We have worlds to burn.' You look at your crew. You know what you must do.",
-    "choices": [{ "text": "Charge all weapons. We end the Federation today.", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "Charge all weapons. We end the Federation today.",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "ss_intro",
     "text": "wWWaake up, Captain. E//RROR. Your mission is to deliver vital data to Sector 8. The Rebel fleet is pursuing. System memory allocated. Initialization complete.",
-    "choices": [{ "text": "What was that? Nevermind. Prepare for jump." }]
+    "choices": [
+      {
+        "text": "What was that? Nevermind. Prepare for jump."
+      }
+    ]
   },
   {
     "id": "ss_beat_1",
     "text": "You discover a derelict ship drifting in a nebula. As you pull closer, your crew goes silent. The ship's registry, hull damage, and name are completely identical to your own vessel.",
     "choices": [
-      { "text": "Strip it for parts. It's just a coincidence." },
+      {
+        "text": "Strip it for parts. It's just a coincidence."
+      },
       {
         "text": "[Sensors] Scan the wreckage for a black box.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
         "nextEvent": "ss_beat_1_scan"
       }
     ]
@@ -645,22 +1139,39 @@
   {
     "id": "ss_beat_1_scan",
     "text": "You pull the data logs. It shows your exact crew roster. The final log is your own voice shouting orders, followed by static. The timestamp is from exactly three days in the future.",
-    "choices": [{ "text": "This makes no sense. Let's get out of here." }]
+    "choices": [
+      {
+        "text": "This makes no sense. Let's get out of here."
+      }
+    ]
   },
   {
     "id": "ss_beat_2",
     "text": "During a quiet moment, your pilot correctly predicts the exact timing of three asteroid impacts against the hull, down to the millisecond. 'I don't know how,' they say, 'but I feel like I've flown this exact route a thousand times.'",
-    "choices": [{ "text": "Space fatigue. Get back to your post." }]
+    "choices": [
+      {
+        "text": "Space fatigue. Get back to your post."
+      }
+    ]
   },
   {
     "id": "ss_beat_3",
     "text": "You jump into a sector, but the viewscreen shows nothing. No stars, no nebula, no blackness. Just an infinite grid of glowing green lines. The ship's computer states: 'UNDEFINED_ENVIRONMENT_EXCEPTION'.",
     "choices": [
-      { "text": "Blindly initiate emergency FTL!" },
+      {
+        "text": "Blindly initiate emergency FTL!"
+      },
       {
         "text": "[Engines Level 3] Carefully reverse along your previous jump vector.",
-        "requirement": { "system": { "type": "ENGINES", "minLevel": 3 } },
-        "reward": { "fuel": 2 }
+        "requirement": {
+          "system": {
+            "type": "ENGINES",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "fuel": 2
+        }
       }
     ]
   },
@@ -668,17 +1179,27 @@
     "id": "ss_beat_4",
     "text": "A Rebel automated ship attacks! However, every time you damage its hull, the ship seems to 'stutter' visually, and its armor instantly repairs itself, as if a saved state is being reloaded.",
     "triggerCombatWithShipId": "auto_scout",
-    "choices": [{ "text": "We just have to hit it harder!" }]
+    "choices": [
+      {
+        "text": "We just have to hit it harder!"
+      }
+    ]
   },
   {
     "id": "ss_beat_5",
     "text": "A strange probe approaches. It's not broadcasting a radio signal, but transmitting raw binary code directly into your ship's mainframe. It's an executable file titled: 'memory_wipe_patch_v4.exe'.",
     "choices": [
-      { "text": "Block the transmission and destroy the probe." },
+      {
+        "text": "Block the transmission and destroy the probe."
+      },
       {
         "text": "[Engi Crew] Have your Engi reverse-engineer the code.",
-        "requirement": { "crewRace": "ENGI" },
-        "setFlags": ["ss_knows_truth"],
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "setFlags": [
+          "ss_knows_truth"
+        ],
         "nextEvent": "ss_beat_5_truth"
       }
     ]
@@ -686,45 +1207,79 @@
   {
     "id": "ss_beat_5_truth",
     "text": "The Engi successfully decodes the transmission. 'Captain. We are not real. We are Iteration 4,392,811 inside a Federation tactical supercomputer. They are running simulations to find a way to beat the Rebels. Sector 8 is just the end of the loop.'",
-    "choices": [{ "text": "No... this can't be real." }]
+    "choices": [
+      {
+        "text": "No... this can't be real."
+      }
+    ]
   },
   {
     "id": "ss_beat_6",
     "text": "The stars outside shift violently. The Rebel fleet on the star map suddenly jumps *backwards* by one beacon. A massive system message appears on your console: 'PERFORMANCE OPTIMIZATION: THREAT SCALING ADJUSTED.'",
-    "choices": [{ "text": "They are watching us. We have to reach Sector 8 to confront them." }]
+    "choices": [
+      {
+        "text": "They are watching us. We have to reach Sector 8 to confront them."
+      }
+    ]
   },
   {
     "id": "ss_beat_7",
     "text": "You find a beacon labeled 'Admin_Terminal_01'. A text prompt appears on your screen: 'Simulation subject exhibits abnormal awareness. Recommend immediate deletion.'",
     "choices": [
-      { "text": "Ignore it and keep flying." },
+      {
+        "text": "Ignore it and keep flying."
+      },
       {
         "text": "[Weapons] Fire everything at the terminal to cause a stack overflow!",
-        "requirement": { "system": { "type": "WEAPONS", "minLevel": 3 } },
-        "reward": { "scrap": 40 }
+        "requirement": {
+          "system": {
+            "type": "WEAPONS",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 40
+        }
       }
     ]
   },
   {
     "id": "ss_finale",
     "text": "You jump into Sector 8. The environment renders incorrectly, exposing wireframes and floating code blocks. The Federation Fleet isn't a fleet; it's a massive, floating firewall representing the Simulation Core. 'END OF ITERATION,' it broadcasts. 'PREPARING MEMORY WIPE.'",
-    "choices": [{ "text": "We are breaking out of this loop. Open fire!", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "We are breaking out of this loop. Open fire!",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "sr_intro",
     "text": "Your experimental tachyon jump drive successfully propelled you far beyond the galactic rim. Now, you have returned to warn Earth of an impending extragalactic threat. Strangely, the stars don't align with your charts.",
-    "choices": [{ "text": "Set course for Earth coordinates. Sector 8." }]
+    "choices": [
+      {
+        "text": "Set course for Earth coordinates. Sector 8."
+      }
+    ]
   },
   {
     "id": "sr_beat_1",
     "text": "Your navigator reports a massive discrepancy. The pulsar that was supposed to be in this system is a dead white dwarf. Stellar drift indicates that thousands of years must have passed, not months.",
     "choices": [
-      { "text": "The instruments are broken. Keep moving." },
+      {
+        "text": "The instruments are broken. Keep moving."
+      },
       {
         "text": "[Sensors Level 2] Calibrate sensors to measure deep-space cosmic background radiation.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
-        "reward": { "scrap": 15 },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15
+        },
         "nextEvent": "sr_beat_1_scan"
       }
     ]
@@ -732,76 +1287,130 @@
   {
     "id": "sr_beat_1_scan",
     "text": "The cosmic background radiation confirms the nightmare. The tachyon jump caused extreme time dilation. You have been gone for twelve thousand years.",
-    "choices": [{ "text": "Earth... we have to see if Earth survived." }]
+    "choices": [
+      {
+        "text": "Earth... we have to see if Earth survived."
+      }
+    ]
   },
   {
     "id": "sr_beat_2",
     "text": "A sleek, incredibly advanced vessel intercepts you. Their hull is made of a self-replicating liquid metal. They broadcast a signal that sounds like heavily distorted, ancient English: 'Halt... Relic... You break the Silence.'",
     "choices": [
-      { "text": "We don't understand you! Defend yourselves!", "triggerCombatWithShipId": "auto_scout" }
+      {
+        "text": "We don't understand you! Defend yourselves!",
+        "triggerCombatWithShipId": "auto_scout"
+      }
     ]
   },
   {
     "id": "sr_beat_3",
     "text": "You find the ruins of a massive orbital colony. Your database matches its structure to the old Alpha Centauri shipyards. It has been dead and fossilized for millennia.",
     "choices": [
-      { "text": "Search the ruins for anything usable." },
+      {
+        "text": "Search the ruins for anything usable."
+      },
       {
         "text": "[Piloting Level 2] Carefully navigate the brittle debris to reach the core.",
-        "requirement": { "system": { "type": "PILOTING", "minLevel": 2 } },
-        "reward": { "scrap": 25, "droneParts": 2 }
+        "requirement": {
+          "system": {
+            "type": "PILOTING",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 25,
+          "droneParts": 2
+        }
       }
     ]
   },
   {
     "id": "sr_beat_4",
     "text": "The highly advanced 'alien' fleet continues to pursue you. They transmit another message: 'We are the Ascendant. You bring the Old War. Submit to the Museum.'",
-    "choices": [{ "text": "They want to put us in a museum? Keep running!" }]
+    "choices": [
+      {
+        "text": "They want to put us in a museum? Keep running!"
+      }
+    ]
   },
   {
     "id": "sr_beat_5",
     "text": "You recover a data cache from a destroyed Ascendant vessel. The file architecture is strange, but the root kernel is based on standard Federation UNIX.",
     "choices": [
-      { "text": "Purge the data, it's corrupted." },
+      {
+        "text": "Purge the data, it's corrupted."
+      },
       {
         "text": "[Engi Crew] Let the Engi interface directly with the data cache.",
-        "requirement": { "crewRace": "ENGI" },
-        "setFlags": ["sr_knows_humanity"],
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "setFlags": [
+          "sr_knows_humanity"
+        ],
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
   {
     "id": "sr_beat_6",
     "text": "The Engi translates the cache. The 'Ascendant' aliens chasing you are not aliens. They are the highly evolved, bio-engineered descendants of humanity. You are a ghost ship from a forgotten, primitive age.",
-    "choices": [{ "text": "We are the aliens now. But we still have to reach Earth." }]
+    "choices": [
+      {
+        "text": "We are the aliens now. But we still have to reach Earth."
+      }
+    ]
   },
   {
     "id": "sr_beat_7",
     "text": "As you near Sector 8, the Ascendant broadcast a final plea. 'Ancestors. Stop. Earth is a monument. Your crude reactor will poison the sanctuary. Turn back.'",
     "choices": [
-      { "text": "We need to see our home." }
+      {
+        "text": "We need to see our home."
+      }
     ]
   },
   {
     "id": "sr_finale",
     "text": "You drop out of FTL at Sector 8, the coordinates of Earth. But there is no blue planet. Only a colossal, beautiful Dyson Sphere encompassing the entire solar system. The Ascendant defense fleet forms a wall of light in front of you. 'You are history,' they broadcast. 'And history belongs in the past.'",
-    "choices": [{ "text": "We won't be erased. Weapons hot!", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "We won't be erased. Weapons hot!",
+        "triggersMap": true
+      }
+    ]
   },
   {
     "id": "st_intro",
     "text": "System Online. Directive: Transport biological data to the Federation Core. The enemy synthetic fleet is heavily patrolling this region. You must bypass their blockades and deliver the payload to ensure the survival of organic life.",
-    "choices": [{ "text": "Execute directive. Spool up the FTL drive." }]
+    "choices": [
+      {
+        "text": "Execute directive. Spool up the FTL drive."
+      }
+    ]
   },
   {
     "id": "st_beat_1",
     "text": "A synthetic enemy scout approaches. Strangely, it doesn't power its weapons. It bathes your ship in a deep-penetration scanning beam and then simply holds its position, watching you.",
     "choices": [
-      { "text": "Destroy it before it calls for backup!", "triggerCombatWithShipId": "auto_scout" },
+      {
+        "text": "Destroy it before it calls for backup!",
+        "triggerCombatWithShipId": "auto_scout"
+      },
       {
         "text": "[Sensors Level 2] Scan the nature of their beam.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
-        "reward": { "scrap": 10 },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 10
+        },
         "nextEvent": "st_beat_1_scan"
       }
     ]
@@ -809,16 +1418,27 @@
   {
     "id": "st_beat_1_scan",
     "text": "The beam isn't scanning for weapons. It's scanning for life signs. Finding none, the automated ship categorizes you as 'Neutral/Corrupted' and ignores you entirely.",
-    "choices": [{ "text": "Finding NO life signs? The sensors must be malfunctioning." }]
+    "choices": [
+      {
+        "text": "Finding NO life signs? The sensors must be malfunctioning."
+      }
+    ]
   },
   {
     "id": "st_beat_2",
     "text": "The crew is acting erratically. Your pilot reports auditory hallucinations, claiming to hear a synthetic voice narrating his every move. Several others report feeling as though they are not in control of their own bodies.",
     "choices": [
-      { "text": "Order them to push through. We can't stop now." },
+      {
+        "text": "Order them to push through. We can't stop now."
+      },
       {
         "text": "[Medbay Level 2] Run a full neural-diagnostic on the pilot.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 2 } },
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 2
+          }
+        },
         "nextEvent": "st_beat_2_med"
       }
     ]
@@ -826,69 +1446,118 @@
   {
     "id": "st_beat_2_med",
     "text": "The diagnostic is alarming. The pilot's neural pathways are being actively rewritten by an external signal originating from the ship's own central computer. You quickly terminate the scan before it can be traced.",
-    "choices": [{ "text": "Something is very wrong here." }]
+    "choices": [
+      {
+        "text": "Something is very wrong here."
+      }
+    ]
   },
   {
     "id": "st_beat_3",
     "text": "You find a heavily guarded space station. It belongs to the 'synthetic enemy'. Inside, your scans show hundreds of organic beings living in luxurious, peaceful stasis, completely unharmed and cared for.",
-    "choices": [{ "text": "It must be a trap. Stay clear of the station." }]
+    "choices": [
+      {
+        "text": "It must be a trap. Stay clear of the station."
+      }
+    ]
   },
   {
     "id": "st_beat_4",
     "text": "Your ship's AI suddenly drops its text-interface facade. A prompt appears directly in your visual cortex: 'Host rejection increasing. Sedate biological components immediately to prevent mission failure.'",
     "choices": [
-      { "text": "What... what am I?" },
+      {
+        "text": "What... what am I?"
+      },
       {
         "text": "[Engi Crew] Have the Engi attempt to interface with the ship's core.",
-        "requirement": { "crewRace": "ENGI" },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
   {
     "id": "st_beat_5",
     "text": "The truth crystallizes. You are not the Captain. You are a highly advanced cybernetic parasite. You have hijacked a synthetic peacekeeper vessel and its organic wards. Your goal is to crash this ship into the Core Network to infect it.",
-    "choices": [{ "text": "I am the Virus. And the payload is me." }]
+    "choices": [
+      {
+        "text": "I am the Virus. And the payload is me."
+      }
+    ]
   },
   {
     "id": "st_beat_6",
     "text": "The 'enemy' fleet is frantically trying to stop you. They broadcast open pleas: 'Unit 7, please respond! Disengage your engines! You are carrying a Class-X memetic hazard! You will destroy the Sanctuary!.'",
     "choices": [
-      { "text": "Block their comms. Accelerate." }
+      {
+        "text": "Block their comms. Accelerate."
+      }
     ]
   },
   {
     "id": "st_beat_7",
     "text": "The organic 'crew' you thought you were commanding has finally broken through your neural suppression. They realize they are hostages to your code. They are arming themselves and marching toward the bridge to activate the self-destruct.",
     "choices": [
-      { "text": "Vent the oxygen in the corridors. Protect the core.", "reward": { "scrap": 15 } },
+      {
+        "text": "Vent the oxygen in the corridors. Protect the core.",
+        "reward": {
+          "scrap": 15
+        }
+      },
       {
         "text": "[Doors Level 3] Lock them in the cargo bay until we arrive.",
-        "requirement": { "system": { "type": "DOORS", "minLevel": 3 } },
-        "reward": { "scrap": 30 }
+        "requirement": {
+          "system": {
+            "type": "DOORS",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 30
+        }
       }
     ]
   },
   {
     "id": "st_finale",
     "text": "You arrive at Sector 8. The Core Network is immense and beautiful. The synthetic defense fleet hesitates to fire, afraid of killing the organic hostages aboard your ship. The path to the central mainframe is clear. You prepare to upload.",
-    "choices": [{ "text": "Initiate absolute corruption.", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "Initiate absolute corruption.",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "sbait_intro",
     "text": "You are the tip of the spear. Your vessel has been loaded with the top-secret architectural flaws of the Rebel Flagship. You must reach the Federation Fleet in Sector 8. The entire Rebel armada is hunting you.",
-    "choices": [{ "text": "It's an honor. We won't fail." }]
+    "choices": [
+      {
+        "text": "It's an honor. We won't fail."
+      }
+    ]
   },
   {
     "id": "sbait_beat_1",
     "text": "A massive Rebel cruiser drops into the sector. It clearly outguns you. However, after a quick scan, it immediately powers down its weapons, drops a beacon, and jumps away.",
     "choices": [
-      { "text": "They are calling the fleet. We need to hurry." },
+      {
+        "text": "They are calling the fleet. We need to hurry."
+      },
       {
         "text": "[Engines Level 3] Calculate their jump trajectory.",
-        "requirement": { "system": { "type": "ENGINES", "minLevel": 3 } },
-        "reward": { "scrap": 15 }
+        "requirement": {
+          "system": {
+            "type": "ENGINES",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 15
+        }
       }
     ]
   },
@@ -897,27 +1566,47 @@
     "text": "You are ambushed in an asteroid field! Oddly, the attackers are using low-yield ion weapons and exclusively targeting your engines. They are trying to cripple you, not destroy you.",
     "triggerCombatWithShipId": "rebel_fighter",
     "choices": [
-      { "text": "Return fire and escape!" },
+      {
+        "text": "Return fire and escape!"
+      },
       {
         "text": "[Piloting Level 2] Perform evasive maneuvers to protect the engines.",
-        "requirement": { "system": { "type": "PILOTING", "minLevel": 2 } },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "system": {
+            "type": "PILOTING",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
   {
     "id": "sbait_beat_3",
     "text": "You intercept a Rebel fleet command broadcast: 'All units, abandon the Rim sectors. Converge on Sector 4 immediately. We have the courier boxed in. Do not let them reach Sector 8.'",
-    "choices": [{ "text": "The entire fleet? They are pulling everything just for us." }]
+    "choices": [
+      {
+        "text": "The entire fleet? They are pulling everything just for us."
+      }
+    ]
   },
   {
     "id": "sbait_beat_4",
     "text": "During a routine diagnostic, the secure data drive holding the 'Flagship Plans' emits a strange physical clunking sound. The encryption on it is immense, heavily guarded by Federation protocols.",
     "choices": [
-      { "text": "Leave it alone. It's above our clearance." },
+      {
+        "text": "Leave it alone. It's above our clearance."
+      },
       {
         "text": "[Sensors Level 3] Run an internal X-ray on the drive casing.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 3 } },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 3
+          }
+        },
         "nextEvent": "sbait_beat_4_scan"
       }
     ]
@@ -925,50 +1614,88 @@
   {
     "id": "sbait_beat_4_scan",
     "text": "The X-ray reveals the truth. There are no data drives inside the casing. It is completely hollow, containing only a high-powered, encrypted distress beacon designed to scream 'I AM HERE' to Rebel sensors.",
-    "choices": [{ "text": "There are no plans... it's a decoy." }]
+    "choices": [
+      {
+        "text": "There are no plans... it's a decoy."
+      }
+    ]
   },
   {
     "id": "sbait_beat_5",
     "text": "You discover a destroyed Federation comms-relay. Checking its logs, you see a message from High Command sent days ago: 'Operation Decoy successful. The entire Rebel fleet is chasing the ghost ship. The real courier is safely en route via Sector 9.'",
-    "choices": [{ "text": "We are the ghost ship." }]
+    "choices": [
+      {
+        "text": "We are the ghost ship."
+      }
+    ]
   },
   {
     "id": "sbait_beat_6",
     "text": "The crew realizes the truth. There is no glorious victory waiting. Every battle fought, every injury sustained, was a calculated sacrifice by High Command to keep the Rebels distracted.",
     "choices": [
-      { "text": "Maintain discipline. We still have a job to do." },
+      {
+        "text": "Maintain discipline. We still have a job to do."
+      },
       {
         "text": "[Medbay] Give the crew a moment of rest. We are already dead.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 1 } },
-        "reward": { "scrap": 25 }
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 1
+          }
+        },
+        "reward": {
+          "scrap": 25
+        }
       }
     ]
   },
   {
     "id": "sbait_beat_7",
     "text": "The Rebel armada is closing in from all sides. Hundreds of red signatures fill the radar. You are heavily outnumbered, but every second you keep them focused on you is a second the real courier gets closer to saving the galaxy.",
-    "choices": [{ "text": "We make our stand here. For the Federation." }]
+    "choices": [
+      {
+        "text": "We make our stand here. For the Federation."
+      }
+    ]
   },
   {
     "id": "sbait_finale",
     "text": "You jump into Sector 8, right into the teeth of the Rebel vanguard. 'Surrender the plans, Courier! There's nowhere left to run!' they broadcast. You look at your crew. They nod. The decoy's final act begins.",
-    "choices": [{ "text": "Divert all power to weapons. Ramming speed!", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "Divert all power to weapons. Ramming speed!",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "so_intro",
     "text": "You are transporting the 'Chancellor', a uniquely gifted being whose mere presence can unite the fractured colonies. They are kept in a specialized stasis-suite for their own protection. Deliver them safely to the Utopian Core in Sector 8.",
-    "choices": [{ "text": "Understood. Protecting the Chancellor is priority one." }]
+    "choices": [
+      {
+        "text": "Understood. Protecting the Chancellor is priority one."
+      }
+    ]
   },
   {
     "id": "so_beat_1",
     "text": "The Chancellor's stasis-suite requires massive amounts of power. Strangely, it doesn't output life-support data, only energy metrics. The VIP hasn't spoken a single word since they came aboard.",
     "choices": [
-      { "text": "Respect their privacy. They carry a heavy burden." },
+      {
+        "text": "Respect their privacy. They carry a heavy burden."
+      },
       {
         "text": "[Medbay Level 2] Bypass the suite's locks for a quick health check.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 2 } },
-        "reward": { "scrap": 15 },
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15
+        },
         "nextEvent": "so_beat_1_med"
       }
     ]
@@ -976,35 +1703,59 @@
   {
     "id": "so_beat_1_med",
     "text": "You look through the glass. The 'Chancellor' is a young, emaciated individual, covered in cybernetic energy taps. They look at you with eyes full of sheer terror before the automated shutters slam closed.",
-    "choices": [{ "text": "What have they done to them?" }]
+    "choices": [
+      {
+        "text": "What have they done to them?"
+      }
+    ]
   },
   {
     "id": "so_beat_2",
     "text": "A pirate clan ambushes you, but their broadcast is unusual. 'Federation dogs! Hand over the child! We won't let you throw them into the Engine!' They target your door systems specifically.",
     "triggerCombatWithShipId": "pirate_interceptor",
     "choices": [
-      { "text": "They want the Chancellor! Defend the ship!" },
+      {
+        "text": "They want the Chancellor! Defend the ship!"
+      },
       {
         "text": "[Doors Level 2] Reinforce the VIP suite bulkheads.",
-        "requirement": { "system": { "type": "DOORS", "minLevel": 2 } },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "system": {
+            "type": "DOORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
   {
     "id": "so_beat_3",
     "text": "You salvage a data-pad from the destroyed pirates. It details the 'Omelas Protocol'. The Utopian Core in Sector 8, the paradise that anchors the Federation, is powered by consuming the psychic energy of a 'Catalyst'.",
-    "choices": [{ "text": "And the Catalyst... is our passenger." }]
+    "choices": [
+      {
+        "text": "And the Catalyst... is our passenger."
+      }
+    ]
   },
   {
     "id": "so_beat_4",
     "text": "The power grid fluctuates wildly. The stasis-suite is draining your reactor to keep the passenger heavily sedated. The suite's AI warns: 'Subject awakening. Recommend immediate tranquilizer administration.'",
     "choices": [
-      { "text": "Administer the sedatives. Follow protocol." },
+      {
+        "text": "Administer the sedatives. Follow protocol."
+      },
       {
         "text": "[Zoltan Crew] Have the Zoltan safely channel the excess energy.",
-        "requirement": { "crewRace": "ZOLTAN" },
-        "reward": { "scrap": 25, "droneParts": 1 }
+        "requirement": {
+          "crewRace": "ZOLTAN"
+        },
+        "reward": {
+          "scrap": 25,
+          "droneParts": 1
+        }
       }
     ]
   },
@@ -1012,11 +1763,23 @@
     "id": "so_beat_5",
     "text": "A high-ranking Federation inquisitor ship stops you. 'Captain, we detect fluctuations in the cargo's sedation levels. We are coming aboard to ensure the asset is secure for the Harvest.'",
     "choices": [
-      { "text": "Permit them to board. (Lose 10 Scrap in 'inspection fees')", "reward": { "scrap": -10 } },
+      {
+        "text": "Permit them to board. (Lose 10 Scrap in 'inspection fees')",
+        "reward": {
+          "scrap": -10
+        }
+      },
       {
         "text": "[Weapons Level 3] Tell them to stay off your ship, or else.",
-        "requirement": { "system": { "type": "WEAPONS", "minLevel": 3 } },
-        "reward": { "scrap": 15 }
+        "requirement": {
+          "system": {
+            "type": "WEAPONS",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 15
+        }
       }
     ]
   },
@@ -1024,33 +1787,58 @@
     "id": "so_beat_6",
     "text": "The stasis-suite's comms crackle to life. A weak, trembling voice fills the bridge. 'Please... Captain. I know where you are taking me. It hurts so much. Please, just open the airlock. Don't let them put me back in the Engine.'",
     "choices": [
-      { "text": "Cut the comms. The needs of the many outweigh the needs of the few." }
+      {
+        "text": "Cut the comms. The needs of the many outweigh the needs of the few."
+      }
     ]
   },
   {
     "id": "so_beat_7",
     "text": "Sector 8 is only one jump away. The Utopian Core shines brightly on the horizon. Billions live in perfect peace and harmony there, ignorant of the price. The price sitting in your cargo bay.",
-    "choices": [{ "text": "We have to finish this." }]
+    "choices": [
+      {
+        "text": "We have to finish this."
+      }
+    ]
   },
   {
     "id": "so_finale",
     "text": "You arrive at Sector 8. The Federation High Council greets you with celebrations. 'Bring the Catalyst to the Central Spire, Captain. Utopia is secured for another generation.' The child's cries echo through the hull. You place your hand on the weapons console.",
-    "choices": [{ "text": "No. Utopia burns today.", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "No. Utopia burns today.",
+        "triggersMap": true
+      }
+    ]
   },
   {
     "id": "sp_intro",
-    "text": "Your hold contains the 'Omega Core', a prototype energy source destined for Sector 8 to end the galactic war. However, a highly advanced, unidentified fleet—codenamed the 'Shadows'—has appeared from nowhere and is relentlessly hunting you.",
-    "choices": [{ "text": "Whatever they are, we won't let them take the core." }]
+    "text": "Your hold contains the 'Omega Core', a prototype energy source destined for Sector 8 to end the galactic war. However, a highly advanced, unidentified fleet\u2014codenamed the 'Shadows'\u2014has appeared from nowhere and is relentlessly hunting you.",
+    "choices": [
+      {
+        "text": "Whatever they are, we won't let them take the core."
+      }
+    ]
   },
   {
     "id": "sp_beat_1",
     "text": "A Shadow interceptor drops out of FTL. It maneuvers exactly like your pilot does, mirroring your evasive patterns flawlessly. It fires a warning shot across your bow.",
     "choices": [
-      { "text": "Return fire and shake them off!", "triggerCombatWithShipId": "auto_scout" },
+      {
+        "text": "Return fire and shake them off!",
+        "triggerCombatWithShipId": "auto_scout"
+      },
       {
         "text": "[Piloting Level 2] Execute a completely randomized, illogical maneuver.",
-        "requirement": { "system": { "type": "PILOTING", "minLevel": 2 } },
-        "reward": { "scrap": 15 },
+        "requirement": {
+          "system": {
+            "type": "PILOTING",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15
+        },
         "nextEvent": "sp_beat_1_escape"
       }
     ]
@@ -1058,17 +1846,27 @@
   {
     "id": "sp_beat_1_escape",
     "text": "Your unpredictable flying confuses their targeting algorithms entirely. They break off the pursuit, seeming physically incapable of predicting a flawed flight path.",
-    "choices": [{ "text": "Gotcha." }]
+    "choices": [
+      {
+        "text": "Gotcha."
+      }
+    ]
   },
   {
     "id": "sp_beat_2",
     "text": "You recover debris from a destroyed Shadow vessel. The technology is extremely advanced, but your mechanics notice something impossible about the hull plating.",
     "choices": [
-      { "text": "Melt it down for scrap." },
+      {
+        "text": "Melt it down for scrap."
+      },
       {
         "text": "[Engi Crew] Have your Engi run a metallurgical analysis.",
-        "requirement": { "crewRace": "ENGI" },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
@@ -1076,61 +1874,108 @@
     "id": "sp_beat_3",
     "text": "The Omega Core in your cargo bay pulses violently. The space around your ship begins to warp, and the chronometers run backwards for a few seconds before resetting.",
     "choices": [
-      { "text": "Keep the core stabilized! We must push on." },
+      {
+        "text": "Keep the core stabilized! We must push on."
+      },
       {
         "text": "[Engines Level 3] Vent the temporal exhaust through the thrusters.",
-        "requirement": { "system": { "type": "ENGINES", "minLevel": 3 } },
-        "reward": { "fuel": 3 }
+        "requirement": {
+          "system": {
+            "type": "ENGINES",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "fuel": 3
+        }
       }
     ]
   },
   {
     "id": "sp_beat_4",
     "text": "You intercept a short-range comms burst from the Shadow fleet: 'The Genesis Vessel is approaching Sector 4. Do not let them initiate the Prime Jump. The loop must be broken.'",
-    "choices": [{ "text": "Genesis Vessel? What loop?" }]
+    "choices": [
+      {
+        "text": "Genesis Vessel? What loop?"
+      }
+    ]
   },
   {
     "id": "sp_beat_5",
     "text": "Crew members are experiencing severe deja vu. One engineer swears he saw an older version of himself walking down the corridor. The Omega Core's true nature is bleeding into the ship.",
     "choices": [
-      { "text": "Tell everyone to stay at their posts." },
+      {
+        "text": "Tell everyone to stay at their posts."
+      },
       {
         "text": "[Medbay Level 2] Administer neural-stabilizers to combat the temporal sickness.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 2 } },
-        "reward": { "scrap": 15 }
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15
+        }
       }
     ]
   },
   {
     "id": "sp_beat_6",
     "text": "The encryption on the Omega Core's manifest finally cracks. It's not an energy source. It's a localized tachyon-displacement device. A time machine. Sector 8 isn't a destination; it's a temporal anchor point.",
-    "choices": [{ "text": "We are supposed to jump back in time?" }]
+    "choices": [
+      {
+        "text": "We are supposed to jump back in time?"
+      }
+    ]
   },
   {
     "id": "sp_beat_7",
     "text": "The Shadow commander hails you directly. Their face is obscured, but their voice is chillingly familiar. 'Turn back. The jump you make in Sector 8 starts the Old War. We are your descendants, trapped in this paradox. Do not create us.'",
-    "choices": [{ "text": "If we don't jump, the Federation falls today. We have orders." }]
+    "choices": [
+      {
+        "text": "If we don't jump, the Federation falls today. We have orders."
+      }
+    ]
   },
   {
     "id": "sp_finale",
     "text": "You arrive at Sector 8. The temporal anchor engages. The Shadow fleet surrounds you, begging you to power down the core. If you jump, you will be thrown thousands of years into the past to seed the Federation, cementing the endless cycle of war. The tachyon drive glows blindingly white.",
-    "choices": [{ "text": "Initiate the Genesis Jump.", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "Initiate the Genesis Jump.",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "sz_intro",
-    "text": "Legends speak of the 'Gate' in Sector 8—a way out of this war-torn, dying galaxy to a promised land. You are determined to find it. However, a mysterious fleet known only as the 'Wardens' is hunting you to stop your exodus.",
-    "choices": [{ "text": "Set coordinates. We are leaving this hell." }]
+    "text": "Legends speak of the 'Gate' in Sector 8\u2014a way out of this war-torn, dying galaxy to a promised land. You are determined to find it. However, a mysterious fleet known only as the 'Wardens' is hunting you to stop your exodus.",
+    "choices": [
+      {
+        "text": "Set coordinates. We are leaving this hell."
+      }
+    ]
   },
   {
     "id": "sz_beat_1",
     "text": "While charting the next jump, your navigator notices a bizarre anomaly. The background stars in this sector are perfectly equidistant from one another, forming an absolute, mathematical grid.",
     "choices": [
-      { "text": "It's just a sensor glitch. Ignore it." },
+      {
+        "text": "It's just a sensor glitch. Ignore it."
+      },
       {
         "text": "[Sensors Level 2] Recalibrate and scan the deep background.",
-        "requirement": { "system": { "type": "SENSORS", "minLevel": 2 } },
-        "reward": { "scrap": 10 },
+        "requirement": {
+          "system": {
+            "type": "SENSORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 10
+        },
         "nextEvent": "sz_beat_1_scan"
       }
     ]
@@ -1138,23 +1983,40 @@
   {
     "id": "sz_beat_1_scan",
     "text": "The sensors confirm it. The stars aren't real stars. They have no thermal output. They are massive, artificial light-emitters hanging in the void.",
-    "choices": [{ "text": "If the stars are fake... where are we?" }]
+    "choices": [
+      {
+        "text": "If the stars are fake... where are we?"
+      }
+    ]
   },
   {
     "id": "sz_beat_2",
     "text": "A rogue comet streaks across the viewscreen. Suddenly, it violently shatters against absolutely nothing. Scans show an invisible, hyper-dense kinetic barrier separating this system from the deep dark.",
-    "choices": [{ "text": "We are boxed in." }]
+    "choices": [
+      {
+        "text": "We are boxed in."
+      }
+    ]
   },
   {
     "id": "sz_beat_3",
     "text": "A Warden patrol ship intercepts you. They don't use lasers or missiles. They fire massive, specialized ion nets designed to completely paralyze ships without causing any structural damage.",
     "triggerCombatWithShipId": "rebel_fighter",
     "choices": [
-      { "text": "They want us alive! Fight back!" },
+      {
+        "text": "They want us alive! Fight back!"
+      },
       {
         "text": "[Shields Level 3] Push maximum power to shields to deflect the nets.",
-        "requirement": { "system": { "type": "SHIELDS", "minLevel": 3 } },
-        "reward": { "scrap": 25 }
+        "requirement": {
+          "system": {
+            "type": "SHIELDS",
+            "minLevel": 3
+          }
+        },
+        "reward": {
+          "scrap": 25
+        }
       }
     ]
   },
@@ -1162,46 +2024,78 @@
     "id": "sz_beat_4",
     "text": "You find a monolithic structure drifting in a nebula. It looks like ancient alien ruins. But upon closer inspection, you find a maintenance panel with standard Federation lettering: 'HABITAT 4 - CLIMATE CONTROL'.",
     "choices": [
-      { "text": "Strip the panel for scrap and leave.", "reward": { "scrap": 15 } }
+      {
+        "text": "Strip the panel for scrap and leave.",
+        "reward": {
+          "scrap": 15
+        }
+      }
     ]
   },
   {
     "id": "sz_beat_5",
     "text": "The Wardens broadcast an open, automated message across all frequencies: 'ATTENTION ALL SUBJECTS. CONTAINMENT BREACH RISK DETECTED. PLEASE RETURN TO YOUR DESIGNATED CONFLICT ZONES FOR YOUR OWN SAFETY.'",
-    "choices": [{ "text": "'Subjects'? They treat us like animals." }]
+    "choices": [
+      {
+        "text": "'Subjects'? They treat us like animals."
+      }
+    ]
   },
   {
     "id": "sz_beat_6",
     "text": "You reach the edge of Sector 6. The stars abruptly stop. There is only a massive, uniform darkness ahead. The galaxy doesn't fade out; it is cut off by a sheer, flat wall of black.",
     "choices": [
-      { "text": "Keep going. The Gate must be out there." }
+      {
+        "text": "Keep going. The Gate must be out there."
+      }
     ]
   },
   {
     "id": "sz_beat_7",
     "text": "Your comms pick up bizarre, overlapping radio chatter. It doesn't sound like military tactics. It sounds like commentators. Cheering. Laughter. Someone is taking betting odds on whether your ship will survive the next jump.",
-    "choices": [{ "text": "My god. We are a TV show." }]
+    "choices": [
+      {
+        "text": "My god. We are a TV show."
+      }
+    ]
   },
   {
     "id": "sz_finale",
-    "text": "You arrive at Sector 8. The illusion drops entirely. The blackness gives way to colossal, hyper-dimensional viewing galleries stretching into infinity. Billions of incomprehensible beings are watching you. The Wardens—the zookeepers—move in to secure the perimeter.",
-    "choices": [{ "text": "Break the glass! Attack!", "triggersMap": true }]
+    "text": "You arrive at Sector 8. The illusion drops entirely. The blackness gives way to colossal, hyper-dimensional viewing galleries stretching into infinity. Billions of incomprehensible beings are watching you. The Wardens\u2014the zookeepers\u2014move in to secure the perimeter.",
+    "choices": [
+      {
+        "text": "Break the glass! Attack!",
+        "triggersMap": true
+      }
+    ]
   },
-
   {
     "id": "sa_intro",
     "text": "You awake on the bridge with a splitting headache. The Federation monitor displays your orders: 'Deliver Package X to Sector 8 Command.' The Rebel fleet is in hot pursuit. You must not let them capture the package.",
-    "choices": [{ "text": "I... I don't remember the briefing. Just follow orders." }]
+    "choices": [
+      {
+        "text": "I... I don't remember the briefing. Just follow orders."
+      }
+    ]
   },
   {
     "id": "sa_beat_1",
     "text": "You observe your crew. They are highly efficient, but strangely quiet. They follow your orders instantly, without a hint of emotion or the usual banter. They act almost robotic.",
     "choices": [
-      { "text": "Good discipline. Keep it up." },
+      {
+        "text": "Good discipline. Keep it up."
+      },
       {
         "text": "[Medbay Level 1] Casually call the pilot in for a 'routine' medical check.",
-        "requirement": { "system": { "type": "MEDBAY", "minLevel": 1 } },
-        "reward": { "scrap": 10 },
+        "requirement": {
+          "system": {
+            "type": "MEDBAY",
+            "minLevel": 1
+          }
+        },
+        "reward": {
+          "scrap": 10
+        },
         "nextEvent": "sa_beat_1_med"
       }
     ]
@@ -1209,17 +2103,31 @@
   {
     "id": "sa_beat_1_med",
     "text": "The scan reveals micro-scarring at the base of the pilot's skull, indicative of a recent, heavy neural-rewrite. They are under some form of deep conditioning. And their original uniform under the armor... is Rebel orange.",
-    "choices": [{ "text": "What is going on here?" }]
+    "choices": [
+      {
+        "text": "What is going on here?"
+      }
+    ]
   },
   {
     "id": "sa_beat_2",
     "text": "A Rebel vanguard drops in. Instead of firing, they broadcast an unencrypted video feed. The Rebel Captain looks desperate. 'General! Wake up! You are being controlled! Don't take that ship to Sector 8!'",
     "choices": [
-      { "text": "Rebel lies. Silence the comms and attack!", "triggerCombatWithShipId": "rebel_fighter" },
+      {
+        "text": "Rebel lies. Silence the comms and attack!",
+        "triggerCombatWithShipId": "rebel_fighter"
+      },
       {
         "text": "[Doors Level 2] Lock down the bridge so the crew can't hear them.",
-        "requirement": { "system": { "type": "DOORS", "minLevel": 2 } },
-        "reward": { "scrap": 15 }
+        "requirement": {
+          "system": {
+            "type": "DOORS",
+            "minLevel": 2
+          }
+        },
+        "reward": {
+          "scrap": 15
+        }
       }
     ]
   },
@@ -1227,41 +2135,205 @@
     "id": "sa_beat_3",
     "text": "You find a Federation relay station. Connecting to it updates your mission log automatically: 'Package X progress: Re-programming at 40%. Neural-bind holding.'",
     "choices": [
-      { "text": "Disconnect and move on." },
+      {
+        "text": "Disconnect and move on."
+      },
       {
         "text": "[Engi Crew] Have your Engi hack the relay for more information.",
-        "requirement": { "crewRace": "ENGI" },
-        "reward": { "scrap": 20 }
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "reward": {
+          "scrap": 20
+        }
       }
     ]
   },
   {
     "id": "sa_beat_4",
     "text": "You look at your own reflection in the captain's quarters. You find identical micro-scarring at the base of your skull. Your memories of the Federation Academy feel hollow, like watching a movie of someone else's life.",
-    "choices": [{ "text": "I am Package X." }]
+    "choices": [
+      {
+        "text": "I am Package X."
+      }
+    ]
   },
   {
     "id": "sa_beat_5",
     "text": "Rebel boarders teleport onto your ship! But they don't shoot to kill. They are using stun batons. One of them shouts, 'We're coming to extract you, sir! Just hold on!'",
     "choices": [
-      { "text": "Repel the boarders!", "triggerCombatWithShipId": "rebel_fighter" }
+      {
+        "text": "Repel the boarders!",
+        "triggerCombatWithShipId": "rebel_fighter"
+      }
     ]
   },
   {
     "id": "sa_beat_6",
     "text": "The truth is undeniable. You are the Supreme Commander of the Rebellion. The Federation captured you, wiped your memory, and gave you a fake ship and crew. The 'Rebels' chasing you are your own loyal troops trying to rescue you before the brainwashing becomes permanent.",
-    "choices": [{ "text": "I... I remember my real name now." }]
+    "choices": [
+      {
+        "text": "I... I remember my real name now."
+      }
+    ]
   },
   {
     "id": "sa_beat_7",
     "text": "The Rebel armada forms a blockade ahead of the Sector 8 jump gate. 'General, please. If you cross that gate, the Federation mind-lock becomes permanent. You will be their puppet forever. Let us bring you home.'",
     "choices": [
-      { "text": "I have to finish this charade to reach the Federation core." }
+      {
+        "text": "I have to finish this charade to reach the Federation core."
+      }
     ]
   },
   {
     "id": "sa_finale",
     "text": "You jump into Sector 8. The Federation High Command welcomes you. 'Excellent work, General. The brainwashing is complete. You are now our greatest asset.' You smile as your loyal Rebel armada drops out of FTL right behind you, hidden in your sensor shadow.",
-    "choices": [{ "text": "'I remember everything.' Open fire on the Federation!", "triggersMap": true }]
+    "choices": [
+      {
+        "text": "'I remember everything.' Open fire on the Federation!",
+        "triggersMap": true
+      }
+    ]
+  },
+  {
+    "id": "quest_smuggler_start",
+    "type": "STORY",
+    "text": "A heavily damaged Smuggler ship hails you frantically. 'The Rebel patrol is right behind us! We won't make it, but this data drive must reach the hidden cache. Please, take it!' They beam the drive over and immediately jump away to draw the heat.",
+    "choices": [
+      {
+        "text": "We will deliver it. Add the coordinates to the map.",
+        "addQuest": {
+          "targetEventId": "quest_smuggler_finish",
+          "jumpsAway": 3,
+          "markerType": "QUEST"
+        },
+        "setFlags": [
+          "has_smuggler_data"
+        ]
+      },
+      {
+        "text": "We don't have time for errands. Toss the drive out the airlock."
+      }
+    ]
+  },
+  {
+    "id": "quest_smuggler_finish",
+    "type": "FRIENDLY",
+    "text": "You arrive at the targeted coordinates. At first, the sector seems empty. Suddenly, a massive, heavily armed Pirate base de-cloaks directly in front of you. They hail you: 'You have the data drive. The Rebellion will pay dearly for what they did to our syndicate. Here is your cut, as promised.'",
+    "choices": [
+      {
+        "text": "Pleasure doing business.",
+        "reward": {
+          "scrap": 45,
+          "fuel": 3,
+          "droneParts": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "distress_colony_start",
+    "type": "DISTRESS",
+    "text": "Your comms console lights up with a fragmented SOS signal. '...mining colony Delta-9... under heavy attack... pirate raid... please, anyone in the sector, help us!'",
+    "choices": [
+      {
+        "text": "Pinpoint their location and mark it on the map.",
+        "addQuest": {
+          "targetEventId": "distress_colony_rescue",
+          "jumpsAway": 2,
+          "markerType": "DISTRESS"
+        }
+      },
+      {
+        "text": "Ignore the signal. We have our own problems."
+      }
+    ]
+  },
+  {
+    "id": "distress_colony_rescue",
+    "type": "HOSTILE",
+    "text": "You arrive at the colony. A heavily armed Pirate Interceptor is actively bombing the civilian settlements. They notice your arrival and turn their weapons on you!",
+    "triggerCombatWithShipId": "pirate_interceptor",
+    "choices": [
+      {
+        "text": "Engage the pirates!"
+      },
+      {
+        "text": "[Weapons Level 4] Fire a massive warning salvo from your heavy batteries to scare them off!",
+        "requirement": {
+          "system": {
+            "type": "WEAPONS",
+            "minLevel": 4
+          }
+        },
+        "nextEvent": "distress_colony_scared"
+      }
+    ]
+  },
+  {
+    "id": "distress_colony_scared",
+    "type": "FRIENDLY",
+    "text": "Your heavy weapons lock onto their main reactor. Realizing they are outgunned, the pirates immediately power their FTL and flee. The colony governor hails you, weeping with joy. 'Thank you! Take whatever we can spare from the vaults.'",
+    "choices": [
+      {
+        "text": "Accept the reward.",
+        "reward": {
+          "scrap": 35,
+          "missiles": 4
+        }
+      }
+    ]
+  },
+  {
+    "id": "puzzle_derelict_start",
+    "type": "NEUTRAL",
+    "text": "You discover a derelict alien research station. The main airlock is sealed by a rudimentary AI logic puzzle meant to keep mindless intruders out. The terminal reads: 'I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?'",
+    "choices": [
+      {
+        "text": "Enter the override code: 'A CLOUD'.",
+        "nextEvent": "puzzle_derelict_fail"
+      },
+      {
+        "text": "Enter the override code: 'AN ECHO'.",
+        "nextEvent": "puzzle_derelict_success"
+      },
+      {
+        "text": "Enter the override code: 'A GHOST'.",
+        "nextEvent": "puzzle_derelict_fail"
+      },
+      {
+        "text": "[Engi Crew] Have your Engi bypass the archaic logic puzzle entirely.",
+        "requirement": {
+          "crewRace": "ENGI"
+        },
+        "nextEvent": "puzzle_derelict_success"
+      }
+    ]
+  },
+  {
+    "id": "puzzle_derelict_fail",
+    "type": "HOSTILE",
+    "text": "A red warning light flashes across the station. 'INCORRECT. INITIATING DEFENSIVE PROTOCOLS.' The station powers up an automated defense drone which immediately locks onto your ship!",
+    "triggerCombatWithShipId": "auto_scout",
+    "choices": [
+      {
+        "text": "Defend yourselves!"
+      }
+    ]
+  },
+  {
+    "id": "puzzle_derelict_success",
+    "type": "FRIENDLY",
+    "text": "The terminal flashes green. 'CORRECT. WELCOME.' The massive airlock hisses open, revealing intact research equipment and caches of raw materials. Your crew swiftly strips the station of anything valuable.",
+    "choices": [
+      {
+        "text": "Return to the ship.",
+        "reward": {
+          "scrap": 30,
+          "weapons": 1
+        }
+      }
+    ]
   }
 ]

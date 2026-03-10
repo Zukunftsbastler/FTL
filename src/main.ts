@@ -464,7 +464,24 @@ async function init(): Promise<void> {
     victorySystem.reset();
     isPaused = false;
 
-    currentState = 'STAR_MAP';
+    // Fire intro event immediately if the active story has one;
+    // otherwise transition straight to the star map.
+    const launchStoryId = GameStateData.currentStoryId;
+    const launchStory   = launchStoryId !== null
+      ? AssetLoader.getJSON<StoryTemplate>(launchStoryId)
+      : undefined;
+
+    if (launchStory?.introEvent !== undefined &&
+        eventSystem.loadEvent(launchStory.introEvent)) {
+      // Mark as seen so NarrativeSystem.intercept() won't re-fire it on the first jump.
+      const introFlag = `__intro_${launchStoryId}`;
+      if (!GameStateData.narrativeFlags.includes(introFlag)) {
+        GameStateData.narrativeFlags.push(introFlag);
+      }
+      currentState = 'EVENT';
+    } else {
+      currentState = 'STAR_MAP';
+    }
   }
 
   // ── Systems ─────────────────────────────────────────────────────────────────

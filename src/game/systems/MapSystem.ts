@@ -818,18 +818,18 @@ export class MapSystem {
       return;
     }
 
-    // Quest marker override: if this node has an active quest, fire it and clean up.
+    // Quest marker override — skip for protected nodes (STORE, EXIT, visible DISTRESS).
     const questIdx = GameStateData.activeQuests.findIndex((q) => q.nodeId === nodeId);
-    if (questIdx !== -1) {
+    if (questIdx !== -1 && !this.isProtectedNode(node)) {
       const quest = GameStateData.activeQuests[questIdx];
       GameStateData.activeQuests.splice(questIdx, 1);
       callbacks.onEvent(quest.eventId);
       return;
     }
 
-    // Narrative Director: override the node event if a story beat condition fires.
+    // Narrative Director — skip for protected nodes so shops and distress beacons are preserved.
     const narrativeEvent = NarrativeSystem.intercept();
-    if (narrativeEvent !== null) {
+    if (narrativeEvent !== null && !this.isProtectedNode(node)) {
       callbacks.onEvent(narrativeEvent);
       return;
     }
@@ -898,7 +898,8 @@ export class MapSystem {
       visited.add(id);
 
       if (dist === targetDistance && id !== fromNodeId) {
-        candidates.push(id);
+        const n = this.nodes[id];
+        if (n !== undefined && !this.isProtectedNode(n)) candidates.push(id);
       }
       if (dist >= targetDistance) continue;
 
@@ -913,11 +914,22 @@ export class MapSystem {
     if (candidates.length > 0) {
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
-    // Fallback: any unvisited non-current node.
+    // Fallback: any unprotected unvisited node.
     const fallback = this.nodes.find(
-      (n) => n.id !== fromNodeId && n.visibility !== 'VISITED',
+      (n) => n.id !== fromNodeId && n.visibility !== 'VISITED' && !this.isProtectedNode(n),
     );
     return fallback?.id ?? null;
+  }
+
+  /**
+   * Returns true for map nodes that must never be overwritten by quest or narrative injection:
+   * the EXIT node, all STORE nodes, and pre-existing visible DISTRESS beacons.
+   */
+  private isProtectedNode(node: { isExit: boolean; nodeType: string; visibility: string }): boolean {
+    if (node.isExit) return true;
+    if (node.nodeType === 'STORE') return true;
+    if (node.nodeType === 'DISTRESS' && node.visibility !== 'HIDDEN') return true;
+    return false;
   }
 
   /**
