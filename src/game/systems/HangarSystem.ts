@@ -2,6 +2,8 @@ import { AssetLoader }         from '../../utils/AssetLoader';
 import { UIRenderer }          from '../../engine/ui/UIRenderer';
 import { BackgroundGenerator } from '../world/BackgroundGenerator';
 import { GameStateData }       from '../../engine/GameState';
+import { drawShipIcon }        from '../world/ShipIconRenderer';
+import { TILE_SIZE }           from '../constants';
 import type { Difficulty }     from '../../engine/GameState';
 import type { IInput }         from '../../engine/IInput';
 import type { IRenderer }      from '../../engine/IRenderer';
@@ -153,11 +155,25 @@ export class HangarSystem {
         RP_X + RP_W / 2, RP_Y + 20, 'bold 14px monospace', '#001830', 'center');
       renderer.drawLine(RP_X + 8, RP_Y + 28, RP_X + RP_W - 8, RP_Y + 28, '#bbccdd', 1);
 
+      // ── Ship preview (centred in upper portion of detail panel) ────────────
+      const maxTX2 = selectedShip.rooms.reduce((m, r) => Math.max(m, r.x + r.width),  0);
+      const maxTY2 = selectedShip.rooms.reduce((m, r) => Math.max(m, r.y + r.height), 0);
+      const availW  = RP_W - 40;
+      const availH  = Math.round(RP_H * 0.38) - 10;
+      const scaleW  = availW / (maxTX2 * TILE_SIZE);
+      const scaleH  = availH / (maxTY2 * TILE_SIZE);
+      const previewScale = Math.min(scaleW, scaleH, 0.85);
+      const previewH     = maxTY2 * TILE_SIZE * previewScale;
+      const previewCY    = RP_Y + 44 + previewH / 2;
+      drawShipIcon(ctx, selectedShip, RP_X + RP_W / 2, previewCY, previewScale, '#88aaff');
+      const statsStartY = RP_Y + 50 + previewH + 14;
+      renderer.drawLine(RP_X + 8, statsStartY - 8, RP_X + RP_W - 8, statsStartY - 8, '#bbccdd', 1);
+
       const allWeapons = AssetLoader.getJSON<WeaponTemplate[]>('weapons') ?? [];
       const PILL_H = 22; const PILL_PAD = 8; const PILL_GAP = 4;
       const FONT = '11px monospace';
       const COL = RP_X + 14;
-      let dy = RP_Y + 36;
+      let dy = statsStartY;
 
       const drawStat = (label: string, value: string): void => {
         ctx.font = FONT;
