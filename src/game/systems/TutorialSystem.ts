@@ -13,48 +13,43 @@ interface PendingModal {
 }
 
 /**
- * The Tutorial Director.
+ * The Tutorial Director — all methods are static so any system can call
+ * `TutorialSystem.showTutorial(...)` without needing an injected instance.
  *
- * Call `showTutorial(id, text, type)` from anywhere in the game loop.
- * If the tutorial is enabled and this id has not been seen yet, the Director:
- *   1. Records the id in `GameStateData.seenTutorials` (won't show again this session).
- *   2. Sets `GameStateData.tutorialActive = true` — the game loop produces dt = 0.
- *   3. Renders a centred, type-styled modal with an "UNDERSTOOD" dismiss button.
- *
- * Call `draw(renderer, input)` every frame at the TOP of the render pass
- * (before `input.update()`) so the overlay always appears on top.
+ * Call `TutorialSystem.draw(renderer, input)` every frame at the end of
+ * the render pass (before `input.update()`) so the overlay stays on top.
  */
 export class TutorialSystem {
-  private modal: PendingModal | null = null;
+  private static modal: PendingModal | null = null;
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /**
    * Queue a tutorial modal.  Silently ignored if:
-   *   - `GameStateData.tutorialEnabled` is false, OR
-   *   - `id` is already in `GameStateData.seenTutorials`.
+   *   - `tutorialEnabled` is false, OR
+   *   - `id` is already in `seenTutorials`, OR
+   *   - another modal is already active.
    */
-  showTutorial(id: string, text: string, type: TutorialType): void {
+  static showTutorial(id: string, text: string, type: TutorialType): void {
     if (!GameStateData.tutorialEnabled)       return;
     if (GameStateData.seenTutorials.has(id))  return;
-    if (GameStateData.tutorialActive)         return; // another modal already showing
+    if (GameStateData.tutorialActive)         return;
 
     GameStateData.seenTutorials.add(id);
     GameStateData.tutorialActive = true;
-    this.modal = { id, text, type };
+    TutorialSystem.modal = { id, text, type };
   }
 
   /**
-   * Draw the tutorial overlay if active.
-   * Returns immediately when no modal is queued.
-   * Must be called each frame AFTER all game-state rendering.
+   * Draw the tutorial overlay if active.  Must be called every frame
+   * AFTER all game-state rendering and BEFORE `input.update()`.
    */
-  draw(renderer: IRenderer, input: IInput): void {
-    if (!GameStateData.tutorialActive || this.modal === null) return;
+  static draw(renderer: IRenderer, input: IInput): void {
+    if (!GameStateData.tutorialActive || TutorialSystem.modal === null) return;
 
     const { width, height } = renderer.getCanvasSize();
     const ctx               = renderer.getContext();
-    const modal             = this.modal;
+    const modal             = TutorialSystem.modal;
 
     // ── Full-screen dimming overlay ────────────────────────────────────────
     renderer.drawRect(0, 0, width, height, 'rgba(0,0,0,0.72)', true);
@@ -65,7 +60,7 @@ export class TutorialSystem {
     const MX = Math.round((width  - MW) / 2);
     const MY = Math.round((height - MH) / 2);
 
-    // ── Panel background styled by type ────────────────────────────────────
+    // ── Panel styled by type ───────────────────────────────────────────────
     if (modal.type === 'CRITICAL') {
       UIRenderer.drawHazardPanel(ctx, MX, MY, MW, MH);
     } else {
@@ -105,7 +100,7 @@ export class TutorialSystem {
 
     if (input.isMouseJustPressed(0) && hovered) {
       GameStateData.tutorialActive = false;
-      this.modal = null;
+      TutorialSystem.modal = null;
     }
   }
 }

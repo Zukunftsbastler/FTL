@@ -234,6 +234,10 @@ async function init(): Promise<void> {
       break;
     }
 
+    TutorialSystem.showTutorial('tut_combat',
+      'WARNING: Hostile ship detected! They will attack immediately. Check that your Shields are powered and activate your Weapons.',
+      'WARNING');
+
     currentState = 'COMBAT';
   }
 
@@ -519,7 +523,7 @@ async function init(): Promise<void> {
   const hazardSystem       = new HazardSystem(mapSystem);
   const droneControlSystem = new DroneControlSystem(input);
   const hangarSystem       = new HangarSystem();
-  const tutorialSystem     = new TutorialSystem();
+  // TutorialSystem is all-static — no instantiation needed.
 
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
@@ -568,6 +572,17 @@ async function init(): Promise<void> {
 
       renderer.drawText('STAR MAP', width / 2, 55, '28px monospace', '#aaccff', 'center');
       renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
+
+      // ── Tutorial triggers (fire once per run) ──────────────────────────────
+      TutorialSystem.showTutorial('tut_pause',
+        'CRITICAL: Press SPACE to pause the game at any time. You must pause frequently during combat and crises to issue orders safely!',
+        'CRITICAL');
+      TutorialSystem.showTutorial('tut_fleet',
+        'WARNING: The Rebel Fleet is pursuing you. The red zone on the map shows their advance. If they catch you, combat is unavoidable — keep moving!',
+        'WARNING');
+      TutorialSystem.showTutorial('tut_power',
+        'INFO: Use the system power panel (bottom left in combat) to allocate reactor power to your systems. Unpowered systems do not function.',
+        'INFO');
 
       // Upgrades are only available from the Store — no map-level shortcut button.
 
@@ -634,6 +649,29 @@ async function init(): Promise<void> {
       crewSystem.update(world);         // suffocation damage (racial multipliers)
       repairSystem.update(world);       // system repair + medbay healing (racial repair speed)
 
+      // ── Hazard tutorial triggers ──────────────────────────────────────────
+      for (const entity of world.query(['Room', 'Owner'])) {
+        const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+        const faction   = world.getComponent<FactionComponent>(ownerComp?.shipEntity ?? -1, 'Faction');
+        if (faction?.id !== 'PLAYER') continue;
+        const room = world.getComponent(entity, 'Room') as { hasFire: boolean; hasBreach: boolean } | undefined;
+        if (room?.hasFire)   TutorialSystem.showTutorial('tut_fire',
+          'CRITICAL: Fire detected! It will destroy systems and consume oxygen. Send crew to extinguish it, or open airlocks to vent the oxygen and smother the flames.',
+          'CRITICAL');
+        if (room?.hasBreach) TutorialSystem.showTutorial('tut_breach',
+          'CRITICAL: Hull Breach! Your ship is venting oxygen to space. Send a crew member to the breached room to repair it immediately.',
+          'CRITICAL');
+      }
+      for (const entity of world.query(['System', 'Owner'])) {
+        const ownerComp = world.getComponent<OwnerComponent>(entity, 'Owner');
+        const faction   = world.getComponent<FactionComponent>(ownerComp?.shipEntity ?? -1, 'Faction');
+        if (faction?.id !== 'PLAYER') continue;
+        const sys = world.getComponent<SystemComponent>(entity, 'System');
+        if (sys !== undefined && sys.damageAmount > 0) TutorialSystem.showTutorial('tut_damage',
+          'WARNING: System damaged! It is operating at reduced capacity. Right-click the system\'s room with a selected crew member to begin repairs.',
+          'WARNING');
+      }
+
       // Render all layers.
       renderSystem.update(world);
       // Render in-flight projectiles with neon/trail VFX.
@@ -697,6 +735,9 @@ async function init(): Promise<void> {
         onCombat: () => {}, onEvent: () => {}, onStore: () => {}, onExit: () => {},
       });
       renderer.drawRect(0, 0, uw, uh, 'rgba(0,0,0,0.65)', true);
+      TutorialSystem.showTutorial('tut_upgrades',
+        'INFO: Buy system upgrades here using Scrap. NOTE: Upgrading a system does NOT provide the reactor power needed to run it — upgrade your reactor separately to avoid unpowered systems.',
+        'INFO');
       upgradeSystem.drawUpgradeScreen(world, renderer, input, () => {
         currentState = 'STAR_MAP';
       });
@@ -717,7 +758,7 @@ async function init(): Promise<void> {
     }
 
     // Tutorial Director — overlays everything; must render before input.update().
-    tutorialSystem.draw(renderer, input);
+    TutorialSystem.draw(renderer, input);
 
     // Flush "just pressed" — last, so every system above can read this frame's events.
     input.update();

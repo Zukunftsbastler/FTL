@@ -1,4 +1,5 @@
-import { TILE_SIZE } from '../constants';
+import { TILE_SIZE }      from '../constants';
+import { TutorialSystem } from './TutorialSystem';
 import type { Entity } from '../../engine/Entity';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
@@ -96,6 +97,9 @@ export class TargetingSystem {
           );
           if (weapon.powerRequired <= pool - usedByOthers) {
             weapon.userPowered = true;
+            TutorialSystem.showTutorial('tut_weapons',
+              'INFO: Weapons must charge before firing. Once fully charged, click the weapon again to enter targeting mode, then click an enemy room to fire!',
+              'INFO');
           }
           // Do not enter targeting mode on the power-on click.
         } else {
@@ -113,6 +117,9 @@ export class TargetingSystem {
         const weapon = world.getComponent<WeaponComponent>(this.selectedWeaponEntity, 'Weapon');
         if (weapon !== undefined) {
           weapon.targetRoomEntity = targetEntity;
+          TutorialSystem.showTutorial('tut_sensors',
+            'INFO: Room targeted. Upgrading your Sensors system reveals enemy crew positions so you can target occupied rooms for maximum crew damage.',
+            'INFO');
         }
       }
       // Regardless of hit or miss, exit targeting mode after the click.
