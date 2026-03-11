@@ -461,6 +461,9 @@ export class MapSystem {
       const mapMouse = input.getMousePosition();
       let px2 = PANEL_X + PANEL_PAD;
       const py2 = PANEL_Y + PANEL_PAD;
+      // Collect the hovered tooltip so it can be drawn AFTER all pills,
+      // preventing later pills from painting over it.
+      let hoveredTip: string | null = null;
       items.forEach((label, i) => {
         const pw = pillWidths[i];
         UIRenderer.drawPill(ctx, px2, py2, pw, PILL_H, '#00ccdd');
@@ -470,10 +473,14 @@ export class MapSystem {
         ctx.fillText(label, px2 + PILL_PAD_X, py2 + PILL_H / 2 + 5);
         if (mapMouse.x >= px2 && mapMouse.x <= px2 + pw &&
             mapMouse.y >= py2 && mapMouse.y <= py2 + PILL_H) {
-          renderer.drawTooltip(mapMouse.x, mapMouse.y, resourceTips[i]);
+          hoveredTip = resourceTips[i];
         }
         px2 += pw + PILL_GAP;
       });
+      // Draw tooltip on top of all pills.
+      if (hoveredTip !== null) {
+        renderer.drawTooltip(mapMouse.x, mapMouse.y, hoveredTip);
+      }
 
       // ── SHIP button below the resource panel ────────────────────────────────
       const BTN_W = 110;
