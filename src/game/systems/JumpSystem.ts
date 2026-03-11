@@ -1,6 +1,7 @@
 import { Time } from '../../engine/Time';
 import { TILE_SIZE } from '../constants';
 import { ENEMY_PANEL_W } from './RenderSystem';
+import { GameStateData } from '../../engine/GameState';
 import { UIRenderer } from '../../engine/ui/UIRenderer';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
@@ -174,6 +175,7 @@ export class JumpSystem {
     const bx    = width - ENEMY_PANEL_W - FTL_BTN_GAP - FTL_BTN_W;
     const by    = FTL_BTN_TOP;
     const ctx   = this.renderer.getContext();
+    GameStateData.uiAnchors['ftl_button'] = { x: bx, y: by, w: FTL_BTN_W, h: FTL_BTN_H };
     const isReady = ftlCharge >= 1.0;
     const label   = isReady ? 'FTL ESCAPE' : 'FTL CHARGING';
 

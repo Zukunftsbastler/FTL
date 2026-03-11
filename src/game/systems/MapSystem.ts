@@ -302,6 +302,10 @@ export class MapSystem {
       // Outer selection ring (only for non-hidden nodes).
       if (isCurrent) {
         renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS + 6), NODE_CURRENT_RING,  false, 2);
+        GameStateData.uiAnchors['current_node'] = {
+          x: node.x - NODE_RADIUS, y: node.y - NODE_RADIUS,
+          w: NODE_RADIUS * 2,      h: NODE_RADIUS * 2,
+        };
       } else if (isJumpable) {
         renderer.drawPolygon(dmnd(node.x, node.y, NODE_RADIUS + 4), NODE_REACHABLE_RING, false, 1);
       }

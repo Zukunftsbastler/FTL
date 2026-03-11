@@ -240,6 +240,9 @@ async function init(): Promise<void> {
     TutorialSystem.showTutorial('tut_combat',
       'WARNING: Hostile ship detected! They will attack immediately. Check that your Shields are powered and activate your Weapons.',
       'WARNING', 'systems');
+    TutorialSystem.showTutorial('tut_power',
+      'INFO: Allocate reactor power to your systems using the power panel at the bottom. Unpowered systems do not function!',
+      'INFO', 'systems');
 
     currentState = 'COMBAT';
   }
@@ -528,6 +531,9 @@ async function init(): Promise<void> {
   const hangarSystem       = new HangarSystem();
   // TutorialSystem is all-static — no instantiation needed.
 
+  /** Tracks player system entities that had damageAmount > 0 last frame. */
+  const damagedSystemsLastFrame = new Set<number>();
+
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
   // Inject PowerSystem into RenderSystem so the system power panel can be drawn.
@@ -577,12 +583,12 @@ async function init(): Promise<void> {
       renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
 
       // ── Tutorial triggers (fire once per run) ──────────────────────────────
+      TutorialSystem.showTutorial('tut_here',
+        'You are here! Click on any connected beacon to travel there. Each jump costs 1 Fuel.',
+        'INFO', 'current_node');
       TutorialSystem.showTutorial('tut_fleet',
         'WARNING: The Rebel Fleet is pursuing you. The red zone on the map shows their advance. If they catch you, combat is unavoidable — keep moving!',
         'WARNING', 'fleet');
-      TutorialSystem.showTutorial('tut_power',
-        'INFO: Use the system power panel (bottom left in combat) to allocate reactor power to your systems. Unpowered systems do not function.',
-        'INFO', 'resources');
 
       // Upgrades are only available from the Store — no map-level shortcut button.
 
@@ -670,6 +676,36 @@ async function init(): Promise<void> {
         if (sys !== undefined && sys.damageAmount > 0) TutorialSystem.showTutorial('tut_damage',
           'WARNING: System damaged! It is operating at reduced capacity. Right-click the system\'s room with a selected crew member to begin repairs.',
           'WARNING', 'systems');
+      }
+
+      // FTL charged tutorial.
+      for (const entity of world.query(['Ship', 'Faction'])) {
+        const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+        if (faction?.id !== 'PLAYER') continue;
+        const ship = world.getComponent<ShipComponent>(entity, 'Ship');
+        if (ship !== undefined && ship.ftlCharge >= 1.0) {
+          TutorialSystem.showTutorial('tut_ftl_ready',
+            'INFO: FTL drive fully charged! Click the FTL button (top right) to attempt an emergency escape from this fight.',
+            'INFO', 'ftl_button');
+        }
+        break;
+      }
+
+      // Repaired system tutorial.
+      for (const entity of world.query(['System', 'Owner'])) {
+        const ownerComp2 = world.getComponent<OwnerComponent>(entity, 'Owner');
+        const fac2 = world.getComponent<FactionComponent>(ownerComp2?.shipEntity ?? -1, 'Faction');
+        if (fac2?.id !== 'PLAYER') continue;
+        const sys2 = world.getComponent<SystemComponent>(entity, 'System');
+        if (sys2 === undefined) continue;
+        if (sys2.damageAmount > 0) {
+          damagedSystemsLastFrame.add(entity);
+        } else if (damagedSystemsLastFrame.has(entity)) {
+          damagedSystemsLastFrame.delete(entity);
+          TutorialSystem.showTutorial('tut_repaired',
+            'INFO: System repaired! Remember — repaired systems do NOT power themselves back on. Use the power panel to reallocate reactor power to restore them.',
+            'INFO', 'systems');
+        }
       }
 
       // Render all layers.

@@ -19,13 +19,12 @@ import {
 import {
   PowerSystem,
   SYSPANEL_X,
-  SYSPANEL_ROW_H,
   SYSPANEL_W,
-  SYSPANEL_LABEL_W,
   SYSPANEL_PIP_W,
   SYSPANEL_PIP_H,
   SYSPANEL_PIP_GAP,
   BOTTOM_HUD_H,
+  SYSTEM_COL_W,
 } from './PowerSystem';
 import { ProjectileSystem } from './ProjectileSystem';
 import { CombatSystem } from './CombatSystem';
@@ -1088,19 +1087,6 @@ export class RenderSystem {
     const sysY0 = canvasH - BOTTOM_HUD_H + 6;
 
     // Layout engine draws the left-pillar panel background; this method draws content only.
-    // Register systems anchor (updated each frame so spotlight stays current).
-    {
-      let playerEntityForAnchor = -1;
-      for (const e of world.query(['Ship', 'Faction'])) {
-        const f = world.getComponent<FactionComponent>(e, 'Faction');
-        if (f?.id === 'PLAYER') { playerEntityForAnchor = e; break; }
-      }
-      const anchorSystems = this.powerSystem.getPlayerSystems(world, playerEntityForAnchor);
-      GameStateData.uiAnchors['systems'] = {
-        x: SYSPANEL_X, y: sysY0,
-        w: SYSPANEL_W, h: Math.max(SYSPANEL_ROW_H, anchorSystems.length * SYSPANEL_ROW_H),
-      };
-    }
 
     // Find the player ship entity.
     let playerShipEntity: number | undefined;
@@ -1148,57 +1134,84 @@ export class RenderSystem {
     this.renderer.drawLine(SYSPANEL_X, sysY0 - 14, SYSPANEL_X + SYSPANEL_W, sysY0 - 14, UI_PANEL_BORDER, 1);
 
     const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
-    const mouse   = this.input.getMousePosition();
 
-    // Panel header.
-    this.renderer.drawText(
-      'SYSTEMS  [LMB +] [RMB -]',
-      SYSPANEL_X, sysY0 - 6, '10px monospace', '#445566', 'left',
-    );
+    // Register systems anchor.
+    {
+      let playerEntityForAnchor = -1;
+      for (const e of world.query(['Ship', 'Faction'])) {
+        const f = world.getComponent<FactionComponent>(e, 'Faction');
+        if (f?.id === 'PLAYER') { playerEntityForAnchor = e; break; }
+      }
+      const anchorSystems2 = this.powerSystem.getPlayerSystems(world, playerEntityForAnchor);
+      GameStateData.uiAnchors['systems'] = {
+        x: SYSPANEL_X, y: sysY0,
+        w: Math.max(SYSTEM_COL_W, anchorSystems2.length * SYSTEM_COL_W),
+        h: BOTTOM_HUD_H - 6,
+      };
+    }
+
+    // System name abbreviations.
+    const SYS_ABBREV: Record<string, string> = {
+      OXYGEN: 'O2', SHIELDS: 'SHD', ENGINES: 'ENG', WEAPONS: 'WPN',
+      MEDBAY: 'MED', CLOAKING: 'CLK', TELEPORTER: 'TEL',
+      DRONE_CONTROL: 'DRN', HACKING: 'HCK',
+    };
+
+    const PIP_START_Y = sysY0 + 22;   // below the abbreviation label
 
     for (let i = 0; i < systems.length; i++) {
-      const sys  = systems[i];
-      const rowY = sysY0 + i * SYSPANEL_ROW_H;
-      const rowBottom = rowY + SYSPANEL_ROW_H;
+      const sys    = systems[i];
+      const colX   = SYSPANEL_X + i * SYSTEM_COL_W;
+      const colCX  = colX + SYSTEM_COL_W / 2;
 
-      // Hover highlight.
+      // Column hover highlight.
       const hovered =
-        mouse.x >= SYSPANEL_X && mouse.x <= SYSPANEL_X + SYSPANEL_W &&
-        mouse.y >= rowY && mouse.y < rowBottom;
+        this.input.getMousePosition().x >= colX &&
+        this.input.getMousePosition().x <  colX + SYSTEM_COL_W &&
+        this.input.getMousePosition().y >= sysY0 &&
+        this.input.getMousePosition().y <  sysY0 + BOTTOM_HUD_H;
       if (hovered) {
-        this.renderer.drawRect(SYSPANEL_X, rowY, SYSPANEL_W, SYSPANEL_ROW_H - 1, 'rgba(80,120,200,0.18)', true);
+        this.renderer.drawRect(colX, sysY0, SYSTEM_COL_W, BOTTOM_HUD_H - 6, 'rgba(80,120,200,0.18)', true);
       }
 
-      // System name — pill background when powered, dim text when offline.
-      const sysCtx = this.renderer.getContext();
-      if (sys.currentPower > 0) {
-        const nameLabel = sys.type.slice(0, 9);
-        sysCtx.font = '11px monospace';
-        const namePillW = sysCtx.measureText(nameLabel).width + 14;
-        UIRenderer.drawPill(sysCtx, SYSPANEL_X + 3, rowY + 2, namePillW, 16, '#00ccdd');
-        sysCtx.font = '11px monospace'; sysCtx.fillStyle = '#001820'; sysCtx.textAlign = 'left';
-        sysCtx.fillText(nameLabel, SYSPANEL_X + 10, rowY + 14);
-      } else {
-        this.renderer.drawText(
-          sys.type.slice(0, 9),
-          SYSPANEL_X + 3, rowY + 14, '11px monospace', '#446688', 'left',
-        );
+      // Abbreviated system name — rotated 90° for narrow column fit.
+      const abbrev = SYS_ABBREV[sys.type] ?? sys.type.slice(0, 3);
+      const labelY  = sysY0 + 14;
+      const ctx2    = this.renderer.getContext();
+      ctx2.save();
+      ctx2.translate(colCX, labelY);
+      ctx2.rotate(-Math.PI / 2);
+      ctx2.font      = '8px monospace';
+      ctx2.fillStyle = sys.currentPower > 0 ? '#aaccff' : '#446688';
+      ctx2.textAlign = 'center';
+      ctx2.fillText(abbrev, 0, 3);
+      ctx2.restore();
+
+      // Damage indicator stripe.
+      if (sys.damageAmount > 0) {
+        const dmgFrac = Math.min(1, sys.damageAmount / sys.level);
+        this.renderer.drawRect(colX, sysY0, SYSTEM_COL_W, 3,
+          `rgba(255,50,50,${(dmgFrac * 0.8).toFixed(2)})`, true);
       }
 
-      // Power pips: total = level, green = active, grey = empty-but-working, red = damaged.
-      // Drawing `level` bars ensures the pristine slot count is always visible.
-      const pipStartX = SYSPANEL_X + SYSPANEL_LABEL_W;
+      // Power pips stacked vertically in the column.
+      const pipOffX = Math.round((SYSTEM_COL_W - SYSPANEL_PIP_W) / 2);
       for (let p = 0; p < sys.level; p++) {
-        const px      = pipStartX + p * (SYSPANEL_PIP_W + SYSPANEL_PIP_GAP);
-        const py      = rowY + (SYSPANEL_ROW_H - SYSPANEL_PIP_H) / 2;
+        const px      = colX + pipOffX;
+        const py      = PIP_START_Y + p * (SYSPANEL_PIP_H + SYSPANEL_PIP_GAP);
         const filled  = p < sys.currentPower;
         const zoltan  = !filled && p < sys.currentPower + sys.zoltanBonus;
-        // Damaged = slot index is beyond the current working capacity.
         const damaged = !filled && !zoltan && p >= sys.maxCapacity;
-        const bgColor     = filled ? '#39ff14' : zoltan ? '#eecc00' : damaged ? '#ff3333' : '#1a1d24';
-        const borderColor = filled ? '#88ffaa' : zoltan ? '#ffee66' : damaged ? '#ff5555' : '#4c5866';
+        const bgColor = filled  ? '#39ff14'
+                      : zoltan  ? '#eecc00'
+                      : damaged ? '#ff3333'
+                      :           '#1a1d24';
+        const brdColor = filled  ? '#88ffaa'
+                       : zoltan  ? '#ffee66'
+                       : damaged ? '#ff5555'
+                       :           '#4c5866';
         this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, bgColor, true);
-        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, borderColor, false);
+        this.renderer.drawRect(px, py, SYSPANEL_PIP_W, SYSPANEL_PIP_H, brdColor, false);
       }
     }
   }
@@ -1339,6 +1352,40 @@ export class RenderSystem {
         }
       }
     }
+
+    // ── Power lines: WEAPONS system column → each weapon box ─────────────────
+    if (this.powerSystem !== null) {
+      let playerSEforLines = -1;
+      for (const e of world.query(['Ship', 'Faction'])) {
+        const f = world.getComponent<FactionComponent>(e, 'Faction');
+        if (f?.id === 'PLAYER') { playerSEforLines = e; break; }
+      }
+      const sysList  = this.powerSystem.getPlayerSystems(world, playerSEforLines);
+      const wSysIdx  = sysList.findIndex((s) => s.type === 'WEAPONS');
+
+      if (wSysIdx >= 0) {
+        const { height: ch2 } = this.renderer.getCanvasSize();
+        const sysY02  = ch2 - BOTTOM_HUD_H + 6;
+        const wColX   = SYSPANEL_X + wSysIdx * SYSTEM_COL_W + Math.round(SYSTEM_COL_W / 2);
+        const wColBot = sysY02 + BOTTOM_HUD_H - 6;
+        const ctx3    = this.renderer.getContext();
+
+        for (let i = 0; i < playerWeapons.length; i++) {
+          const [, weapon] = playerWeapons[i];
+          const wbCX = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN) + Math.round(WEAPON_BOX_W / 2);
+          const powered    = weapon.isPowered;
+          ctx3.save();
+          ctx3.strokeStyle = powered ? 'rgba(51,255,20,0.75)' : 'rgba(30,60,30,0.5)';
+          ctx3.lineWidth   = powered ? 2 : 1;
+          ctx3.setLineDash(powered ? [] : [4, 4]);
+          ctx3.beginPath();
+          ctx3.moveTo(wColX, wColBot);
+          ctx3.lineTo(wbCX, boxBaseY + WEAPON_BOX_H);
+          ctx3.stroke();
+          ctx3.restore();
+        }
+      }
+    }
   }
 
   // ── HUD: contextual tooltips ──────────────────────────────────────────────
@@ -1370,16 +1417,16 @@ export class RenderSystem {
       }
     }
 
-    // 2. System power panel rows — rich system card.
+    // 2. System power panel columns — rich system card.
     if (this.powerSystem !== null) {
       const playerShipEntity = this.findPlayerShipEntity(world);
       if (playerShipEntity !== null) {
         const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
         for (let i = 0; i < systems.length; i++) {
-          const rowY = sysY0 + i * SYSPANEL_ROW_H;
+          const colX = SYSPANEL_X + i * SYSTEM_COL_W;
           if (
-            mouse.x >= SYSPANEL_X && mouse.x <= SYSPANEL_X + SYSPANEL_W &&
-            mouse.y >= rowY && mouse.y < rowY + SYSPANEL_ROW_H
+            mouse.x >= colX && mouse.x < colX + SYSTEM_COL_W &&
+            mouse.y >= sysY0 && mouse.y < sysY0 + BOTTOM_HUD_H
           ) {
             const sys = systems[i];
             this.renderer.drawTooltipCard(

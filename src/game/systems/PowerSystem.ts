@@ -39,6 +39,9 @@ export const SYSPANEL_PIP_H = 9;
 /** Gap between consecutive pip squares. */
 export const SYSPANEL_PIP_GAP = 2;
 
+/** Width of each system column in the horizontal system panel. */
+export const SYSTEM_COL_W = 28;
+
 /**
  * System types that do NOT draw from the reactor power pool (sub-systems).
  * These are omitted from the clickable power panel.
@@ -86,18 +89,14 @@ export class PowerSystem {
     const mouse   = this.input.getMousePosition();
     const systems = this.getPlayerSystems(world, playerShipEntity);
 
-    // ── Cursor: pointer when hovering a system row ────────────────────────────
-    for (let i = 0; i < systems.length; i++) {
-      const rowY = sysY0 + i * SYSPANEL_ROW_H;
-      if (
-        mouse.x >= SYSPANEL_X &&
-        mouse.x <= SYSPANEL_X + SYSPANEL_W &&
-        mouse.y >= rowY &&
-        mouse.y < rowY + SYSPANEL_ROW_H
-      ) {
-        this.input.setCursor('pointer');
-        break;
-      }
+    // ── Cursor: pointer when hovering a system column ─────────────────────────
+    const sysAreaLeft  = SYSPANEL_X;
+    const sysAreaRight = SYSPANEL_X + systems.length * SYSTEM_COL_W;
+    if (
+      mouse.x >= sysAreaLeft && mouse.x < sysAreaRight &&
+      mouse.y >= sysY0 && mouse.y < sysY0 + BOTTOM_HUD_H
+    ) {
+      this.input.setCursor('pointer');
     }
 
     if (!leftClick && !rightClick) return;
@@ -106,16 +105,14 @@ export class PowerSystem {
     if (reactor === undefined) return;
 
     for (let i = 0; i < systems.length; i++) {
-      const rowY = sysY0 + i * SYSPANEL_ROW_H;
+      const colX = SYSPANEL_X + i * SYSTEM_COL_W;
       if (
-        mouse.x >= SYSPANEL_X &&
-        mouse.x <= SYSPANEL_X + SYSPANEL_W &&
-        mouse.y >= rowY &&
-        mouse.y < rowY + SYSPANEL_ROW_H
+        mouse.x >= colX && mouse.x < colX + SYSTEM_COL_W &&
+        mouse.y >= sysY0 && mouse.y < sysY0 + BOTTOM_HUD_H
       ) {
         if (leftClick)  allocatePower(reactor, systems[i]);
         if (rightClick) deallocatePower(reactor, systems[i]);
-        return; // handled
+        return;
       }
     }
   }
