@@ -455,6 +455,7 @@ async function init(): Promise<void> {
 
     // Spawn the player ship.
     ShipFactory.spawnShip(world, shipId, spawnX, spawnY, 'PLAYER');
+    GameStateData.playerShipTemplateId = shipId;
 
     // Apply difficulty-based starting resource bonuses.
     for (const entity of world.query(['Ship', 'Faction'])) {

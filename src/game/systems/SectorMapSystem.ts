@@ -1,10 +1,12 @@
 import { GameStateData } from '../../engine/GameState';
-import { UIRenderer } from '../../engine/ui/UIRenderer';
-import { AssetLoader } from '../../utils/AssetLoader';
-import type { IInput } from '../../engine/IInput';
-import type { IRenderer } from '../../engine/IRenderer';
-import type { SectorNode } from '../data/SectorNode';
-import type { SectorTemplate } from '../data/SectorTemplate';
+import { UIRenderer }    from '../../engine/ui/UIRenderer';
+import { AssetLoader }   from '../../utils/AssetLoader';
+import { drawShipIcon }  from '../world/ShipIconRenderer';
+import type { IInput }          from '../../engine/IInput';
+import type { IRenderer }       from '../../engine/IRenderer';
+import type { SectorNode }      from '../data/SectorNode';
+import type { SectorTemplate }  from '../data/SectorTemplate';
+import type { ShipTemplate }    from '../data/ShipTemplate';
 
 // ── Layout constants ───────────────────────────────────────────────────────────
 
@@ -14,9 +16,9 @@ const MARGIN_BOT = 80;
 const NODE_R     = 22;
 
 const TYPE_COLORS: Record<string, string> = {
-  CIVILIAN: '#44aacc',
-  HOSTILE:  '#cc4433',
-  NEBULA:   '#9966cc',
+  CIVILIAN: '#44ff44',
+  HOSTILE:  '#ff4444',
+  NEBULA:   '#aa44ff',
   BOSS:     '#ff2222',
 };
 
@@ -147,6 +149,40 @@ export class SectorMapSystem {
       for (let i = 0; i < ttLines.length; i++) {
         renderer.drawText(ttLines[i], ttx + 12, tty + 34 + i * 20,
           '10px monospace', '#99aabb', 'left');
+      }
+    }
+
+    // ── Legend (bottom-right) ─────────────────────────────────────────────────
+    {
+      const LW = 180; const LH = 88; const LX = width - LW - 10; const LY = height - LH - 10;
+      UIRenderer.drawSciFiPanel(ctx, LX, LY, LW, LH,
+        { chamfer: 8, lightBg: true, borderColor: '#ffffff', alpha: 0.92 });
+      renderer.drawText('SECTOR TYPES', LX + LW / 2, LY + 14, '9px monospace', '#001830', 'center');
+      const legendEntries: Array<[string, string]> = [
+        ['#44ff44', 'Civilian'],
+        ['#ff4444', 'Hostile'],
+        ['#aa44ff', 'Nebula'],
+        ['#ff2222', 'Boss'],
+      ];
+      legendEntries.forEach(([color, label], i) => {
+        const ey = LY + 26 + i * 16;
+        ctx.fillStyle = color;
+        ctx.fillRect(LX + 10, ey, 10, 10);
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.5; ctx.strokeRect(LX + 10, ey, 10, 10);
+        renderer.drawText(label, LX + 26, ey + 9, '10px monospace', '#001830', 'left');
+      });
+    }
+
+    // ── Player ship icon at current sector node ────────────────────────────────
+    {
+      const shipId = GameStateData.playerShipTemplateId;
+      const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships') ?? [];
+      const shipTpl  = allShips.find((s) => s.id === shipId);
+      if (shipTpl !== undefined && curNode !== undefined) {
+        const pos = positions.get(curNode.id);
+        if (pos !== undefined) {
+          drawShipIcon(ctx, shipTpl, pos.x, pos.y - NODE_R - 20, 0.09, '#00ffcc');
+        }
       }
     }
 

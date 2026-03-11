@@ -53,6 +53,8 @@ export const GameStateData: {
    * Keys are semantic IDs (e.g. 'reactor', 'weapons', 'systems', 'fleet').
    */
   uiAnchors: Record<string, { x: number; y: number; w: number; h: number }>;
+  /** Template ID of the ship the player is currently flying (e.g. 'kestrel_a'). */
+  playerShipTemplateId:   string;
   /** Whether in-game tutorial pop-ups are enabled. Toggleable in the Hangar. */
   tutorialEnabled:        boolean;
   /** IDs of tutorial modals already shown this session — prevents repetition. */
@@ -84,6 +86,7 @@ export const GameStateData: {
   currentStoryId:         null, // set to a random story ID in main.ts after assets load
   difficulty:             'NORMAL' as Difficulty,
   uiAnchors:              {},
+  playerShipTemplateId:   '',
   tutorialEnabled:        true,
   seenTutorials:          new Set<string>(),
   tutorialActive:         false,

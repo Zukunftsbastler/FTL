@@ -3,7 +3,9 @@ import { GameStateData } from '../../engine/GameState';
 import { NarrativeSystem } from './NarrativeSystem';
 import { getPlanetNodeColor } from '../world/PlanetGenerator';
 import { BackgroundGenerator } from '../world/BackgroundGenerator';
-import type { MapTheme } from '../world/BackgroundGenerator';
+import { drawShipIcon }        from '../world/ShipIconRenderer';
+import type { MapTheme }       from '../world/BackgroundGenerator';
+import type { ShipTemplate }   from '../data/ShipTemplate';
 import type { IInput } from '../../engine/IInput';
 import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
@@ -378,6 +380,20 @@ export class MapSystem {
             `⚡${node.hazard}`, node.x, hy,
             '9px monospace', HAZARD_COLORS[node.hazard], 'center',
           );
+        }
+      }
+    }
+
+    // ── Player ship icon at current beacon ────────────────────────────────────
+    {
+      const curNode = this.nodes[this.currentNodeId];
+      const shipId  = GameStateData.playerShipTemplateId;
+      if (curNode !== undefined && shipId !== '') {
+        const allShips = AssetLoader.getJSON<ShipTemplate[]>('ships') ?? [];
+        const shipTpl  = allShips.find((s) => s.id === shipId);
+        if (shipTpl !== undefined) {
+          drawShipIcon(renderer.getContext(), shipTpl,
+            curNode.x, curNode.y - NODE_RADIUS - 20, 0.08, '#00ffcc');
         }
       }
     }
