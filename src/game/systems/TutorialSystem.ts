@@ -7,9 +7,10 @@ import type { IRenderer } from '../../engine/IRenderer';
 export type TutorialType = 'INFO' | 'WARNING' | 'CRITICAL';
 
 interface PendingModal {
-  id:   string;
-  text: string;
-  type: TutorialType;
+  id:       string;
+  text:     string;
+  type:     TutorialType;
+  anchorId: string | null;
 }
 
 /**
@@ -29,15 +30,22 @@ export class TutorialSystem {
    *   - `tutorialEnabled` is false, OR
    *   - `id` is already in `seenTutorials`, OR
    *   - another modal is already active.
+   *
+   * @param anchorId  Optional key into `GameStateData.uiAnchors` to spotlight.
    */
-  static showTutorial(id: string, text: string, type: TutorialType): void {
+  static showTutorial(
+    id:        string,
+    text:      string,
+    type:      TutorialType,
+    anchorId?: string,
+  ): void {
     if (!GameStateData.tutorialEnabled)       return;
     if (GameStateData.seenTutorials.has(id))  return;
     if (GameStateData.tutorialActive)         return;
 
     GameStateData.seenTutorials.add(id);
     GameStateData.tutorialActive = true;
-    TutorialSystem.modal = { id, text, type };
+    TutorialSystem.modal = { id, text, type, anchorId: anchorId ?? null };
   }
 
   /**
@@ -51,14 +59,69 @@ export class TutorialSystem {
     const ctx               = renderer.getContext();
     const modal             = TutorialSystem.modal;
 
-    // ── Full-screen dimming overlay ────────────────────────────────────────
-    renderer.drawRect(0, 0, width, height, 'rgba(0,0,0,0.72)', true);
+    // Resolve the anchor bounding box (may be null if not registered yet).
+    const anchor = modal.anchorId !== null
+      ? (GameStateData.uiAnchors[modal.anchorId] ?? null)
+      : null;
+
+    // ── Darkening overlay with optional spotlight hole ─────────────────────
+    const OV = 'rgba(0,0,0,0.72)';
+    if (anchor !== null) {
+      const PAD = 12;
+      const ax = anchor.x - PAD, ay = anchor.y - PAD;
+      const aw = anchor.w + PAD * 2, ah = anchor.h + PAD * 2;
+      // Four rects surrounding the spotlight hole.
+      renderer.drawRect(0, 0, width, ay, OV, true);
+      renderer.drawRect(0, ay + ah, width, Math.max(0, height - ay - ah), OV, true);
+      renderer.drawRect(0, ay, ax, ah, OV, true);
+      renderer.drawRect(ax + aw, ay, Math.max(0, width - ax - aw), ah, OV, true);
+      // Glowing yellow highlight border.
+      ctx.save();
+      ctx.strokeStyle  = '#ffdd00';
+      ctx.lineWidth    = 3;
+      ctx.shadowColor  = '#ffdd00';
+      ctx.shadowBlur   = 14;
+      ctx.strokeRect(ax, ay, aw, ah);
+      ctx.restore();
+    } else {
+      renderer.drawRect(0, 0, width, height, OV, true);
+    }
 
     // ── Modal dimensions ───────────────────────────────────────────────────
     const MW = Math.min(620, width - 40);
     const MH = 300;
     const MX = Math.round((width  - MW) / 2);
     const MY = Math.round((height - MH) / 2);
+
+    // ── Arrow line from modal to anchor ────────────────────────────────────
+    if (anchor !== null) {
+      const anchorCX = anchor.x + anchor.w / 2;
+      const anchorCY = anchor.y + anchor.h / 2;
+      const modalCX  = MX + MW / 2;
+      const modalCY  = MY + MH / 2;
+
+      ctx.save();
+      ctx.setLineDash([8, 5]);
+      ctx.strokeStyle = 'rgba(255,221,0,0.55)';
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.moveTo(modalCX, modalCY);
+      ctx.lineTo(anchorCX, anchorCY);
+      ctx.stroke();
+
+      // Arrowhead at the anchor end.
+      const angle = Math.atan2(anchorCY - modalCY, anchorCX - modalCX);
+      const AL = 10; const AA = Math.PI / 6;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#ffdd00';
+      ctx.beginPath();
+      ctx.moveTo(anchorCX, anchorCY);
+      ctx.lineTo(anchorCX - AL * Math.cos(angle - AA), anchorCY - AL * Math.sin(angle - AA));
+      ctx.moveTo(anchorCX, anchorCY);
+      ctx.lineTo(anchorCX - AL * Math.cos(angle + AA), anchorCY - AL * Math.sin(angle + AA));
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // ── Panel styled by type ───────────────────────────────────────────────
     if (modal.type === 'CRITICAL') {

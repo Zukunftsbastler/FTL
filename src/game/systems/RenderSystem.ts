@@ -1088,6 +1088,19 @@ export class RenderSystem {
     const sysY0 = canvasH - BOTTOM_HUD_H + 6;
 
     // Layout engine draws the left-pillar panel background; this method draws content only.
+    // Register systems anchor (updated each frame so spotlight stays current).
+    {
+      let playerEntityForAnchor = -1;
+      for (const e of world.query(['Ship', 'Faction'])) {
+        const f = world.getComponent<FactionComponent>(e, 'Faction');
+        if (f?.id === 'PLAYER') { playerEntityForAnchor = e; break; }
+      }
+      const anchorSystems = this.powerSystem.getPlayerSystems(world, playerEntityForAnchor);
+      GameStateData.uiAnchors['systems'] = {
+        x: SYSPANEL_X, y: sysY0,
+        w: SYSPANEL_W, h: Math.max(SYSPANEL_ROW_H, anchorSystems.length * SYSPANEL_ROW_H),
+      };
+    }
 
     // Find the player ship entity.
     let playerShipEntity: number | undefined;
@@ -1208,6 +1221,9 @@ export class RenderSystem {
     const panelY = canvasH - BOTTOM_HUD_H + 4;
     const panelH = BOTTOM_HUD_H - 8;
 
+    // Register anchor for tutorial spotlight.
+    GameStateData.uiAnchors['reactor'] = { x: REACTOR_PANEL_X, y: panelY, w: REACTOR_PANEL_W, h: panelH };
+
     // Panel background.
     UIRenderer.drawSciFiPanel(ctx, REACTOR_PANEL_X, panelY, REACTOR_PANEL_W, panelH, {
       chamfer: 6, borderColor: '#33aa33', alpha: 0.90,
@@ -1273,6 +1289,9 @@ export class RenderSystem {
     const weaponStartX  = playerWeapons.length > 0
       ? Math.round(canvasW / 2 - totalWeaponsW / 2)
       : WEAPON_BOX_MARGIN;
+
+    // Register weapons anchor for tutorial spotlight.
+    GameStateData.uiAnchors['weapons'] = { x: weaponStartX, y: boxBaseY, w: totalWeaponsW, h: WEAPON_BOX_H };
 
     // Layout engine draws the bottom-bar panel background; this method draws weapon boxes only.
     const selectedEntity = this.targetingSystem.getSelectedWeaponEntity();

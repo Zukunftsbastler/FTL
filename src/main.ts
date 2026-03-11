@@ -239,7 +239,7 @@ async function init(): Promise<void> {
       'CRITICAL');
     TutorialSystem.showTutorial('tut_combat',
       'WARNING: Hostile ship detected! They will attack immediately. Check that your Shields are powered and activate your Weapons.',
-      'WARNING');
+      'WARNING', 'systems');
 
     currentState = 'COMBAT';
   }
@@ -579,10 +579,10 @@ async function init(): Promise<void> {
       // ── Tutorial triggers (fire once per run) ──────────────────────────────
       TutorialSystem.showTutorial('tut_fleet',
         'WARNING: The Rebel Fleet is pursuing you. The red zone on the map shows their advance. If they catch you, combat is unavoidable — keep moving!',
-        'WARNING');
+        'WARNING', 'fleet');
       TutorialSystem.showTutorial('tut_power',
         'INFO: Use the system power panel (bottom left in combat) to allocate reactor power to your systems. Unpowered systems do not function.',
-        'INFO');
+        'INFO', 'resources');
 
       // Upgrades are only available from the Store — no map-level shortcut button.
 
@@ -669,7 +669,7 @@ async function init(): Promise<void> {
         const sys = world.getComponent<SystemComponent>(entity, 'System');
         if (sys !== undefined && sys.damageAmount > 0) TutorialSystem.showTutorial('tut_damage',
           'WARNING: System damaged! It is operating at reduced capacity. Right-click the system\'s room with a selected crew member to begin repairs.',
-          'WARNING');
+          'WARNING', 'systems');
       }
 
       // Render all layers.

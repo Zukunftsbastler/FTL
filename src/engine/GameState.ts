@@ -47,6 +47,12 @@ export const GameStateData: {
   distanceToExit:         number;
   /** Player-chosen difficulty for the current run. Set in the Hangar. */
   difficulty:             Difficulty;
+  /**
+   * Immediate-mode UI anchor registry. Systems write their bounding boxes here
+   * each render frame so TutorialSystem can spotlight specific elements.
+   * Keys are semantic IDs (e.g. 'reactor', 'weapons', 'systems', 'fleet').
+   */
+  uiAnchors: Record<string, { x: number; y: number; w: number; h: number }>;
   /** Whether in-game tutorial pop-ups are enabled. Toggleable in the Hangar. */
   tutorialEnabled:        boolean;
   /** IDs of tutorial modals already shown this session — prevents repetition. */
@@ -77,6 +83,7 @@ export const GameStateData: {
   jumpsInCurrentSector:   0,
   currentStoryId:         null, // set to a random story ID in main.ts after assets load
   difficulty:             'NORMAL' as Difficulty,
+  uiAnchors:              {},
   tutorialEnabled:        true,
   seenTutorials:          new Set<string>(),
   tutorialActive:         false,

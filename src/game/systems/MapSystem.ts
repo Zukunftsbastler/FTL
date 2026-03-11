@@ -251,6 +251,12 @@ export class MapSystem {
         Math.max(6, this.rebelFleetX - 6), height / 2,
         REBEL_LABEL_FONT, REBEL_LABEL_COLOR, 'right',
       );
+      // Register fleet anchor around the warning text.
+      const textW = 90;
+      GameStateData.uiAnchors['fleet'] = {
+        x: Math.max(0, this.rebelFleetX - textW - 8), y: height / 2 - 22,
+        w: textW, h: 28,
+      };
     }
 
     // ── Layer 1: Edges ────────────────────────────────────────────────────────
@@ -406,6 +412,8 @@ export class MapSystem {
       const botPanelH  = PILL_H + PANEL_PAD * 2;
       const botPanelY  = height - botPanelH - 10;
 
+      GameStateData.uiAnchors['sector_info'] = { x: 0, y: botPanelY, w: botPanelW, h: botPanelH };
+
       UIRenderer.drawSciFiPanel(ctx, 0, botPanelY, botPanelW, botPanelH,
         { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
 
@@ -448,6 +456,8 @@ export class MapSystem {
         + Math.max(0, items.length - 1) * PILL_GAP
         + PANEL_PAD * 2;
       const panelH     = PILL_H + PANEL_PAD * 2;
+
+      GameStateData.uiAnchors['resources'] = { x: PANEL_X, y: PANEL_Y, w: panelW, h: panelH };
 
       UIRenderer.drawSciFiPanel(ctx, PANEL_X, PANEL_Y, panelW, panelH,
         { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.93 });

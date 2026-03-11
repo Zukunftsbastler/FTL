@@ -103,7 +103,7 @@ export class TargetingSystem {
             weapon.userPowered = true;
             TutorialSystem.showTutorial('tut_weapons',
               'INFO: Click the weapon again to select a target room immediately — no need to wait. The weapon will charge and fire automatically once it is ready!',
-              'INFO');
+              'INFO', 'weapons');
           }
           // Do not enter targeting mode on the power-on click.
         } else {
