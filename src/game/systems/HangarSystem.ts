@@ -90,9 +90,30 @@ export class HangarSystem {
       }
     }
 
+    // ── Tutorial toggle ────────────────────────────────────────────────────
+    {
+      const TW  = 170; const TH = 28;
+      const TX  = width / 2 - TW / 2;
+      const TY  = 118;
+      const tutOn  = GameStateData.tutorialEnabled;
+      const tutMouse = input.getMousePosition();
+      UIRenderer.drawPill(ctx, TX, TY, TW, TH, tutOn ? '#00cc66' : 'rgba(60,70,90,0.7)');
+      renderer.drawText(`TUTORIAL: ${tutOn ? 'ON' : 'OFF'}`,
+        TX + TW / 2, TY + TH / 2 + 5,
+        tutOn ? 'bold 11px monospace' : '11px monospace',
+        tutOn ? '#001830' : '#556677', 'center');
+      hitboxes.push({ x: TX, y: TY, w: TW, h: TH,
+        action: () => { GameStateData.tutorialEnabled = !GameStateData.tutorialEnabled; } });
+      if (tutMouse.x >= TX && tutMouse.x <= TX + TW && tutMouse.y >= TY && tutMouse.y <= TY + TH) {
+        renderer.drawTooltip(TX + TW / 2, TY,
+          tutOn ? 'Click to disable in-game tutorial pop-ups.'
+                : 'Click to enable in-game tutorial pop-ups.');
+      }
+    }
+
     // ── Left panel: Ship list ──────────────────────────────────────────────
     const LP_X = 10; const LP_W = 260;
-    const LP_Y = 120; const LP_H = height - LP_Y - 70;
+    const LP_Y = 155; const LP_H = height - LP_Y - 70;
     UIRenderer.drawSciFiPanel(ctx, LP_X, LP_Y, LP_W, LP_H,
       { lightBg: true, borderColor: '#ffffff', alpha: 0.93 });
     renderer.drawText('SHIPS', LP_X + LP_W / 2, LP_Y + 18, '13px monospace', '#001830', 'center');

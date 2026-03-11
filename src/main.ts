@@ -32,7 +32,8 @@ import { ZoltanPowerSystem } from './game/systems/ZoltanPowerSystem';
 import { AugmentSystem } from './game/systems/AugmentSystem';
 import { HazardSystem } from './game/systems/HazardSystem';
 import { DroneControlSystem } from './game/systems/DroneControlSystem';
-import { HangarSystem } from './game/systems/HangarSystem';
+import { HangarSystem }   from './game/systems/HangarSystem';
+import { TutorialSystem } from './game/systems/TutorialSystem';
 import { ParticleSystem } from './game/systems/ParticleSystem';
 import { ShipFactory } from './game/world/ShipFactory';
 import { StoreGenerator } from './game/world/StoreGenerator';
@@ -518,6 +519,7 @@ async function init(): Promise<void> {
   const hazardSystem       = new HazardSystem(mapSystem);
   const droneControlSystem = new DroneControlSystem(input);
   const hangarSystem       = new HangarSystem();
+  const tutorialSystem     = new TutorialSystem();
 
   // Inject CombatSystem into RenderSystem so beam displays can be drawn.
   renderSystem.setCombatSystem(combatSystem);
@@ -540,7 +542,7 @@ async function init(): Promise<void> {
     }
     // Produce dt=0 while paused so all timer-driven logic naturally freezes.
     // Always advance lastTimestamp to prevent a large spike when unpausing.
-    if (isPaused) {
+    if (isPaused || GameStateData.tutorialActive) {
       Time.tick(lastTimestamp, lastTimestamp);
     } else {
       Time.tick(timestamp, lastTimestamp);
@@ -713,6 +715,9 @@ async function init(): Promise<void> {
         () => { currentState = 'UPGRADE'; },
       );
     }
+
+    // Tutorial Director — overlays everything; must render before input.update().
+    tutorialSystem.draw(renderer, input);
 
     // Flush "just pressed" — last, so every system above can read this frame's events.
     input.update();

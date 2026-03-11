@@ -138,6 +138,67 @@ export class UIRenderer {
     }
   }
 
+  // ── Hazard-tape panel ────────────────────────────────────────────────────
+
+  /**
+   * Draws a beveled panel with a construction-hazard "warning tape" border
+   * (thick diagonal yellow/black stripes) and a near-opaque dark background.
+   *
+   * Technique:
+   *   1. Fill the chamfered shape with a very dark translucent background.
+   *   2. Stroke the same path twice with a 12 px line:
+   *        pass 1 — solid #ffdd00 (yellow base)
+   *        pass 2 — dashed #000000 (black stripes on top)
+   *   The two passes together produce the classic hazard-tape appearance.
+   */
+  static drawHazardPanel(
+    ctx:    CanvasRenderingContext2D,
+    x:      number,
+    y:      number,
+    width:  number,
+    height: number,
+    options: Pick<SciFiPanelOptions, 'chamfer' | 'noLeftChamfer'> = {},
+  ): void {
+    const chamfer = options.chamfer        ?? Math.min(Math.floor(width * 0.05), Math.floor(height * 0.05), 20);
+    const noLeft  = options.noLeftChamfer  ?? false;
+    const w = width; const h = height;
+
+    const path = (): void => {
+      ctx.beginPath();
+      if (noLeft) { ctx.moveTo(x, y); } else { ctx.moveTo(x + chamfer, y); }
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + h - chamfer);
+      ctx.lineTo(x + w - chamfer, y + h);
+      ctx.lineTo(x, y + h);
+      if (!noLeft) ctx.lineTo(x, y + chamfer);
+      ctx.closePath();
+    };
+
+    // 1. Dark fill.
+    path();
+    ctx.fillStyle = 'rgba(8, 8, 8, 0.96)';
+    ctx.fill();
+
+    const TAPE_W = 12;
+
+    // 2. Solid yellow base stroke.
+    path();
+    ctx.strokeStyle = '#ffdd00';
+    ctx.lineWidth   = TAPE_W;
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    // 3. Black dashed stripes overlaid on the yellow — creates hazard tape.
+    path();
+    ctx.strokeStyle    = '#111111';
+    ctx.lineWidth      = TAPE_W;
+    ctx.setLineDash([14, 14]);
+    ctx.lineDashOffset = 0;
+    ctx.stroke();
+
+    ctx.setLineDash([]); // always reset dash after use
+  }
+
   // ── Beveled button ────────────────────────────────────────────────────────
 
   /**
