@@ -59,12 +59,12 @@ const POWER_COLOR      = '#ffdd44';
 /** Maximum red-overlay opacity at 0% O2. */
 const O2_OVERLAY_MAX_ALPHA = 0.75;
 
-const DOOR_THICK           = 8;   // proportional to TILE_SIZE=55 (was 5 at TILE_SIZE=35)
+const DOOR_THICK           = 8;   // proportional to TILE_SIZE=55
 const DOOR_HALF            = Math.floor(DOOR_THICK / 2);
-const DOOR_OPEN_COLOR      = '#aaaaaa';
-const DOOR_CLOSED_COLOR    = '#dd5500';
-const AIRLOCK_OPEN_COLOR   = '#ff3333';
-const AIRLOCK_CLOSED_COLOR = '#778899';
+/** Length of the two retracted stubs visible when a door is open (20 % of a tile). */
+const DOOR_STUB_LEN        = Math.round(TILE_SIZE * 0.2);
+const DOOR_FILL_COLOR      = '#8899A6';
+const DOOR_BORDER_COLOR    = '#4a5a6a';
 
 // ── Crew constants ────────────────────────────────────────────────────────────
 const CREW_RADIUS      = 16;   // proportional to TILE_SIZE=55 (was 10 at TILE_SIZE=35)
@@ -782,15 +782,32 @@ export class RenderSystem {
       const door = world.getComponent<DoorComponent>(entity, 'Door');
       if (pos === undefined || door === undefined) continue;
 
-      const isAirlock = door.roomA === 'SPACE' || door.roomB === 'SPACE';
-      const color = isAirlock
-        ? (door.isOpen ? AIRLOCK_OPEN_COLOR : AIRLOCK_CLOSED_COLOR)
-        : (door.isOpen ? DOOR_OPEN_COLOR    : DOOR_CLOSED_COLOR);
-
       if (door.isVertical) {
-        this.renderer.drawRect(pos.x - DOOR_HALF, pos.y,  DOOR_THICK, TILE_SIZE, color, true);
+        // Vertical door: wall runs along x = pos.x, spans pos.y → pos.y + TILE_SIZE.
+        if (!door.isOpen) {
+          // Closed → solid barricade.
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y, DOOR_THICK, TILE_SIZE, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y, DOOR_THICK, TILE_SIZE, DOOR_BORDER_COLOR, false);
+        } else {
+          // Open → two retracted stubs at the top and bottom edges.
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y,                         DOOR_THICK, DOOR_STUB_LEN, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y,                         DOOR_THICK, DOOR_STUB_LEN, DOOR_BORDER_COLOR, false);
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y + TILE_SIZE - DOOR_STUB_LEN, DOOR_THICK, DOOR_STUB_LEN, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x - DOOR_HALF, pos.y + TILE_SIZE - DOOR_STUB_LEN, DOOR_THICK, DOOR_STUB_LEN, DOOR_BORDER_COLOR, false);
+        }
       } else {
-        this.renderer.drawRect(pos.x, pos.y - DOOR_HALF, TILE_SIZE, DOOR_THICK, color, true);
+        // Horizontal door: wall runs along y = pos.y, spans pos.x → pos.x + TILE_SIZE.
+        if (!door.isOpen) {
+          // Closed → solid barricade.
+          this.renderer.drawRect(pos.x, pos.y - DOOR_HALF, TILE_SIZE, DOOR_THICK, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x, pos.y - DOOR_HALF, TILE_SIZE, DOOR_THICK, DOOR_BORDER_COLOR, false);
+        } else {
+          // Open → two retracted stubs at the left and right edges.
+          this.renderer.drawRect(pos.x,                         pos.y - DOOR_HALF, DOOR_STUB_LEN, DOOR_THICK, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x,                         pos.y - DOOR_HALF, DOOR_STUB_LEN, DOOR_THICK, DOOR_BORDER_COLOR, false);
+          this.renderer.drawRect(pos.x + TILE_SIZE - DOOR_STUB_LEN, pos.y - DOOR_HALF, DOOR_STUB_LEN, DOOR_THICK, DOOR_FILL_COLOR, true);
+          this.renderer.drawRect(pos.x + TILE_SIZE - DOOR_STUB_LEN, pos.y - DOOR_HALF, DOOR_STUB_LEN, DOOR_THICK, DOOR_BORDER_COLOR, false);
+        }
       }
     }
   }

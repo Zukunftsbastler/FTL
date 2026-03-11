@@ -53,19 +53,25 @@ export class MovementSystem {
   }
 
   /**
-   * Rebuilds the pathfinder's open-door graph from live ECS door states.
-   * Only interior (non-airlock) open doors contribute passable room connections.
+   * Rebuilds the pathfinder's passable room-connection graph.
+   *
+   * Friendly crew (player faction) follow FTL rules: they can walk through ANY
+   * interior door, open or closed — doors slide out of the way automatically.
+   * Airlock doors are never included so crew cannot walk into space.
+   * O2 / fire propagation still uses the separate runtime isOpen checks in
+   * OxygenSystem; this method only affects crew pathfinding.
    */
   private syncDoorStates(world: IWorld): void {
-    const openPairs = new Set<string>();
+    const allInteriorPairs = new Set<string>();
     for (const entity of world.query(['Door', 'Owner'])) {
       const door = world.getComponent<DoorComponent>(entity, 'Door');
-      if (door === undefined || !door.isOpen) continue;
+      if (door === undefined) continue;
       if (door.roomA === 'SPACE' || door.roomB === 'SPACE') continue;
-      openPairs.add(`${door.roomA}:${door.roomB}`);
-      openPairs.add(`${door.roomB}:${door.roomA}`);
+      // Include every interior door regardless of isOpen — friendly crew pass through freely.
+      allInteriorPairs.add(`${door.roomA}:${door.roomB}`);
+      allInteriorPairs.add(`${door.roomB}:${door.roomA}`);
     }
-    this.pathfinder.updateOpenDoors(openPairs);
+    this.pathfinder.updateOpenDoors(allInteriorPairs);
   }
 
   // ── Right-click: compute and assign A* path ──────────────────────────────────
