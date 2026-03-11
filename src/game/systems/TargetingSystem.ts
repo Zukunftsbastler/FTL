@@ -49,17 +49,21 @@ export class TargetingSystem {
     const rightClick = this.input.isMouseJustPressed(2);
     const mouse      = this.input.getMousePosition();
 
-    const { height } = this.renderer.getCanvasSize();
-    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const { width: canvasW, height: canvasH } = this.renderer.getCanvasSize();
+    const boxBaseY = canvasH - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
     const playerWeapons = this.getPlayerWeapons(world);
+    const totalWeaponsW = playerWeapons.length * (WEAPON_BOX_W + WEAPON_BOX_MARGIN) - WEAPON_BOX_MARGIN;
+    const weaponStartX  = playerWeapons.length > 0
+      ? Math.round(canvasW / 2 - totalWeaponsW / 2)
+      : WEAPON_BOX_MARGIN;
 
     // ── Cursor (runs every frame before any click guard) ─────────────────────
-    this.updateCursor(world, playerWeapons, boxBaseY, mouse);
+    this.updateCursor(world, playerWeapons, boxBaseY, weaponStartX, mouse);
 
     // ── Right-click on weapon box: power it OFF ───────────────────────────────
     if (rightClick) {
       for (let i = 0; i < playerWeapons.length; i++) {
-        const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+        const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
         if (
           mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
           mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
@@ -82,7 +86,7 @@ export class TargetingSystem {
 
     // ── Left-click on a weapon UI box ─────────────────────────────────────────
     for (let i = 0; i < playerWeapons.length; i++) {
-      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       if (
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
@@ -133,6 +137,7 @@ export class TargetingSystem {
     world: IWorld,
     playerWeapons: Array<[Entity, WeaponComponent]>,
     boxBaseY: number,
+    weaponStartX: number,
     mouse: { x: number; y: number },
   ): void {
     // In targeting mode the entire canvas becomes a crosshair.
@@ -143,7 +148,7 @@ export class TargetingSystem {
 
     // Hovering a weapon box?
     for (let i = 0; i < playerWeapons.length; i++) {
-      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       if (
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H

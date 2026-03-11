@@ -510,7 +510,7 @@ async function init(): Promise<void> {
   const renderSystem       = new RenderSystem(renderer, targetingSystem, input, projectileSystem);
   const selectionSystem    = new SelectionSystem(input);
   const movementSystem     = new MovementSystem(input, pathfinder);
-  const powerSystem        = new PowerSystem(input);
+  const powerSystem        = new PowerSystem(input, renderer);
   const doorSystem         = new DoorSystem(input);
   const oxygenSystem       = new OxygenSystem();
   const crewSystem         = new CrewSystem();

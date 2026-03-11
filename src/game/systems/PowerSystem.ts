@@ -1,6 +1,7 @@
 import { allocatePower, deallocatePower } from '../logic/PowerMath';
 import type { Entity } from '../../engine/Entity';
 import type { IInput } from '../../engine/IInput';
+import type { IRenderer } from '../../engine/IRenderer';
 import type { IWorld } from '../../engine/IWorld';
 import type { FactionComponent } from '../components/FactionComponent';
 import type { OwnerComponent } from '../components/OwnerComponent';
@@ -11,11 +12,14 @@ import type { SystemType } from '../data/SystemType';
 // ── System power panel layout ─────────────────────────────────────────────────
 // Exported so RenderSystem can draw matching hitboxes without duplicating geometry.
 
-/** Left edge of the system power panel in the player dashboard. */
-export const SYSPANEL_X = 12;
+/** Left edge of the system power panel — now positioned right of the reactor. */
+export const SYSPANEL_X = 68;
 
-/** Top of the first system row (px). Sits below the 5 resource-stat lines. */
-export const SYSPANEL_Y0 = 152;
+/** @deprecated Use canvas.height - BOTTOM_HUD_H + 6 for actual Y. */
+export const SYSPANEL_Y0 = 0;
+
+/** Bottom HUD height (reactor + systems + weapons strip). */
+export const BOTTOM_HUD_H = 110;
 
 /** Height of each system row (px). */
 export const SYSPANEL_ROW_H = 22;
@@ -62,12 +66,17 @@ const PANEL_ORDER: SystemType[] = [
  */
 export class PowerSystem {
   private readonly input: IInput;
+  private readonly renderer: IRenderer;
 
-  constructor(input: IInput) {
-    this.input = input;
+  constructor(input: IInput, renderer: IRenderer) {
+    this.input    = input;
+    this.renderer = renderer;
   }
 
   update(world: IWorld): void {
+    const { height: canvasH } = this.renderer.getCanvasSize();
+    const sysY0 = canvasH - BOTTOM_HUD_H + 6;
+
     const leftClick  = this.input.isMouseJustPressed(0);
     const rightClick = this.input.isMouseJustPressed(2);
 
@@ -79,7 +88,7 @@ export class PowerSystem {
 
     // ── Cursor: pointer when hovering a system row ────────────────────────────
     for (let i = 0; i < systems.length; i++) {
-      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      const rowY = sysY0 + i * SYSPANEL_ROW_H;
       if (
         mouse.x >= SYSPANEL_X &&
         mouse.x <= SYSPANEL_X + SYSPANEL_W &&
@@ -97,7 +106,7 @@ export class PowerSystem {
     if (reactor === undefined) return;
 
     for (let i = 0; i < systems.length; i++) {
-      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      const rowY = sysY0 + i * SYSPANEL_ROW_H;
       if (
         mouse.x >= SYSPANEL_X &&
         mouse.x <= SYSPANEL_X + SYSPANEL_W &&

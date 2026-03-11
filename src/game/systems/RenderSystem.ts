@@ -19,13 +19,13 @@ import {
 import {
   PowerSystem,
   SYSPANEL_X,
-  SYSPANEL_Y0,
   SYSPANEL_ROW_H,
   SYSPANEL_W,
   SYSPANEL_LABEL_W,
   SYSPANEL_PIP_W,
   SYSPANEL_PIP_H,
   SYSPANEL_PIP_GAP,
+  BOTTOM_HUD_H,
 } from './PowerSystem';
 import { ProjectileSystem } from './ProjectileSystem';
 import { CombatSystem } from './CombatSystem';
@@ -152,6 +152,14 @@ const ROSTER_BAR_H    = 5;
 /** Width (px) of each HP bar in the crew roster. */
 const ROSTER_BAR_W    = 220;
 
+/** Width of the reactor power panel at the far bottom-left. */
+const REACTOR_PANEL_X = 4;
+const REACTOR_PANEL_W = 58;
+/** Size of each reactor pip square. */
+const REACTOR_PIP_W   = 10;
+const REACTOR_PIP_H   = 10;
+const REACTOR_PIP_GAP = 2;
+
 // ── Declarative Combat HUD layout tree ───────────────────────────────────────
 /**
  * Single source of truth for the combat HUD panel layout.
@@ -213,7 +221,7 @@ const COMBAT_HUD: UINode = {
     {
       type:   'Panel',
       id:     'bottom-bar',
-      height: WEAPON_BOX_H + WEAPON_BOX_BOTTOM + 10,
+      height: BOTTOM_HUD_H,
       content: { chamfer: 8, borderColor: UI_PANEL_BORDER, alpha: 0.92 },
     },
   ],
@@ -352,6 +360,8 @@ export class RenderSystem {
     // ── HUD content (rendered on top of the panel backgrounds) ───────────────
     this.drawTopBar(world);
     this.drawSystemPanel(world);
+    this.drawReactorPanel(world);
+    this.drawEnergyFlowLines();
     this.drawCloakHUD(world);
     this.drawCrewSkillSheet(world);
     this.drawWeaponUI(world);
@@ -1074,6 +1084,9 @@ export class RenderSystem {
   private drawSystemPanel(world: IWorld): void {
     if (this.powerSystem === null) return;
 
+    const { height: canvasH } = this.renderer.getCanvasSize();
+    const sysY0 = canvasH - BOTTOM_HUD_H + 6;
+
     // Layout engine draws the left-pillar panel background; this method draws content only.
 
     // Find the player ship entity.
@@ -1119,7 +1132,7 @@ export class RenderSystem {
     }
 
     // Separator between crew roster and system panel.
-    this.renderer.drawLine(SYSPANEL_X, SYSPANEL_Y0 - 14, SYSPANEL_X + SYSPANEL_W, SYSPANEL_Y0 - 14, UI_PANEL_BORDER, 1);
+    this.renderer.drawLine(SYSPANEL_X, sysY0 - 14, SYSPANEL_X + SYSPANEL_W, sysY0 - 14, UI_PANEL_BORDER, 1);
 
     const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
     const mouse   = this.input.getMousePosition();
@@ -1127,12 +1140,12 @@ export class RenderSystem {
     // Panel header.
     this.renderer.drawText(
       'SYSTEMS  [LMB +] [RMB -]',
-      SYSPANEL_X, SYSPANEL_Y0 - 6, '10px monospace', '#445566', 'left',
+      SYSPANEL_X, sysY0 - 6, '10px monospace', '#445566', 'left',
     );
 
     for (let i = 0; i < systems.length; i++) {
       const sys  = systems[i];
-      const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+      const rowY = sysY0 + i * SYSPANEL_ROW_H;
       const rowBottom = rowY + SYSPANEL_ROW_H;
 
       // Hover highlight.
@@ -1177,14 +1190,89 @@ export class RenderSystem {
     }
   }
 
+  /** Draws the reactor as a vertical column of power pips at the bottom-left. */
+  private drawReactorPanel(world: IWorld): void {
+    const { height: canvasH } = this.renderer.getCanvasSize();
+    const ctx = this.renderer.getContext();
+
+    // Find player ship reactor.
+    let reactor: ReactorComponent | undefined;
+    for (const entity of world.query(['Ship', 'Faction', 'Reactor'])) {
+      const faction = world.getComponent<FactionComponent>(entity, 'Faction');
+      if (faction?.id !== 'PLAYER') continue;
+      reactor = world.getComponent<ReactorComponent>(entity, 'Reactor');
+      break;
+    }
+    if (reactor === undefined) return;
+
+    const panelY = canvasH - BOTTOM_HUD_H + 4;
+    const panelH = BOTTOM_HUD_H - 8;
+
+    // Panel background.
+    UIRenderer.drawSciFiPanel(ctx, REACTOR_PANEL_X, panelY, REACTOR_PANEL_W, panelH, {
+      chamfer: 6, borderColor: '#33aa33', alpha: 0.90,
+    });
+
+    // Label.
+    ctx.font      = '9px monospace';
+    ctx.fillStyle = '#44cc44';
+    ctx.textAlign = 'center';
+    ctx.fillText('POWER', REACTOR_PANEL_X + REACTOR_PANEL_W / 2, panelY + 12);
+
+    // Pip grid: 2 columns.
+    const COLS    = 2;
+    const colStep = REACTOR_PIP_W + REACTOR_PIP_GAP;
+    const rowStep = REACTOR_PIP_H + REACTOR_PIP_GAP;
+    const gridW   = COLS * colStep - REACTOR_PIP_GAP;
+    const startX  = REACTOR_PANEL_X + Math.round((REACTOR_PANEL_W - gridW) / 2);
+    const startY  = panelY + 18;
+
+    const maxP  = reactor.totalPower;
+    const usedP = maxP - reactor.currentPower;
+
+    for (let pip = 0; pip < maxP; pip++) {
+      const col  = pip % COLS;
+      const row  = Math.floor(pip / COLS);
+      const px   = startX + col * colStep;
+      const py   = startY + row * rowStep;
+      const used = pip < usedP;
+      const fill = used ? '#224422' : '#33ff33';
+      const brd  = used ? '#334433' : '#88ff88';
+      this.renderer.drawRect(px, py, REACTOR_PIP_W, REACTOR_PIP_H, fill, true);
+      this.renderer.drawRect(px, py, REACTOR_PIP_W, REACTOR_PIP_H, brd, false);
+    }
+  }
+
+  /** Draws subtle animated lines connecting the reactor to the systems panel. */
+  private drawEnergyFlowLines(): void {
+    const { height: canvasH } = this.renderer.getCanvasSize();
+    const ctx  = this.renderer.getContext();
+    const midY = canvasH - BOTTOM_HUD_H / 2;
+    const fromX = REACTOR_PANEL_X + REACTOR_PANEL_W;
+    const toX   = SYSPANEL_X - 2;
+
+    ctx.beginPath();
+    ctx.moveTo(fromX, midY);
+    ctx.lineTo(toX,   midY);
+    ctx.strokeStyle = '#226622';
+    ctx.lineWidth   = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   // ── HUD: weapon UI boxes (bottom strip with panel background) ────────────
 
   private drawWeaponUI(world: IWorld): void {
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
     if (playerWeapons.length === 0) return;
 
-    const { height } = this.renderer.getCanvasSize();
+    const { width: canvasW, height } = this.renderer.getCanvasSize();
     const boxBaseY   = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const totalWeaponsW = playerWeapons.length * (WEAPON_BOX_W + WEAPON_BOX_MARGIN) - WEAPON_BOX_MARGIN;
+    const weaponStartX  = playerWeapons.length > 0
+      ? Math.round(canvasW / 2 - totalWeaponsW / 2)
+      : WEAPON_BOX_MARGIN;
 
     // Layout engine draws the bottom-bar panel background; this method draws weapon boxes only.
     const selectedEntity = this.targetingSystem.getSelectedWeaponEntity();
@@ -1195,7 +1283,7 @@ export class RenderSystem {
 
     for (let i = 0; i < playerWeapons.length; i++) {
       const [entity, weapon] = playerWeapons[i];
-      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       const by = boxBaseY;
 
       const isSelected  = entity === selectedEntity;
@@ -1238,13 +1326,18 @@ export class RenderSystem {
 
   private drawTooltips(world: IWorld): void {
     const mouse = this.input.getMousePosition();
-    const { height } = this.renderer.getCanvasSize();
+    const { width: canvasW, height: canvasH } = this.renderer.getCanvasSize();
+    const sysY0 = canvasH - BOTTOM_HUD_H + 6;
 
     // 1. Weapon UI boxes (bottom strip) — rich weapon card.
     const playerWeapons = this.targetingSystem.getPlayerWeapons(world);
-    const boxBaseY = height - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const boxBaseY = canvasH - WEAPON_BOX_H - WEAPON_BOX_BOTTOM;
+    const totalWeaponsW = playerWeapons.length * (WEAPON_BOX_W + WEAPON_BOX_MARGIN) - WEAPON_BOX_MARGIN;
+    const weaponStartX  = playerWeapons.length > 0
+      ? Math.round(canvasW / 2 - totalWeaponsW / 2)
+      : WEAPON_BOX_MARGIN;
     for (let i = 0; i < playerWeapons.length; i++) {
-      const bx = WEAPON_BOX_MARGIN + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
+      const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       if (
         mouse.x >= bx && mouse.x <= bx + WEAPON_BOX_W &&
         mouse.y >= boxBaseY && mouse.y <= boxBaseY + WEAPON_BOX_H
@@ -1264,7 +1357,7 @@ export class RenderSystem {
       if (playerShipEntity !== null) {
         const systems = this.powerSystem.getPlayerSystems(world, playerShipEntity);
         for (let i = 0; i < systems.length; i++) {
-          const rowY = SYSPANEL_Y0 + i * SYSPANEL_ROW_H;
+          const rowY = sysY0 + i * SYSPANEL_ROW_H;
           if (
             mouse.x >= SYSPANEL_X && mouse.x <= SYSPANEL_X + SYSPANEL_W &&
             mouse.y >= rowY && mouse.y < rowY + SYSPANEL_ROW_H

@@ -8,7 +8,7 @@
     "storeCount": { "min": 2, "max": 3 },
     "hostileChance": 0.4,
     "nebulaChance": 0.1,
-    "eventPool": ["event_trader_meet", "event_distress_civilian", "event_rebel_scout", "event_pirate_toll"]
+    "eventPool": ["event_trader_meet", "event_distress_civilian", "event_rebel_scout", "event_pirate_toll", "quest_smuggler_start", "distress_colony_start", "puzzle_derelict_start"]
   },
   {
     "id": "rebel_controlled",
@@ -19,7 +19,7 @@
     "storeCount": { "min": 1, "max": 2 },
     "hostileChance": 0.7,
     "nebulaChance": 0.1,
-    "eventPool": ["event_rebel_fighter", "event_auto_scout", "event_rebel_fleet_warning"]
+    "eventPool": ["event_rebel_fighter", "distress_colony_start", "event_auto_scout", "event_rebel_fleet_warning"]
   },
   {
     "id": "mantis_homeworlds",
