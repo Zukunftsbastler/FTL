@@ -234,6 +234,9 @@ async function init(): Promise<void> {
       break;
     }
 
+    TutorialSystem.showTutorial('tut_pause',
+      'CRITICAL: Press SPACE at any time to pause. Use it freely during combat to issue orders without time pressure!',
+      'CRITICAL');
     TutorialSystem.showTutorial('tut_combat',
       'WARNING: Hostile ship detected! They will attack immediately. Check that your Shields are powered and activate your Weapons.',
       'WARNING');
@@ -574,9 +577,6 @@ async function init(): Promise<void> {
       renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
 
       // ── Tutorial triggers (fire once per run) ──────────────────────────────
-      TutorialSystem.showTutorial('tut_pause',
-        'CRITICAL: Press SPACE to pause the game at any time. You must pause frequently during combat and crises to issue orders safely!',
-        'CRITICAL');
       TutorialSystem.showTutorial('tut_fleet',
         'WARNING: The Rebel Fleet is pursuing you. The red zone on the map shows their advance. If they catch you, combat is unavoidable — keep moving!',
         'WARNING');
