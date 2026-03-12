@@ -8,7 +8,7 @@ Please carefully read the visual layering requirements in `docs/sprints/SPRINT_7
 3. **Map Verification (Task C):** Open `SectorMapSystem.ts` and `MapSystem.ts`. Ensure the `drawShipIcon` is still being called, and tweak the `scale` argument if the new comprehensive icon is too large or small.
 4. Ensure zero TypeScript errors (`tsc --noEmit`).
 
-**Version Control Instructions:**
+**Version Control Instructions:**‚
 Once the upgraded ship icons (hull + rooms) are rendering correctly on the maps and beautifully in the Hangar, stage and commit the changes.
 Use the commit message: "ui: Sprint 77 complete - Upgraded comprehensive ship rendering (hull+rooms) for Maps and Hangar".
 

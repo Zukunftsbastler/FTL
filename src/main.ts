@@ -234,15 +234,27 @@ async function init(): Promise<void> {
       break;
     }
 
-    TutorialSystem.showTutorial('tut_pause',
-      'CRITICAL: Press SPACE at any time to pause. Use it freely during combat to issue orders without time pressure!',
-      'CRITICAL');
-    TutorialSystem.showTutorial('tut_combat',
-      'WARNING: Hostile ship detected! They will attack immediately. Check that your Shields are powered and activate your Weapons.',
-      'WARNING', 'systems');
-    TutorialSystem.showTutorial('tut_power',
-      'INFO: Allocate reactor power to your systems using the power panel at the bottom. Unpowered systems do not function!',
+    // ── Chained combat tutorial sequence ─────────────────────────────────────
+    // Each step is enqueued so the player sees them one at a time in order,
+    // even though enterCombat runs only once per encounter.
+    TutorialSystem.enqueueTutorial('tut_combat_start',
+      'WARNING: Hostile ship detected! Combat has begun. Press SPACE at any time to pause — use it freely to issue orders without time pressure.',
+      'WARNING');
+    TutorialSystem.enqueueTutorial('tut_weapon_power_1',
+      'INFO: Your weapons are inactive. You must have sufficient reactor power allocated to the WEAPONS system before you can activate them.',
       'INFO', 'systems');
+    TutorialSystem.enqueueTutorial('tut_weapon_power_2',
+      'INFO: To route power: Left-click (LMB) on a weapon to power it on. Right-click (RMB) to remove power. Note that weapons require different amounts of power.',
+      'INFO', 'weapons');
+
+    // If the player just equipped a new weapon, spotlight it in this combat.
+    if (GameStateData.tutorialNewlyEquippedWeaponId !== null) {
+      const newWepId = GameStateData.tutorialNewlyEquippedWeaponId;
+      GameStateData.tutorialNewlyEquippedWeaponId = null;
+      TutorialSystem.enqueueTutorial('tut_equipped_combat',
+        'INFO: Your newly equipped weapon is now available in the weapons panel. Power it up (LMB) to use it in this fight!',
+        'INFO', `weapon_${newWepId}`);
+    }
 
     currentState = 'COMBAT';
   }
@@ -276,7 +288,13 @@ async function init(): Promise<void> {
     if (reward.hullRepair !== undefined) {
       ship.currentHull = Math.min(ship.maxHull, Math.max(0, ship.currentHull + reward.hullRepair));
     }
-    if (reward.weaponId !== undefined) ship.cargoWeapons.push(reward.weaponId);
+    if (reward.weaponId !== undefined) {
+      ship.cargoWeapons.push(reward.weaponId);
+      // Track first loot for the equip tutorial.
+      if (GameStateData.tutorialFirstLootWeaponId === null) {
+        GameStateData.tutorialFirstLootWeaponId = reward.weaponId;
+      }
+    }
 
     // ── Crew gain ──────────────────────────────────────────────────────────
     if (reward.crewMember === true) {
@@ -380,6 +398,10 @@ async function init(): Promise<void> {
       ship.droneParts += reward.droneParts;
       if (reward.weaponId !== undefined) {
         ship.cargoWeapons.push(reward.weaponId);
+        // Track first loot for the equip tutorial.
+        if (GameStateData.tutorialFirstLootWeaponId === null) {
+          GameStateData.tutorialFirstLootWeaponId = reward.weaponId;
+        }
       }
       // Spawn new crew if the reward includes one.
       if (reward.newCrew !== undefined) {
@@ -583,13 +605,22 @@ async function init(): Promise<void> {
       renderer.drawText('STAR MAP', width / 2, 55, '28px monospace', '#aaccff', 'center');
       renderer.drawText('Click a connected node to jump (costs 1 Fuel)', width / 2, 80, '12px monospace', '#445566', 'center');
 
-      // ── Tutorial triggers (fire once per run) ──────────────────────────────
-      TutorialSystem.showTutorial('tut_here',
-        'You are here! Click on any connected beacon to travel there. Each jump costs 1 Fuel.',
-        'INFO', 'current_node');
+      // ── Tutorial triggers (fire once per run, Rebel Fleet first) ───────────
       TutorialSystem.showTutorial('tut_fleet',
         'WARNING: The Rebel Fleet is pursuing you. The red zone on the map shows their advance. If they catch you, combat is unavoidable — keep moving!',
         'WARNING', 'fleet');
+      TutorialSystem.showTutorial('tut_here_1',
+        'You are here.',
+        'INFO', 'current_node');
+      TutorialSystem.showTutorial('tut_here_2',
+        'Click on a nearby location to travel there. This will cost 1 fuel.',
+        'INFO', 'current_node');
+      // First-loot tutorial: point player to the Ship Menu.
+      if (GameStateData.tutorialFirstLootWeaponId !== null) {
+        TutorialSystem.showTutorial('tut_loot_ship_menu',
+          'INFO: You picked up a new weapon! Open the Ship Menu (⚙ SHIP button) to equip it.',
+          'INFO', 'ship_menu');
+      }
 
       // Upgrades are only available from the Store — no map-level shortcut button.
 
@@ -655,6 +686,36 @@ async function init(): Promise<void> {
       oxygenSystem.update(world);       // O2 regen / decay / equalization + Lanius drain
       crewSystem.update(world);         // suffocation damage (racial multipliers)
       repairSystem.update(world);       // system repair + medbay healing (racial repair speed)
+
+      // ── Reactive weapon/shield tutorial triggers ─────────────────────────
+      if (projectileSystem.getAndClearLaserCollapsedEnemyShield()) {
+        TutorialSystem.enqueueTutorial('tut_shield_hit',
+          'INFO: Lasers do NOT pierce shields — they only deactivate them temporarily. The enemy\'s shields will recharge after a few seconds.',
+          'INFO');
+        TutorialSystem.enqueueTutorial('tut_switch_laser_off',
+          'INFO: Deactivate the Burst Laser for now. Right-click (RMB) on the laser weapon box to power it down.',
+          'INFO', 'weapon_burst_laser_2');
+        TutorialSystem.enqueueTutorial('tut_switch_artemis_on',
+          'INFO: The shield is down — activate the Artemis Missile instead. Left-click (LMB) on the Artemis to power it on.',
+          'INFO', 'weapon_artemis_missile');
+        TutorialSystem.enqueueTutorial('tut_missile_target',
+          'INFO: Now click the Artemis Missile again (LMB) to activate its targeting system.',
+          'INFO', 'weapon_artemis_missile');
+        TutorialSystem.enqueueTutorial('tut_missile_aim',
+          'INFO: Select an enemy room to target. Tip: Aim for the SHIELDS room to prevent them from recharging!',
+          'INFO');
+      }
+      if (projectileSystem.getAndClearPlayerMissileHitEnemy()) {
+        TutorialSystem.enqueueTutorial('tut_missile_ammo',
+          'WARNING: Missiles use limited ammo! Check your MSL supply — once it runs out you cannot fire missiles.',
+          'WARNING', 'msl_counter');
+        TutorialSystem.enqueueTutorial('tut_switch_back',
+          'INFO: The enemy shield is down and the path is clear. Consider switching back to your laser to conserve missiles.',
+          'INFO');
+        TutorialSystem.enqueueTutorial('tut_laser_instructions',
+          'INFO: Deactivate the Artemis Missile (RMB), then activate the Burst Laser (LMB) and target an enemy room to resume firing.',
+          'INFO', 'weapon_burst_laser_2');
+      }
 
       // ── Hazard tutorial triggers ──────────────────────────────────────────
       for (const entity of world.query(['Room', 'Owner'])) {
@@ -775,6 +836,12 @@ async function init(): Promise<void> {
       TutorialSystem.showTutorial('tut_upgrades',
         'INFO: Buy system upgrades here using Scrap. NOTE: Upgrading a system does NOT provide the reactor power needed to run it — upgrade your reactor separately to avoid unpowered systems.',
         'INFO');
+      // First-loot tutorial: point player to the cargo weapon row.
+      if (GameStateData.tutorialFirstLootWeaponId !== null) {
+        TutorialSystem.showTutorial('tut_loot_cargo_equip',
+          'INFO: This is your newly acquired weapon. Click EQUIP to install it in a weapon slot.',
+          'INFO', 'cargo_weapon_first');
+      }
       upgradeSystem.drawUpgradeScreen(world, renderer, input, () => {
         currentState = 'STAR_MAP';
       });

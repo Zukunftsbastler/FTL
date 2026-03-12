@@ -65,6 +65,16 @@ export const GameStateData: {
    */
   tutorialActive:         boolean;
   /**
+   * Tutorial: ID of the first weapon received as loot this run.
+   * Set once when a weaponId reward is first applied.  Null until that happens.
+   */
+  tutorialFirstLootWeaponId:     string | null;
+  /**
+   * Tutorial: weapon template ID that was most recently equipped from cargo.
+   * Consumed by `enterCombat` to spotlight the new weapon in the next fight.
+   */
+  tutorialNewlyEquippedWeaponId: string | null;
+  /**
    * Dynamic map markers placed by event choices via `addQuest`.
    * `nodeId = null` means MapSystem has not yet assigned a node (resolved lazily).
    */
@@ -90,6 +100,8 @@ export const GameStateData: {
   tutorialEnabled:        true,
   seenTutorials:          new Set<string>(),
   tutorialActive:         false,
+  tutorialFirstLootWeaponId:     null,
+  tutorialNewlyEquippedWeaponId: null,
   distanceToExit:         99,
   activeQuests:           [],
 };

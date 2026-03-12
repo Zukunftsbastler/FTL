@@ -101,14 +101,20 @@ export class TargetingSystem {
           );
           if (weapon.powerRequired <= pool - usedByOthers) {
             weapon.userPowered = true;
-            TutorialSystem.showTutorial('tut_weapons',
-              'INFO: Click the weapon again to select a target room immediately — no need to wait. The weapon will charge and fire automatically once it is ready!',
+            TutorialSystem.enqueueTutorial('tut_weapon_activate',
+              'INFO: Weapon powered on! Click it again (LMB) to activate its targeting system and select an enemy room to fire at.',
               'INFO', 'weapons');
           }
           // Do not enter targeting mode on the power-on click.
         } else {
           // Already powered: Left-click enters / toggles targeting mode.
+          const wasIdle = this.selectedWeaponEntity === null;
           this.selectedWeaponEntity = this.selectedWeaponEntity === entity ? null : entity;
+          if (wasIdle && this.selectedWeaponEntity === entity) {
+            TutorialSystem.enqueueTutorial('tut_target_select',
+              'INFO: Targeting active! Click on a room inside the enemy ship to set it as the target.',
+              'INFO');
+          }
         }
         return;
       }

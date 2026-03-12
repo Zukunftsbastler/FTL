@@ -166,6 +166,7 @@ export class UpgradeSystem {
     if (ship.cargoWeapons.length === 0) {
       renderer.drawText('(empty)', CP_X + PAD, wy + 12, ROW_F, DIM_COLOR, 'left');
     } else {
+      let isFirstCargoRow = true;
       for (const wId of ship.cargoWeapons) {
         const name      = allWeapons.find((t) => t.id === wId)?.name ?? wId;
         const hasSlot   = equipped.length < MAX_WEAPONS;
@@ -176,11 +177,20 @@ export class UpgradeSystem {
           hasSlot ? '#0a1a0a' : '#141414',
           hasSlot ? '#44cc44' : '#2a2a2a',
           hasSlot ? '#44ff44' : '#444444');
+        // Register anchor for the first cargo row (tutorial spotlight target).
+        if (isFirstCargoRow) {
+          GameStateData.uiAnchors['cargo_weapon_first'] = {
+            x: CP_X + PAD, y: wy, w: CP_W - PAD * 2, h: PILL_H,
+          };
+          isFirstCargoRow = false;
+        }
         if (hasSlot) {
           const capturedId = wId;
           hit(hitboxes, bx, by, BTN_W, BTN_H, () => {
             const idx = ship.cargoWeapons.indexOf(capturedId);
             if (idx !== -1) ship.cargoWeapons.splice(idx, 1);
+            // Tutorial: record the equipped weapon for highlighting in next combat.
+            GameStateData.tutorialNewlyEquippedWeaponId = capturedId;
             this.equipWeapon(world, capturedId, shipEntity, allWeapons);
           });
         }

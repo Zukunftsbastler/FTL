@@ -17,7 +17,7 @@
 
 ### C. Combat Pacing: Hull Scaling (`EnemyScaler.ts` / `ShipFactory.ts`)
 * **The Problem:** Enemy ships have too much Hull early on, making fights tedious.
-* **The Fix:** Set the base enemy Hull to a lower value (e.g., 8) in early sectors. Scale the `maxHull` and `currentHull` dynamically based on the current sector depth (e.g., `8 + (sectorLevel * 2)`).
+* **The Fix:** Set the base enemy Hull to a lower value (e.g., 8) in early sectors. Scale the `maxHull` and `currentHull` dynamically based on the current sector depth (e.g., `8 + (sectorLevel * 5)`).
 
 ### D. Crew Kill Victory Condition (`VictorySystem.ts` & `CombatSystem.ts`)
 * **The Feature:** In FTL, killing the entire enemy crew instantly wins the battle.

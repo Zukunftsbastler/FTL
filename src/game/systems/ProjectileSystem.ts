@@ -67,6 +67,18 @@ export class ProjectileSystem {
   private readonly shieldHitShips = new Set<number>();
 
   /**
+   * True if a player LASER hit collapsed the enemy's last shield layer this update.
+   * Read + cleared by `getAndClearLaserCollapsedEnemyShield()`.
+   */
+  private laserCollapsedEnemyShieldThisUpdate = false;
+
+  /**
+   * True if a player MISSILE successfully hit the enemy ship (bypassed shields) this update.
+   * Read + cleared by `getAndClearPlayerMissileHitEnemy()`.
+   */
+  private playerMissileHitEnemyThisUpdate = false;
+
+  /**
    * Projectile entities already evaluated for accuracy (Set cleared when entity destroyed).
    */
   private readonly evaluatedProjectiles = new Set<number>();
@@ -83,6 +95,20 @@ export class ProjectileSystem {
   getImpactedRooms(): ReadonlySet<number> { return this.impactedRooms; }
   getShieldHitShips(): ReadonlySet<number> { return this.shieldHitShips; }
 
+  /** Returns true (and clears the flag) if a player laser just collapsed an enemy shield layer to 0. */
+  getAndClearLaserCollapsedEnemyShield(): boolean {
+    const v = this.laserCollapsedEnemyShieldThisUpdate;
+    this.laserCollapsedEnemyShieldThisUpdate = false;
+    return v;
+  }
+
+  /** Returns true (and clears the flag) if a player missile just hit the enemy ship this update. */
+  getAndClearPlayerMissileHitEnemy(): boolean {
+    const v = this.playerMissileHitEnemyThisUpdate;
+    this.playerMissileHitEnemyThisUpdate = false;
+    return v;
+  }
+
   /**
    * Returns canvas positions where "MISS" should be rendered this frame.
    * Each entry is the centre of the room that was originally targeted.
@@ -96,6 +122,8 @@ export class ProjectileSystem {
   update(world: IWorld): void {
     this.impactedRooms.clear();
     this.shieldHitShips.clear();
+    this.laserCollapsedEnemyShieldThisUpdate = false;
+    this.playerMissileHitEnemyThisUpdate = false;
     const dt = Math.min(Time.deltaTime, MAX_DT);
 
     const entities = world.query(['Projectile', 'Position']);
@@ -131,6 +159,18 @@ export class ProjectileSystem {
           } else {
             this.applyImpact(world, proj);
             this.impactedRooms.add(proj.targetRoomEntity);
+
+            // Reactive tutorial: player MISSILE successfully hitting enemy.
+            if (proj.weaponType === 'MISSILE' && !proj.isEnemyOrigin) {
+              const missileOwner = world.getComponent<OwnerComponent>(proj.targetRoomEntity, 'Owner');
+              const missileFac   = world.getComponent<FactionComponent>(
+                missileOwner?.shipEntity ?? -1, 'Faction',
+              );
+              if (missileFac?.id === 'ENEMY') {
+                this.playerMissileHitEnemyThisUpdate = true;
+              }
+            }
+
             // Spawn noise-dissolve explosion scaled by weapon damage.
             this.explosionSystem?.spawnExplosion(
               world, proj.targetX, proj.targetY, proj.weaponType, proj.damage,
@@ -227,6 +267,18 @@ export class ProjectileSystem {
     // Deplete one layer and reset fractional progress.
     shield.currentLayers = activeLayers - 1;
     this.shieldHitShips.add(ownerComp.shipEntity);
+
+    // Reactive tutorial: player LASER collapsing enemy's last shield layer.
+    if (
+      proj.weaponType === 'LASER' &&
+      activeLayers === 1 &&
+      !proj.isEnemyOrigin
+    ) {
+      const fac = world.getComponent<FactionComponent>(ownerComp.shipEntity, 'Faction');
+      if (fac?.id === 'ENEMY') {
+        this.laserCollapsedEnemyShieldThisUpdate = true;
+      }
+    }
 
     // ION: additionally damage the SHIELDS system (power disruption).
     if (proj.ionDamage > 0) {

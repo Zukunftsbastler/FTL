@@ -517,6 +517,7 @@ export class MapSystem {
       const BTN_H = 34;
       const BTN_X = PANEL_X;
       const BTN_Y = PANEL_Y + panelH + 6;
+      GameStateData.uiAnchors['ship_menu'] = { x: BTN_X, y: BTN_Y, w: BTN_W, h: BTN_H };
       UIRenderer.drawSciFiPanel(ctx, BTN_X, BTN_Y, BTN_W, BTN_H,
         { noLeftChamfer: true, lightBg: true, borderColor: '#ffffff', alpha: 0.95 });
       renderer.drawText('⚙  SHIP', BTN_X + BTN_W / 2, BTN_Y + BTN_H / 2 + 6,

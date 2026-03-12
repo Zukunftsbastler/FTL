@@ -629,7 +629,8 @@ export class RenderSystem {
         `SCRAP ${ship.scrap}`,
       ];
       let pillX = px;
-      for (const label of resources) {
+      for (let ri = 0; ri < resources.length; ri++) {
+        const label = resources[ri];
         const tw   = ctx2.measureText(label).width;
         const pw   = tw + PILL_PAD * 2;
         UIRenderer.drawPill(ctx2, pillX, pillY, pw, PILL_H, '#00ccdd');
@@ -637,6 +638,10 @@ export class RenderSystem {
         ctx2.fillStyle = '#001820';
         ctx2.textAlign = 'left';
         ctx2.fillText(label, pillX + PILL_PAD, pillY + PILL_H / 2 + 5);
+        // Register MSL counter anchor (index 2) for tutorial spotlight.
+        if (ri === 2) {
+          GameStateData.uiAnchors['msl_counter'] = { x: pillX, y: pillY, w: pw, h: PILL_H };
+        }
         pillX += pw + PILL_GAP;
       }
       break;
@@ -1303,7 +1308,7 @@ export class RenderSystem {
       ? Math.round(canvasW / 2 - totalWeaponsW / 2)
       : WEAPON_BOX_MARGIN;
 
-    // Register weapons anchor for tutorial spotlight.
+    // Register weapons anchor for tutorial spotlight (entire weapon bar).
     GameStateData.uiAnchors['weapons'] = { x: weaponStartX, y: boxBaseY, w: totalWeaponsW, h: WEAPON_BOX_H };
 
     // Layout engine draws the bottom-bar panel background; this method draws weapon boxes only.
@@ -1317,6 +1322,11 @@ export class RenderSystem {
       const [entity, weapon] = playerWeapons[i];
       const bx = weaponStartX + i * (WEAPON_BOX_W + WEAPON_BOX_MARGIN);
       const by = boxBaseY;
+
+      // Register per-weapon anchor so tutorials can spotlight individual weapons.
+      GameStateData.uiAnchors[`weapon_${weapon.templateId}`] = {
+        x: bx, y: by, w: WEAPON_BOX_W, h: WEAPON_BOX_H,
+      };
 
       const isSelected  = entity === selectedEntity;
       const isPowered   = weapon.isPowered;

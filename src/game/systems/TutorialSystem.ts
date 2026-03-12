@@ -22,11 +22,13 @@ interface PendingModal {
  */
 export class TutorialSystem {
   private static modal: PendingModal | null = null;
+  /** Modals queued to display after the current one is dismissed. */
+  private static readonly pendingQueue: PendingModal[] = [];
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /**
-   * Queue a tutorial modal.  Silently ignored if:
+   * Show a tutorial modal immediately if nothing is active.  Silently ignored if:
    *   - `tutorialEnabled` is false, OR
    *   - `id` is already in `seenTutorials`, OR
    *   - another modal is already active.
@@ -46,6 +48,52 @@ export class TutorialSystem {
     GameStateData.seenTutorials.add(id);
     GameStateData.tutorialActive = true;
     TutorialSystem.modal = { id, text, type, anchorId: anchorId ?? null };
+  }
+
+  /**
+   * Enqueue a tutorial in the pending-display queue.
+   *
+   * Unlike `showTutorial`, this method will not silently drop the modal if
+   * another is currently active — instead the modal is appended to the queue
+   * so the sequence is preserved.  Duplicate IDs and already-seen IDs are
+   * still filtered.
+   *
+   * If no modal is currently active the item is shown immediately.
+   */
+  static enqueueTutorial(
+    id:        string,
+    text:      string,
+    type:      TutorialType,
+    anchorId?: string,
+  ): void {
+    if (!GameStateData.tutorialEnabled)      return;
+    if (GameStateData.seenTutorials.has(id)) return;
+    // Prevent duplicate queue entries.
+    if (TutorialSystem.pendingQueue.some((m) => m.id === id)) return;
+    // Also skip if it is somehow already the active modal.
+    if (TutorialSystem.modal?.id === id) return;
+
+    const item: PendingModal = { id, text, type, anchorId: anchorId ?? null };
+
+    if (!GameStateData.tutorialActive) {
+      GameStateData.seenTutorials.add(id);
+      GameStateData.tutorialActive = true;
+      TutorialSystem.modal = item;
+    } else {
+      TutorialSystem.pendingQueue.push(item);
+    }
+  }
+
+  /** Advance to the next queued modal (called internally on dismiss). */
+  private static showNextFromQueue(): void {
+    while (TutorialSystem.pendingQueue.length > 0) {
+      const next = TutorialSystem.pendingQueue.shift()!;
+      if (GameStateData.seenTutorials.has(next.id)) continue;
+      GameStateData.seenTutorials.add(next.id);
+      GameStateData.tutorialActive = true;
+      TutorialSystem.modal = next;
+      return;
+    }
   }
 
   /**
@@ -164,6 +212,7 @@ export class TutorialSystem {
     if (input.isMouseJustPressed(0) && hovered) {
       GameStateData.tutorialActive = false;
       TutorialSystem.modal = null;
+      TutorialSystem.showNextFromQueue();
     }
   }
 }
