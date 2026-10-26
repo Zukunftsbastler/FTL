@@ -1,0 +1,16 @@
+# Sicherheits-Header und Node-Version. Build-Befehl und Veröffentlichungsordner kommen weiterhin
+# aus den Netlify-Site-Einstellungen (npm run build → dist).
+
+[build.environment]
+  # vite 8 braucht Node ≥ 20.19
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Das Spiel lädt nur eigene Dateien. 'unsafe-inline' bei style-src wegen des <style>-Blocks in index.html.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"

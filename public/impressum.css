@@ -1,0 +1,41 @@
+/* Impressum & Datenschutz – eigene Datei statt Inline-Styles, passend zur Content-Security-Policy. */
+:root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --text: #d6dde6;
+    --muted: #8b96a3;
+    --accent: #00c8e0;
+    --line: rgba(255, 255, 255, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+}
+
+section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+}
+
+h1 { font-size: 1.5rem; margin: 0 0 0.75rem; color: var(--accent); }
+h2 { font-size: 1.05rem; margin: 1.5rem 0 0.4rem; }
+p, ul { margin: 0.4rem 0; }
+ul { padding-left: 1.25rem; }
+a { color: var(--accent); }
+.meta { color: var(--muted); font-size: 0.9rem; }
+.back { display: inline-block; margin: 0.25rem 0; text-decoration: none; }
+.back:hover { text-decoration: underline; }
